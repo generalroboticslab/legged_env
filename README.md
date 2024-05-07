@@ -29,7 +29,7 @@
 │   ├── run.sh # run script
 │   ├── setup # conda env setup script
 │   │   ├── conda_env.yaml
-│   │   └── plotjuggler_pipeline_debug.xml
+│   │   └── ...
 │   ├── tasks # 
 │   │   ├── __init__.py
 │   │   └── quadruped_terrain.py
