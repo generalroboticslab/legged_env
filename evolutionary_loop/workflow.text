@@ -1,0 +1,46 @@
+1: Import (Manually or Automatically) the folder containing all seed solutions
+For a first step this will be 30, 10 of each joint config, 10 different scaled lengths
+
+2: Create an initial population: Select two random bots from each joint seed (6 Children)
+"Chromosome" for each child includes the following parameters
+- Upper legs scale (0 - 9 int scalar with each seed)
+- Lower legs scale (0 - 9 int scalar with each seed)
+- Upper joint axis (x, y, or z)
+- Lower joint axis (x, y, or z)
+
+3: Determine the fitness of the population
+Train each robot in simulation using by envoking the bash python command
+Compare the greatest reward of each child.
+
+4: Termination Criteria
+- Start with Max Generations Acheived (start small)
+- Eventually we could use performance stagnation
+
+5. Selection Stage
+- Select the 3 parents with the largest total reward
+
+6. Variation Stage
+- Create 3 more offspring by using mutation & crossover
+- Crossover:
+    - 1: Upper legs / joints from largest reward bot, 
+      Lower legs / joints from the second largest reward bot
+    - 2: Lower legs / joints from largest reward bot, 
+      Upper legs / joints from the second largest reward bot
+    - 3: Upper legs / joints from the third largest reward bot,
+      Lower legs / joints from the largest reward bot
+- Mutation: 
+    - Select a member of the population of 6 at random.
+    - With a 25 % probability, mutate the lower joint axis 
+        - select a seed solution with a different lower joint axis,
+        perform a one-way swap (don't actually modify the seed solution)
+    - With a 25 % probability, mutate the upper joint axis 
+        - select a seed solution with a different upper joint axis,
+        perform a one-way swap (don't actually modify the seed solution)
+    - With a 25 % probability, mutate the upper joint length 
+        - Add a random scalar from -3 to 3 to the upper leg scale value,
+        check to make sure the new value is between 0-9 (if not gen a new one)
+        perform a one-way swap with the parent solution with that length
+    - With a 25 % probability, mutate the lower joint length 
+        - Add a random scalar from -3 to 3 to the lower leg scale value,
+        check to make sure the new value is between 0-9 (if not gen a new one)
+        perform a one-way swap with the parent solution with that length
