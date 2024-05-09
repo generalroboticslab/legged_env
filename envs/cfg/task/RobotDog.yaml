@@ -76,26 +76,26 @@ env:
   controlFrequencyInv: 1 # Number of control action updates @ sim DT per policy DT
 
   defaultJointAngles:  # = target angles when action = 0.0 (in rad)
-    Revolute_1: 0   # [rad]
-    Revolute_5: 0   # [rad]
-    Revolute_2: 0   # [rad]
-    Revolute_6: 0   # [rad]
+    joint_1_0: 0   # [rad]
+    joint_2_0: 0   # [rad]
+    joint_1_1: 0   # [rad]
+    joint_2_1: 0   # [rad]
 
-    Revolute_3: 0   # [rad]
-    Revolute_7: 0   # [rad]
-    Revolute_4: 0   # [rad]
-    Revolute_8: 0   # [rad]
+    joint_1_2: 0   # [rad]
+    joint_2_2: 0   # [rad]
+    joint_1_3: 0   # [rad]
+    joint_2_3: 0   # [rad]
 
   desiredJointAngles:
-    Revolute_1: 0   # [rad]
-    Revolute_5: 0   # [rad]
-    Revolute_2: 0   # [rad]
-    Revolute_6: 0   # [rad]
+    joint_1_0: 0   # [rad]
+    joint_2_0: 0   # [rad]
+    joint_1_1: 0   # [rad]
+    joint_2_1: 0   # [rad]
 
-    Revolute_3: 0   # [rad]
-    Revolute_7: 0   # [rad]
-    Revolute_4: 0   # [rad]
-    Revolute_8: 0   # [rad]
+    joint_1_2: 0   # [rad]
+    joint_2_2: 0   # [rad]
+    joint_1_3: 0   # [rad]
+    joint_2_3: 0   # [rad]
 
   urdfAsset:
     collision_filter: 0
@@ -113,7 +113,7 @@ env:
     kneeName: leg # there is no knee
     footName: foot
     # joint
-    hipJointName: [Revolute_1,Revolute_2,Revolute_3,Revolute_4]
+    hipJointName: [joint_1_0,joint_1_1,joint_1_2,joint_1_3]
 
 
   heightmap:

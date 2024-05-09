@@ -51,5 +51,6 @@ bash run.sh anymalTerrain -p
 ```
 
 # to start conda env
-conda activate py38
-export LD_LIBRARY_PATH=${CONDA_PREFIX}/lib
+```
+conda activate py38 && export LD_LIBRARY_PATH=${CONDA_PREFIX}/lib
+```

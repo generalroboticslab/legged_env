@@ -109,26 +109,26 @@ dog(){
     )
     BASE_ARGS+=(
         task.env.terrain.terrainType=plane
-        # "++task.env.defaultJointAngles='{Revolute_1: 0,Revolute_2: 0,Revolute_3: 0,Revolute_4: 0,Revolute_5: 0,Revolute_6: 0,Revolute_7: 0,Revolute_8: 0}'"
-        # "++task.env.desiredJointAngles='{Revolute_1: 0,Revolute_2: 0,Revolute_3: 0,Revolute_4: 0,Revolute_5: 0,Revolute_6: 0,Revolute_7: 0,Revolute_8: 0}'"
+        # "++task.env.defaultJointAngles='{joint_1_0: 0,joint_1_1: 0,joint_1_2: 0,joint_1_3: 0,joint_2_0: 0,joint_2_1: 0,joint_2_2: 0,joint_2_3: 0}'"
+        # "++task.env.desiredJointAngles='{joint_1_0: 0,joint_1_1: 0,joint_1_2: 0,joint_1_3: 0,joint_2_0: 0,joint_2_1: 0,joint_2_2: 0,joint_2_3: 0}'"
         ~task.env.defaultJointAngles
         ~task.env.desiredJointAngles
-        "++task.env.defaultJointAngles.Revolute_1=0"
-        "++task.env.defaultJointAngles.Revolute_5=0"
-        "++task.env.defaultJointAngles.Revolute_2=0"
-        "++task.env.defaultJointAngles.Revolute_6=0"
-        "++task.env.defaultJointAngles.Revolute_3=0"
-        "++task.env.defaultJointAngles.Revolute_7=0"
-        "++task.env.defaultJointAngles.Revolute_4=0"
-        "++task.env.defaultJointAngles.Revolute_8=0"
-        "++task.env.desiredJointAngles.Revolute_1=0"
-        "++task.env.desiredJointAngles.Revolute_5=0"
-        "++task.env.desiredJointAngles.Revolute_2=0"
-        "++task.env.desiredJointAngles.Revolute_6=0"
-        "++task.env.desiredJointAngles.Revolute_3=0"
-        "++task.env.desiredJointAngles.Revolute_7=0"
-        "++task.env.desiredJointAngles.Revolute_4=0"
-        "++task.env.desiredJointAngles.Revolute_8=0"
+        "++task.env.defaultJointAngles.joint_1_0=0"
+        "++task.env.defaultJointAngles.joint_2_0=0"
+        "++task.env.defaultJointAngles.joint_1_1=0"
+        "++task.env.defaultJointAngles.joint_2_1=0"
+        "++task.env.defaultJointAngles.joint_1_2=0"
+        "++task.env.defaultJointAngles.joint_2_2=0"
+        "++task.env.defaultJointAngles.joint_1_3=0"
+        "++task.env.defaultJointAngles.joint_2_3=0"
+        "++task.env.desiredJointAngles.joint_1_0=0"
+        "++task.env.desiredJointAngles.joint_2_0=0"
+        "++task.env.desiredJointAngles.joint_1_1=0"
+        "++task.env.desiredJointAngles.joint_2_1=0"
+        "++task.env.desiredJointAngles.joint_1_2=0"
+        "++task.env.desiredJointAngles.joint_2_2=0"
+        "++task.env.desiredJointAngles.joint_1_3=0"
+        "++task.env.desiredJointAngles.joint_2_3=0"
     )
 }
 

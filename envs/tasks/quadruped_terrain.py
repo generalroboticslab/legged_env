@@ -429,7 +429,7 @@ class QuadrupedTerrain(VecTask):
             self.gym.set_actor_dof_properties(env_handle, actor_handle, self.dof_props)
             self.envs.append(env_handle)
             self.actor_handles.append(actor_handle)
-
+            
         body_names = self.gym.get_asset_rigid_body_names(self.asset)
         self.dof_names = self.gym.get_asset_dof_names(self.asset)
 
@@ -439,7 +439,7 @@ class QuadrupedTerrain(VecTask):
             if type(source) is str: # one to many
                 matches = [item for item in destination if source.lower() in item.lower()]  
                 if not matches:
-                    raise KeyError(f"cannot locate {source} [{comment}]")
+                    raise KeyError(f"cannot locate {source} [{comment}\navailables are {destination}")
                 return matches
             # one to one     
             def find_matches(src_item):

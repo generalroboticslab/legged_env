@@ -36,6 +36,8 @@
 __pycache__/
 *.py[cod]
 *$py.class
+*.pyc
+*.pyo
 
 # Distribution / packaging
 .Python
