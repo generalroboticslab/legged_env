@@ -106,7 +106,7 @@ class Launcher:
                 if process.gpu_id is not None:
                     self.processes_per_gpu[process.gpu_id].append(process.proc_cmd)
 
-                print(f"Started process {process.proc_cmd} GPU {process.gpu_id}")
+                print(f"process started \"{process.proc_cmd}\" GPU {process.gpu_id}")
                 # print(f"Waiting for {self.pause_between} seconds before starting next process")
                 time.sleep(self.pause_between)
 
@@ -124,7 +124,7 @@ class Launcher:
                 else:
                     if process.gpu_id is not None:
                         self.processes_per_gpu[process.gpu_id].remove(process.proc_cmd)
-                    print(f"Process finished {process.proc_cmd}, {process.returncode}")
+                    print(f"Process finished \"{process.proc_cmd}\", {process.returncode}")
                     if process.returncode != 0:
                         self.failed_processes.append((process.proc_cmd, process.pid, process.returncode))
                         print(f"WARNING: RETURN CODE IS {process.returncode}")
@@ -144,18 +144,16 @@ class Launcher:
 
 
 if __name__=="__main__":
-    
-    # entry_point="envs/example_entry_point.py"
-    # entry_point=os.path.abspath(entry_point)
-    # experiments = [dict(cmd=f"python {entry_point}",root_dir=f"exp_{k}",exp_env_vars=None) for k in range(5)]
+    # command > output.txt 2>&1
+    entry_point="envs/example_entry_point.py"
+    entry_point=os.path.abspath(entry_point)
+    experiments = [dict(cmd=f"python {entry_point} task=A1Terrain",root_dir=f"exp_{k}",exp_env_vars=None) for k in range(5)]
 
 
     # cmd_lists = ["python train.py task=A1Terrain test=true num_envs=2 task.env.terrain.terrainType=plane"]
-    cmd_lists = ["python train.py task=RobotDog test=True num_envs=2 task.env.urdfAsset.file='scaled_top_legs_dog.urdf' ++task.env.urdfAsset.root='/home/grl/repo/RobotsMakingRobots/assets/URDFsForBoxi/scaled_top_legs_dog' task.env.baseHeightTarget=0.2694601156286657 task.env.baseInitState.pos=[0,0,0.2694601156286657] task.env.baseInitState.rot=[0,0,0,1] task.env.defaultJointAngles.joint_1_0=0 task.env.defaultJointAngles.joint_1_1=0 task.env.defaultJointAngles.joint_1_2=0 task.env.defaultJointAngles.joint_1_3=0 task.env.defaultJointAngles.joint_2_0=0 task.env.defaultJointAngles.joint_2_1=0 task.env.defaultJointAngles.joint_2_2=0 task.env.defaultJointAngles.joint_2_3=0 task.env.desiredJointAngles.joint_1_0=0 task.env.desiredJointAngles.joint_1_1=0 task.env.desiredJointAngles.joint_1_2=0 task.env.desiredJointAngles.joint_1_3=0 task.env.desiredJointAngles.joint_2_0=0 task.env.desiredJointAngles.joint_2_1=0 task.env.desiredJointAngles.joint_2_2=0 task.env.desiredJointAngles.joint_2_3=0 task.env.urdfAsset.hipName=body_1 task.env.urdfAsset.kneeName=body_1 task.env.urdfAsset.footName=body_2 task.env.urdfAsset.hipJointName=joint_1 task.env.terrain.terrainType=plane"]
-    
-    
-    
-    experiments = [dict(cmd=cmd,root_dir=f"exp_{k}",exp_env_vars=None) for k,cmd in enumerate(cmd_lists)]
+    # cmd_lists = ["python train.py task=RobotDog test=True num_envs=2 task.env.urdfAsset.file='scaled_top_legs_dog.urdf' ++task.env.urdfAsset.root='/home/grl/repo/RobotsMakingRobots/assets/URDFsForBoxi/scaled_top_legs_dog' task.env.baseHeightTarget=0.2694601156286657 task.env.baseInitState.pos=[0,0,0.2694601156286657] task.env.baseInitState.rot=[0,0,0,1] task.env.defaultJointAngles.joint_1_0=0 task.env.defaultJointAngles.joint_1_1=0 task.env.defaultJointAngles.joint_1_2=0 task.env.defaultJointAngles.joint_1_3=0 task.env.defaultJointAngles.joint_2_0=0 task.env.defaultJointAngles.joint_2_1=0 task.env.defaultJointAngles.joint_2_2=0 task.env.defaultJointAngles.joint_2_3=0 task.env.desiredJointAngles.joint_1_0=0 task.env.desiredJointAngles.joint_1_1=0 task.env.desiredJointAngles.joint_1_2=0 task.env.desiredJointAngles.joint_1_3=0 task.env.desiredJointAngles.joint_2_0=0 task.env.desiredJointAngles.joint_2_1=0 task.env.desiredJointAngles.joint_2_2=0 task.env.desiredJointAngles.joint_2_3=0 task.env.urdfAsset.hipName=body_1 task.env.urdfAsset.kneeName=body_1 task.env.urdfAsset.footName=body_2 task.env.urdfAsset.hipJointName=joint_1 task.env.terrain.terrainType=plane"]
+
+    # experiments = [dict(cmd=cmd,root_dir=f"exp_{k}",exp_env_vars=None) for k,cmd in enumerate(cmd_lists)]
 
     
     launcher = Launcher(max_parallel=4,num_gpus=1,experiments_per_gpu=2,train_dir="./output/tmp", pause_between=0)
