@@ -27,7 +27,7 @@
   </collision>
 </link>
 
-<link name="leg1_1">
+<link name="body_1_1_1">
   <inertial>
     <origin xyz="0.0007814234168126571 0.024243324964192944 -0.02896098305551157" rpy="0 0 0"/>
     <mass value="0.17635098126357945"/>
@@ -49,7 +49,7 @@
   </collision>
 </link>
 
-<link name="leg2_1">
+<link name="body_1_2_1">
   <inertial>
     <origin xyz="-0.0042195360340265 0.03017648355371383 -0.022926435076338115" rpy="0 0 0"/>
     <mass value="0.21988900237553521"/>
@@ -71,7 +71,7 @@
   </collision>
 </link>
 
-<link name="leg3_1">
+<link name="body_1_3_1">
   <inertial>
     <origin xyz="0.0008708950659955111 -0.02995016991589186 -0.025688707952682584" rpy="0 0 0"/>
     <mass value="0.2124436301601684"/>
@@ -93,7 +93,7 @@
   </collision>
 </link>
 
-<link name="leg4_1">
+<link name="body_1_4_1">
   <inertial>
     <origin xyz="0.0005924574963036555 -0.02470878364362837 -0.026978368948648163" rpy="0 0 0"/>
     <mass value="0.16803507345033536"/>
@@ -115,7 +115,7 @@
   </collision>
 </link>
 
-<link name="foot1_1">
+<link name="body_2_1_1">
   <inertial>
     <origin xyz="0.06985267425305672 0.0024351817059325293 -0.09140745978377883" rpy="0 0 0"/>
     <mass value="0.4197478789995662"/>
@@ -137,7 +137,7 @@
   </collision>
 </link>
 
-<link name="foot2_1">
+<link name="body_2_2_1">
   <inertial>
     <origin xyz="-0.0670623996427461 0.002558409765784128 -0.09902622775208096" rpy="0 0 0"/>
     <mass value="0.4725136412635692"/>
@@ -159,7 +159,7 @@
   </collision>
 </link>
 
-<link name="foot3_1">
+<link name="body_2_3_1">
   <inertial>
     <origin xyz="0.06951302950245344 -0.0013864072513053577 -0.0850441969433882" rpy="0 0 0"/>
     <mass value="0.39949807856162617"/>
@@ -181,7 +181,7 @@
   </collision>
 </link>
 
-<link name="foot4_1">
+<link name="body_2_4_1">
   <inertial>
     <origin xyz="-0.06736722073754639 0.0015364162415758692 -0.10137631817072286" rpy="0 0 0"/>
     <mass value="0.47989575308955273"/>
@@ -206,7 +206,7 @@
 <joint name="joint_1_0" type="revolute">
   <origin xyz="0.108728 0.076125 0.03886" rpy="0 0 0"/>
   <parent link="base_link"/>
-  <child link="leg1_1"/>
+  <child link="body_1_1_1"/>
   <axis xyz="0.0 1.0 0.0"/>
   <limit upper="2.0944" lower="-2.0944" effort="3.8" velocity="5.4"/>
 </joint>
@@ -224,7 +224,7 @@
 <joint name="joint_1_1" type="revolute">
   <origin xyz="-0.134347 0.076125 0.038955" rpy="0 0 0"/>
   <parent link="base_link"/>
-  <child link="leg2_1"/>
+  <child link="body_1_2_1"/>
   <axis xyz="0.0 1.0 0.0"/>
   <limit upper="2.0944" lower="-2.0944" effort="3.8" velocity="5.4"/>
 </joint>
@@ -242,7 +242,7 @@
 <joint name="joint_1_2" type="revolute">
   <origin xyz="0.102253 -0.076125 0.041624" rpy="0 0 0"/>
   <parent link="base_link"/>
-  <child link="leg3_1"/>
+  <child link="body_1_3_1"/>
   <axis xyz="0.0 1.0 0.0"/>
   <limit upper="2.0944" lower="-2.0944" effort="3.8" velocity="5.4"/>
 </joint>
@@ -260,7 +260,7 @@
 <joint name="joint_1_3" type="revolute">
   <origin xyz="-0.144982 -0.076125 0.03761" rpy="0 0 0"/>
   <parent link="base_link"/>
-  <child link="leg4_1"/>
+  <child link="body_1_4_1"/>
   <axis xyz="0.0 1.0 0.0"/>
   <limit upper="2.0944" lower="-2.0944" effort="3.8" velocity="5.4"/>
 </joint>
@@ -277,8 +277,8 @@
 
 <joint name="joint_2_0" type="revolute">
   <origin xyz="-0.000708 0.024408 -0.109869" rpy="0 0 0"/>
-  <parent link="leg1_1"/>
-  <child link="foot1_1"/>
+  <parent link="body_1_1_1"/>
+  <child link="body_2_1_1"/>
   <axis xyz="0.0 1.0 0.0"/>
   <limit upper="2.0944" lower="-2.0944" effort="3.8" velocity="5.4"/>
 </joint>
@@ -295,8 +295,8 @@
 
 <joint name="joint_2_1" type="revolute">
   <origin xyz="-0.008066 0.036633 -0.109964" rpy="0 0 0"/>
-  <parent link="leg2_1"/>
-  <child link="foot2_1"/>
+  <parent link="body_1_2_1"/>
+  <child link="body_2_2_1"/>
   <axis xyz="0.0 1.0 0.0"/>
   <limit upper="2.0944" lower="-2.0944" effort="3.8" velocity="5.4"/>
 </joint>
@@ -313,8 +313,8 @@
 
 <joint name="joint_2_2" type="revolute">
   <origin xyz="0.00154 -0.035396 -0.112633" rpy="0 0 0"/>
-  <parent link="leg3_1"/>
-  <child link="foot3_1"/>
+  <parent link="body_1_3_1"/>
+  <child link="body_2_3_1"/>
   <axis xyz="0.0 1.0 0.0"/>
   <limit upper="2.0944" lower="-2.0944" effort="3.8" velocity="5.4"/>
 </joint>
@@ -331,8 +331,8 @@
 
 <joint name="joint_2_3" type="revolute">
   <origin xyz="0.00138 -0.025554 -0.108619" rpy="0 0 0"/>
-  <parent link="leg4_1"/>
-  <child link="foot4_1"/>
+  <parent link="body_1_4_1"/>
+  <child link="body_2_4_1"/>
   <axis xyz="0.0 1.0 0.0"/>
   <limit upper="2.0944" lower="-2.0944" effort="3.8" velocity="5.4"/>
 </joint>

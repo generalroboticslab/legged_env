@@ -108,10 +108,10 @@ env:
     # root: "" # override defualt asset_root
     file: "urdf/RobotDog7kg/RobotDog.urdf"
     baseName: base
-    hipName: leg
+    hipName: body_1
     # shank if collapsing fixed joint, foot otherwise
-    kneeName: leg # there is no knee
-    footName: foot
+    kneeName: body_1 # there is no knee
+    footName: body_2
     # joint
     hipJointName: [joint_1_0,joint_1_1,joint_1_2,joint_1_3]
 
