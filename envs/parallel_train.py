@@ -95,7 +95,12 @@ class Launcher:
                     for key, value in exp_env_vars.items():
                         print(f"Adding env variable {key} {value}")
                         envvars[str(key)] = str(value)
-
+                # print(cmd_tokens)
+                try:
+                    cmd_tokens.remove('')
+                    cmd_tokens.remove("")
+                except ValueError:
+                    pass
                 process = subprocess.Popen(cmd_tokens, stdout=None, stderr=None,env=envvars)
                 
                 process.gpu_id = best_gpu
