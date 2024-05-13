@@ -35,7 +35,6 @@ env:
     difficultySale: 1.0 # multiplier for terrain height
     numTerrains: 20
     # terrain types: [smooth slope, rough slope, stairs up, stairs down, discrete, stepping stone]
-    # terrainProportions: [0.1, 0.1, 0.35, 0.25, 0.2]
     terrainProportions: [0.2, 0.2, 0.2, 0.2, 0.2, 0]
     stair: # stairs up/down terrain
       width: 0.31
@@ -49,19 +48,14 @@ env:
     rot: [0.0, 0.0, 0.0, 1.0] # x,y,z,w [quat]
     vLinear: [0.0, 0.0, 0.0]  # x,y,z [m/s]
     vAngular: [0.0, 0.0, 0.0]  # x,y,z [rad/s]
-
+  
   baseHeightTarget: 0.25 # target base height [m]
 
   randomCommandVelocityRanges:
     # train
-    # linear_x: [-1., 1.] # min max [m/s]
-    # linear_y: [-1., 1.]   # min max [m/s]
-    # yaw: [-3.14, 3.14]    # min max [rad/s]
-
     linear_x: [-0.5, 0.5] # min max [m/s]
     linear_y: [-0.5, 0.5]   # min max [m/s]
     yaw: [-1, 1]    # min max [rad/s]
-
   commandZeroThreshold: 0 # [m/s] treat commends below this threshold as zero, search command_zero_threshold
 
   control:
@@ -114,41 +108,120 @@ env:
     footName: body_2
     # joint
     hipJointName: [joint_1_0,joint_1_1,joint_1_2,joint_1_3]
-
+  # assetDofProperties: # set_actor_dof_properties (override)
+    # damping: 0.5
 
   heightmap:
     x: "${linspace: -0.6, 0.6, 13}"
     y: "${linspace: -0.4, 0.4, 9}"
-    
+  
   learn:
     allowKneeContacts: True
-    # rewards
     terminalReward: 0.0
-    linearVelocityXYRewardScale: 1.0
-    linearVelocityZRewardScale: -4.0
-    angularVelocityXYRewardScale: -0.05
-    angularVelocityZRewardScale: 0.5
-    orientationRewardScale: -0.5 #-1.
-    torqueRewardScale: -0.00002 # -0.000025
-    jointAccRewardScale: -2.0e-7 # -0.0025
-    jointVelRewardScale: -0.0
-    jointPosRewardScale: -0.0
-    jointPowRewardScale: -0.0
-    baseHeightRewardScale: -0.0 #5
-    feetAirTimeRewardScale:  1.0
-    feetAirTimeMin_s: 0.3 # [s]
-    feetStanceTimeRewardScale: 1.0
-    feetStanceTimeMin_s: 0.3 # [s]
-    feetContactForceRewardScale: 0.0
-    feetContactForceLimit: 100 #[N]
-    feetImpactRewardScale: -0.0
-    feetStumbleRewardScale: -0. #-2.0
-    feetSlipRewardScale: -0.0
-    kneeCollisionRewardScale: 0 # -0.25 
-    actionRewardScale: -0 # -1.0e-5 #-0.0
-    actionRateRewardScale: -2.0e-5
-    # cosmetics
-    hipRewardScale: -0. #25
+    reward:
+      linearVelocityXY:
+        scale: 1.0
+        fcn: exp_square_sum
+        exp_scale: -4.0
+      linearVelocityZ:
+        scale: -4.0
+        fcn: exp_square
+        exp_scale: -4.0
+      angularVelocityXY:
+        scale: -0.05
+        fcn: square_sum
+      angularVelocityZ:
+        scale: 0.5
+        fcn: square
+      orientation:
+        scale: -0.5 #-1.
+        fcn: square_sum
+      torque:
+        scale: -0.00002 # -0.000025
+        fcn: square_sum
+      jointAcc:
+        scale: -2.0e-7 # -0.0025
+        fcn: square_sum
+      jointVel:
+        scale: -0.0
+        fcn: square_sum
+      jointPos:
+        scale: -0.0
+        fcn: abs_sum
+      jointPow:
+        scale: -0.0
+        fcn: abs_sum
+      baseHeight:
+        scale: -0.0
+        fcn: reverse_bell
+      feetAirTime:
+        scale:  1.0
+        fcn: duration_since_condition_reward
+        offset: -0.3 # [s]
+      # feetAirTimeMin_s: 0.3 # [s]
+      feetStanceTime:
+        scale: 1.0
+        fcn: duration_since_condition_reward
+        offset: -0.3 # [s]
+      # feetStanceTimeMin_s: 0.3 # [s]
+      feetContactForce:
+        scale: 0.0
+        fcn: contact_force_reward
+        offset: -100 # [N]
+      # feetContactForceLimit: 100 #[N]
+      feetImpact:
+        scale: -0.0
+        fcn: abs_sum
+      feetStumble:
+        scale: -0. #-2.0
+        fcn: sum
+      feetSlip:
+        scale: -0.0
+        fcn: slip_reward  
+      kneeCollision:
+        scale: -0
+        fcn: sum
+      action:
+        scale: -0.0
+        fcn: abs
+      actionRate:
+        scale: -2.0e-5
+        fcn: square_sum
+      # cosmetics
+      hip:
+        scale: -0. #25
+        fcn: hip_reward
+      dofLimit: # TODO
+        scale: -0
+        fcn: out_of_bound_abs_sum
+        margin: 0
+    # # rewards
+    # terminalReward: 0.0
+    # linearVelocityXYRewardScale: 1.0
+    # linearVelocityZRewardScale: -4.0
+    # angularVelocityXYRewardScale: -0.05
+    # angularVelocityZRewardScale: 0.5
+    # orientationRewardScale: -0.5 #-1.
+    # torqueRewardScale: -0.00002 # -0.000025
+    # jointAccRewardScale: -2.0e-7 # -0.0025
+    # jointVelRewardScale: -0.0
+    # jointPosRewardScale: -0.0
+    # jointPowRewardScale: -0.0
+    # baseHeightRewardScale: -0.0 #5
+    # feetAirTimeRewardScale:  1.0
+    # feetAirTimeMin_s: 0.3 # [s]
+    # feetStanceTimeRewardScale: 1.0
+    # feetStanceTimeMin_s: 0.3 # [s]
+    # feetContactForceRewardScale: 0.0
+    # feetContactForceLimit: 100 #[N]
+    # feetImpactRewardScale: -0.0
+    # feetStumbleRewardScale: -0. #-2.0
+    # feetSlipRewardScale: -0.0
+    # kneeCollisionRewardScale: 0 # -0.25 
+    # actionRewardScale: -0.0
+    # actionRateRewardScale: -2.0e-5
+    # # cosmetics
+    # hipRewardScale: -0. #25
 
     # normalization
     linearVelocityScale: 2.0
@@ -159,8 +232,8 @@ env:
 
     # joint limit [rad]
     dofLimitMargins: 0
-    dofLimitScale: 0
-    
+    # dofLimitScale: 0
+
     # noise 
     addNoise: False
     noiseLevel: 1.0 # scales other values

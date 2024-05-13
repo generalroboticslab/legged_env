@@ -105,32 +105,37 @@ class QuadrupedTerrain(VecTask):
         self.enable_udp = self.cfg["env"]["enableUDP"]
 
         # reward scales
+        cfg_reward = self.cfg["env"]["learn"]["reward"]
+        
         self.rew_scales = {
-            "termination": self.cfg["env"]["learn"]["terminalReward"],
-            "lin_vel_xy": self.cfg["env"]["learn"]["linearVelocityXYRewardScale"],
-            "lin_vel_z": self.cfg["env"]["learn"]["linearVelocityZRewardScale"],
-            "ang_vel_z": self.cfg["env"]["learn"]["angularVelocityZRewardScale"],
-            "ang_vel_xy": self.cfg["env"]["learn"]["angularVelocityXYRewardScale"],
-            "orient": self.cfg["env"]["learn"]["orientationRewardScale"],
-            "torque": self.cfg["env"]["learn"]["torqueRewardScale"],
-            "joint_acc": self.cfg["env"]["learn"]["jointAccRewardScale"],
-            "joint_vel": self.cfg["env"]["learn"]["jointVelRewardScale"],
-            "joint_pos": self.cfg["env"]["learn"]["jointPosRewardScale"],
-            "joint_pow": self.cfg["env"]["learn"]["jointPowRewardScale"],
-            "base_height": self.cfg["env"]["learn"]["baseHeightRewardScale"],
-            "air_time": self.cfg["env"]["learn"]["feetAirTimeRewardScale"],
-            "stance_time": self.cfg["env"]["learn"]["feetStanceTimeRewardScale"],
-            # "contact": self.cfg["env"]["learn"]["feetContactRewardScale"],
-            "collision": self.cfg["env"]["learn"]["kneeCollisionRewardScale"],
-            "impact": self.cfg["env"]["learn"]["feetImpactRewardScale"],
-            "stumble": self.cfg["env"]["learn"]["feetStumbleRewardScale"],
-            "slip": self.cfg["env"]["learn"]["feetSlipRewardScale"],
-            "action": self.cfg["env"]["learn"]["actionRewardScale"],
-            "action_rate": self.cfg["env"]["learn"]["actionRateRewardScale"],
-            "hip": self.cfg["env"]["learn"]["hipRewardScale"],
-            "dof_limit": self.cfg["env"]["learn"]["dofLimitScale"],
-            "contact_force": self.cfg["env"]["learn"]["feetContactForceRewardScale"],
+            "termination": self.cfg["env"]["learn"]["terminalReward"], # TODO. CHANGE THIS
+            "lin_vel_xy": cfg_reward["linearVelocityXY"]["scale"],
+            "lin_vel_z": cfg_reward["linearVelocityZ"]["scale"],
+            "ang_vel_z": cfg_reward["angularVelocityZ"]["scale"],
+            "ang_vel_xy": cfg_reward["angularVelocityXY"]["scale"],
+            "orient": cfg_reward["orientation"]["scale"],
+            "torque": cfg_reward["torque"]["scale"],
+            "joint_acc": cfg_reward["jointAcc"]["scale"],
+            "joint_vel": cfg_reward["jointVel"]["scale"],
+            "joint_pos": cfg_reward["jointPos"]["scale"],
+            "joint_pow": cfg_reward["jointPow"]["scale"],
+            "base_height": cfg_reward["baseHeight"]["scale"],
+            "air_time": cfg_reward["feetAirTime"]["scale"],
+            "stance_time": cfg_reward["feetStanceTime"]["scale"],
+            # "contact": cfg_reward["feetContact"]["scale"],
+            "collision": cfg_reward["kneeCollision"]["scale"],
+            "impact": cfg_reward["feetImpact"]["scale"],
+            "stumble": cfg_reward["feetStumble"]["scale"],
+            "slip": cfg_reward["feetSlip"]["scale"],
+            "action": cfg_reward["action"]["scale"],
+            "action_rate": cfg_reward["actionRate"]["scale"],
+            "hip": cfg_reward["hip"]["scale"],
+            "dof_limit": cfg_reward["dofLimit"]["scale"], # TODO CHANGE THIS
+            "contact_force": cfg_reward["feetContactForce"]["scale"],
         }
+        
+        
+        
         for key in self.rew_scales.keys():
             self.rew_scales[key] = float(self.rew_scales[key]) * self.dt
         self.torque_penalty_bound = self.cfg["env"]["learn"].get("torquePenaltyBound", 0.0)
@@ -144,8 +149,8 @@ class QuadrupedTerrain(VecTask):
         self.base_height_rew_a, self.base_height_rew_b = float(a), float(b)
 
         # min air time and stance time in seconds
-        self.air_time_min = float(self.cfg["env"]["learn"]["feetAirTimeMin_s"])
-        self.stance_time_min = float(self.cfg["env"]["learn"]["feetStanceTimeMin_s"])
+        self.air_time_offset = float(cfg_reward["feetAirTime"]["offset"])
+        self.stance_time_offset = float(cfg_reward["feetStanceTime"]["offset"])
 
         # treat commends below this threshold as zero [m/s]
         self.command_zero_threshold = self.cfg["env"]["commandZeroThreshold"]
@@ -383,9 +388,11 @@ class QuadrupedTerrain(VecTask):
 
         self.dof_props = self.gym.get_asset_dof_properties(self.asset)
         # asset dof properties override
-        for key, value in self.cfg["env"].get("assetDofProperties", {}).items():
-            self.dof_props[key][:] = value  # used in set_actor_dof_properties
-            print(f"overwrite asset dof [{key}]: {value}")
+        asset_dof_properties = self.cfg["env"].get("assetDofProperties", {})
+        if asset_dof_properties is not None:
+            for key, value in asset_dof_properties.items():
+                self.dof_props[key][:] = value  # used in set_actor_dof_properties
+                print(f"overwrite asset dof [{key}]: {value}")
 
         # dof limit
         dof_margin = self.cfg["env"]["learn"].get("dofLimitMargins", 0)
@@ -528,17 +535,17 @@ class QuadrupedTerrain(VecTask):
     def compute_reward(self):
         rew = {}
         # velocity tracking reward
-        lin_vel_error = torch.square(self.commands[:, :2] - self.base_lin_vel[:, :2]).sum(dim=1)
+        lin_vel_error = square_sum(self.commands[:, :2] - self.base_lin_vel[:, :2])
         ang_vel_error = torch.square(self.commands[:, 2] - self.base_ang_vel[:, 2])
         rew["lin_vel_xy"] = torch.exp(-lin_vel_error / 0.25)
         rew["ang_vel_z"] = torch.exp(-ang_vel_error / 0.25)
 
         # other base velocity penalties
         rew["lin_vel_z"] = torch.square(self.base_lin_vel[:, 2])
-        rew["ang_vel_xy"] = torch.square(self.base_ang_vel[:, :2]).sum(dim=1)
+        rew["ang_vel_xy"] = square_sum(self.base_ang_vel[:, :2])
 
         # orientation penalty
-        rew["orient"] = torch.square(self.projected_gravity[:, :2]).sum(dim=1)
+        rew["orient"] = square_sum(self.projected_gravity[:, :2])
 
         # base height penalty
         # rew["base_height"] = torch.square(self.heights_relative[:, -1] - self.target_base_height)
@@ -551,7 +558,8 @@ class QuadrupedTerrain(VecTask):
         )
 
         # torque penalty
-        rew["torque"] = torch.square(self.torque).sum(dim=1)
+        rew["torque"] = square_sum(self.torque)
+        
         # rew["torque"] = out_of_float_bound_squared_sum(
         #     self.torque, -self.torque_penalty_bound, self.torque_penalty_bound
         # )
@@ -560,23 +568,24 @@ class QuadrupedTerrain(VecTask):
         # joint acc penalty
         # rew["joint_acc"] = torch.square(self.last_dof_vel - self.dof_vel).sum(dim=1)
         dof_acc = (self.dof_vel - self.last_dof_vel) * self.dt_inv  # TODO check if [:] is needed
-        rew["joint_acc"] = torch.square(dof_acc).sum(dim=1)  # TODO Check this
+        rew["joint_acc"] = square_sum(dof_acc)  # TODO Check this
         # rew["joint_acc"] = torch.abs(dof_acc).sum(dim=1)  #TODO Check this
 
         # joint vel penalty
-        rew["joint_vel"] = torch.square(self.dof_vel).sum(dim=1)
+        rew["joint_vel"] = square_sum(self.dof_vel)
 
-        # joint power penalty
-        rew["joint_pow"] = (self.dof_vel * self.torque).abs().sum(dim=1)
 
         # joint position penalty
         # rew["joint_pos"] = (self.dof_pos - self.default_dof_pos).abs().sum(dim=1)
         rew["joint_pos"] = (self.dof_pos - self.desired_dof_pos).abs().sum(dim=1)
         # rew["joint_pos"] = (self.dof_pos_filt - self.desired_dof_pos).abs().sum(dim=1)
+        
+        # joint power penalty
+        rew["joint_pow"] = (self.dof_vel * self.torque).abs().sum(dim=1)
 
         # collision penalty
-        knee_contact = torch.norm(self.contact_forces[:, self.knee_ids, :], dim=2) > 1.0
-        rew["collision"] = torch.sum(knee_contact, dim=1, dtype=torch.float)  # sum vs any ?
+        knee_collision = torch.norm(self.contact_forces[:, self.knee_ids, :], dim=2) > 1.0
+        rew["collision"] = torch.sum(knee_collision, dim=1, dtype=torch.float)  # sum vs any ?
 
         # feet impact penalty (num_envs,4,3)
         feet_contact_diff = self.feet_contact_force[:, :, 2] - self.last_feet_contact_force[:, :, 2]
@@ -612,7 +621,7 @@ class QuadrupedTerrain(VecTask):
         self.air_time += self.dt
         # reward only on first contact with the ground
         rew["air_time"] = (
-            torch.sum((self.air_time - self.air_time_min) * first_contact, dim=1, dtype=torch.float)
+            torch.sum((self.air_time + self.air_time_offset) * first_contact, dim=1, dtype=torch.float)
             * nonzero_command  # no reward for zero command
         )
         self.air_time *= feet_no_contact  # reset if contact
@@ -622,7 +631,7 @@ class QuadrupedTerrain(VecTask):
         self.stance_time += self.dt
         # reward only on first leaving the ground
         rew["stance_time"] = (
-            torch.sum((self.stance_time - self.stance_time_min) * first_no_contact, dim=1, dtype=torch.float)
+            torch.sum((self.stance_time + self.stance_time_offset) * first_no_contact, dim=1, dtype=torch.float)
             * nonzero_command  # no reward for zero command
         )
         self.stance_time *= self.feet_contact  # reset if no contact
@@ -967,24 +976,26 @@ def torch_rand_tensor(lower: torch.Tensor, upper: torch.Tensor, shape: Tuple[int
 
 
 @torch.jit.script
-def squared_sum(input: torch.Tensor) -> torch.Tensor:
-    return torch.square(input).sum(dim=1)
+def square_sum(input: torch.Tensor) -> torch.Tensor:
+    return torch.square(input).sum(dim=-1)
 
 
 @torch.jit.script
 def out_of_bound_norm(input: torch.Tensor, lower: torch.Tensor, upper: torch.Tensor) -> torch.Tensor:
-    return torch.norm(input - torch.clamp(input, lower, upper), dim=1)
+    return torch.norm(input - torch.clamp(input, lower, upper), dim=-1)
 
 
 @torch.jit.script
 def out_of_bound_abs_sum(input: torch.Tensor, lower: torch.Tensor, upper: torch.Tensor) -> torch.Tensor:
-    return (input - torch.clamp(input, lower, upper)).abs().sum(dim=1)
+    return (input - torch.clamp(input, lower, upper)).abs().sum(dim=-1)
 
-
-# @torch.jit.script # jit not faster than normal function
+@torch.jit.script
 def out_of_float_bound_squared_sum(input: torch.Tensor, lower: float, upper: float) -> torch.Tensor:
-    return torch.square(input - torch.clamp(input, lower, upper)).sum(dim=1)
+    return torch.square(input - torch.clamp(input, lower, upper)).sum(dim=-1)
 
+# jit is slower here so do not use jit
+def abs_sum(input: torch.Tensor) -> torch.Tensor:
+    return input.abs().sum(dim=-1)
 
 # https://researchhubs.com/post/maths/fundamentals/bell-shaped-function.html
 # https://www.mathworks.com/help/fuzzy/gbellmf.html
