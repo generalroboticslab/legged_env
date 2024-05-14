@@ -36,7 +36,8 @@ class AssetDesc:
 
 asset_descriptors = [
     # AssetDesc("urdf/bipedv6/bipedv6.urdf", False),
-    AssetDesc("urdf/RobotDog/RobotDog7kg.urdf", False),
+    AssetDesc("urdf/RobotDog/RobotDog3kg.urdf", False),
+    # AssetDesc("urdf/RobotDog/RobotDog7kg.urdf", False),
     # AssetDesc("urdf/a1/a1_minimum.urdf", False),
     # AssetDesc("urdf/a1/a1_minimum_anymal_like.urdf", False),
     # AssetDesc("urdf/a1/a1_simple.urdf", False),

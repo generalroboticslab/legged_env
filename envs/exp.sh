@@ -81,7 +81,24 @@ dog_m1(){ # variant
     )
 }
 
-
+dog3kg(){
+    base
+    task=RobotDog
+    PLAY_ARGS+=(
+        # checkpoint=../assets/checkpoints/RobotDog.pth
+        checkpoint=../outputs/RobotDog/False/2024-05-14_15-20-17/runs/RobotDog_14-15-20-17/nn/RobotDog.pth
+        num_envs=1
+        task.env.enableUDP=true
+        pipeline="cpu"
+    )
+    BASE_ARGS+=(
+    task.env.urdfAsset.file="urdf/RobotDog/RobotDog7kg.urdf"
+    task.env.terrain.terrainType=plane
+    task.env.randomCommandVelocityRanges.linear_x=[0.2,0.2]
+    task.env.randomCommandVelocityRanges.linear_y=[0,0]
+    task.env.randomCommandVelocityRanges.yaw=[0,0]
+    )
+}
 
 
 dog(){
@@ -89,25 +106,23 @@ dog(){
     task=RobotDog
     PLAY_ARGS+=(
         checkpoint=../assets/checkpoints/RobotDog.pth
-        num_envs=2
+        num_envs=1
+        pipeline="cpu"
         # task.env.terrain.terrainType=plane
-        task.env.randomCommandVelocityRanges.linear_x=[0.2,0.2]
-        task.env.randomCommandVelocityRanges.linear_y=[0,0]
-        task.env.randomCommandVelocityRanges.yaw=[0,0]
-        task.env.enableUDP=True
-        
+        # task.env.enableUDP=True
         # # headless (server)
         # headless=true
         # graphics_device_id=-1
     )
     TRAIN_ARGS+=(
         # headless=false
-        task.env.randomCommandVelocityRanges.linear_x=[0.2,0.2]
-        task.env.randomCommandVelocityRanges.linear_y=[0,0]
-        task.env.randomCommandVelocityRanges.yaw=[0,0]
     )
     BASE_ARGS+=(
         task.env.terrain.terrainType=plane
+        task.env.randomCommandVelocityRanges.linear_x=[0.2,0.2]
+        task.env.randomCommandVelocityRanges.linear_y=[0,0]
+        task.env.randomCommandVelocityRanges.yaw=[0,0]
+
         # "++task.env.defaultJointAngles='{joint_1_0: 0,joint_1_1: 0,joint_1_2: 0,joint_1_3: 0,joint_2_0: 0,joint_2_1: 0,joint_2_2: 0,joint_2_3: 0}'"
         # "++task.env.desiredJointAngles='{joint_1_0: 0,joint_1_1: 0,joint_1_2: 0,joint_1_3: 0,joint_2_0: 0,joint_2_1: 0,joint_2_2: 0,joint_2_3: 0}'"
         # ~task.env.defaultJointAngles
