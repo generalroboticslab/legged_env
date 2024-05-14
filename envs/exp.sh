@@ -20,7 +20,6 @@
 #     task=RobotDog
 #     ENTRY_POINT="-m isaacgymenvs.train"
 #     BASE_ARGS+=(
-#         task.env.urdfAsset.file=urdf/pool_of_dog/RobotDog4/RobotDog.urdf
 #     )
 # }
 

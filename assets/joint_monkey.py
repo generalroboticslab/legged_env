@@ -35,8 +35,8 @@ class AssetDesc:
 
 
 asset_descriptors = [
-    AssetDesc("urdf/pool_of_dog/RobotDog1/RobotDog.urdf", False),
-    # AssetDesc("urdf/RobotDog7kg/RobotDog.urdf", False),
+    # AssetDesc("urdf/bipedv6/bipedv6.urdf", False),
+    AssetDesc("urdf/RobotDog/RobotDog7kg.urdf", False),
     # AssetDesc("urdf/a1/a1_minimum.urdf", False),
     # AssetDesc("urdf/a1/a1_minimum_anymal_like.urdf", False),
     # AssetDesc("urdf/a1/a1_simple.urdf", False),
@@ -131,7 +131,7 @@ for k in range(50):
 
     #------------------------------------------------------------
     # load asset
-    asset_root = "."
+    asset_root = os.path.dirname(__file__)
     asset_file = asset_descriptors[args.asset_id].file_name
 
     asset_options = gymapi.AssetOptions()

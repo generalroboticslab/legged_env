@@ -100,7 +100,7 @@ env:
       flip_visual_attachments: False
       replace_cylinder_with_capsule: True
     # root: "" # override defualt asset_root
-    file: "urdf/RobotDog7kg/RobotDog.urdf"
+    file: "urdf/RobotDog/RobotDog7kg.urdf"
     baseName: base
     hipName: body_1
     # shank if collapsing fixed joint, foot otherwise
