@@ -58,7 +58,8 @@ class QuadrupedTerrain(VecTask):
         self.custom_origins = False
         self.debug_viz = self.cfg["env"]["enableDebugVis"]
         self.viewer_follow = self.cfg["env"]["viewer"]["follow"]
-
+        self.viewer_follow_offset=torch.tensor(self.cfg["env"]["viewer"].get("follower_offset",[0.5,0.5,0.5]))
+        
         self.init_done = False
         infer_observation = self.cfg["env"]["numObservations"] == "infer"
         if infer_observation:
@@ -293,7 +294,7 @@ class QuadrupedTerrain(VecTask):
             self.cam_target_pos = self.cfg["env"]["viewer"]["lookat"]
             if self.viewer_follow:
                 self.cam_target_pos= self.root_state[0, :3].clone().cpu() 
-                self.cam_pos= torch.tensor([1,1,1])+self.cam_target_pos
+                self.cam_pos= self.viewer_follow_offset+self.cam_target_pos
             self.gym.viewer_camera_look_at(self.viewer, None, gymapi.Vec3(*self.cam_pos), gymapi.Vec3(*self.cam_target_pos))
             
         if self.enable_udp:  # plotJuggler related
@@ -697,6 +698,8 @@ class QuadrupedTerrain(VecTask):
             )
             data = {
                 "t": self.t,
+                "time_air":self.air_time,
+                "time_stance":self.stance_time,
                 "foot_pos": foot_pos,
                 "base_height": self.heights_relative[:, -1],
                 "dof_vel": self.dof_vel,
@@ -709,6 +712,7 @@ class QuadrupedTerrain(VecTask):
                 "action": self.actions,
                 "action_rate": action_rate,
                 "contact": self.feet_contact,
+                "rew_buf":self.rew_buf * self.dt_inv
             }
             for key in rew.keys():
                 data[f"rew_{key}"] = rew[key] * self.dt_inv
@@ -788,8 +792,8 @@ class QuadrupedTerrain(VecTask):
     def render(self):
         if self.viewer and self.viewer_follow:
             # do modify camera position
-            self.cam_target_pos= self.root_state[0, :3].clone().cpu() 
-            self.cam_pos= torch.tensor([1,1,1])+self.cam_target_pos
+            self.cam_target_pos = self.root_state[0, :3].clone().cpu() 
+            self.cam_pos = self.viewer_follow_offset+self.cam_target_pos
             self.gym.viewer_camera_look_at(self.viewer, None, gymapi.Vec3(*self.cam_pos), gymapi.Vec3(*self.cam_target_pos))     
         super().render()
         return
@@ -848,8 +852,6 @@ class QuadrupedTerrain(VecTask):
     def pre_physics_step(self, actions):
         self.actions = actions.clone().to(self.device)
         dof_pos_target = self.action_scale * self.actions + self.default_dof_pos
-        # dof_pos_target = self.desired_dof_pos
-        # dof_pos_target = self.action_scale * self.actions + self.dof_pos # act_diff
         for i in range(self.decimation):
             torque = torch.clip(
                 self.kp * (dof_pos_target - self.dof_pos) - self.kd * self.dof_vel,

@@ -81,12 +81,85 @@ dog_m1(){ # variant
     )
 }
 
+dog3kg_t2(){
+    dog3kg
+    task=RobotDog
+    # foot dragging, moves
+    PLAY_ARGS+=(
+        checkpoint=../outputs/RobotDog/False/2024-05-14_22-54-23-dog3kg_t2/runs/RobotDog_14-22-54-23/nn/RobotDog.pth
+        num_envs=1
+
+    )
+    BASE_ARGS+=(
+       task.sim.dt=0.00625
+       task.env.control.decimation=4
+    )
+}
+
+
+dog3kg_t1(){
+    dog3kg
+    task=RobotDog
+    PLAY_ARGS+=(
+        # does not move well
+        checkpoint=../outputs/RobotDog/False/2024-05-14_22-42-39/runs/RobotDog_14-22-42-39/nn/RobotDog.pth
+        num_envs=1
+    )
+    BASE_ARGS+=(
+       task.sim.dt=0.01
+       task.env.control.decimation=2
+    )
+}
+
+
+dog3kg_r2(){
+    dog3kg
+    task=RobotDog
+    PLAY_ARGS+=(
+        # moves similarly compared to baseline
+        checkpoint=../outputs/RobotDog/False/2024-05-14_16-54-47-dog3kg_r2/runs/RobotDog_14-16-54-47/nn/RobotDog.pth
+        num_envs=1
+    )
+    BASE_ARGS+=(
+        task.env.learn.reward.feetAirTime.scale=0.5
+        task.env.learn.reward.feetStanceTime.scale=0.5
+    )
+}
+
+dog3kg_r1(){
+    dog3kg
+    task=RobotDog
+    PLAY_ARGS+=(
+        # cannot move well, proves that air/stance time is needed, entropy increased
+        checkpoint=../outputs/RobotDog/False/2024-05-14_16-48-54-dog3kg_r1/runs/RobotDog_14-16-48-54/nn/RobotDog.pth
+        num_envs=1
+    )
+    BASE_ARGS+=(
+        task.env.learn.reward.feetAirTime.scale=0
+        task.env.learn.reward.feetStanceTime.scale=0
+    )
+}
+
+dog3kg_p1(){
+    dog3kg
+    task=RobotDog
+    PLAY_ARGS+=(
+        checkpoint=../outputs/RobotDog/False/2024-05-14_16-20-09-dog3kg_p1/runs/RobotDog_14-16-20-09/nn/RobotDog.pth
+        num_envs=1
+    )
+    BASE_ARGS+=(
+    task.env.randomCommandVelocityRanges.linear_x=[0.3,0.3]
+    task.env.randomCommandVelocityRanges.linear_y=[0,0]
+    task.env.randomCommandVelocityRanges.yaw=[0,0]
+    )
+}
+
 dog3kg(){
     base
     task=RobotDog
     PLAY_ARGS+=(
         # checkpoint=../assets/checkpoints/RobotDog.pth
-        checkpoint=../outputs/RobotDog/False/2024-05-14_15-20-17/runs/RobotDog_14-15-20-17/nn/RobotDog.pth
+        checkpoint=../outputs/RobotDog/False/2024-05-14_15-20-17-dog3kg/runs/RobotDog_14-15-20-17/nn/RobotDog.pth
         num_envs=1
         task.env.enableUDP=true
         pipeline="cpu"
@@ -107,7 +180,6 @@ dog(){
     PLAY_ARGS+=(
         checkpoint=../assets/checkpoints/RobotDog.pth
         num_envs=1
-        pipeline="cpu"
         # task.env.terrain.terrainType=plane
         # task.env.enableUDP=True
         # # headless (server)
@@ -153,8 +225,9 @@ a1Terrain(){
     task=A1Terrain
     checkpoint=../assets/checkpoints/A1Terrain.pth
     PLAY_ARGS+=(
+        task.env.enableUDP=true
         num_envs=15
-        # task.env.terrain.terrainType=plane
+        task.env.terrain.terrainType=plane
         task.env.terrain.numLevels=3
         task.env.terrain.numTerrains=5
         task.env.terrain.curriculum=False

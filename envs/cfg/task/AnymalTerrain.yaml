@@ -67,7 +67,7 @@ env:
     actionScale: 0.5
     # decimation: Number of control action updates @ sim DT per policy DT
     decimation: 4
-  controlFrequencyInv: 1 # Number of control action updates @ sim DT per policy DT
+  # controlFrequencyInv: 1 # Number of control action updates @ sim DT per policy DT
 
   defaultJointAngles:  # = target angles when action = 0.0 (in rad)
     LF_HAA: 0.03    # [rad]
