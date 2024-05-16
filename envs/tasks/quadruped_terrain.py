@@ -96,6 +96,8 @@ class QuadrupedTerrain(VecTask):
         self.decimation = self.cfg["env"]["control"]["decimation"]
         self.dt = self.decimation * self.cfg["sim"]["dt"]
         self.dt_inv = 1.0 / self.dt
+        self.rl_dt = self.dt*self.decimation
+        self.rl_dt_inv = 1.0 / self.rl_dt
         self.max_episode_length_s = self.cfg["env"]["learn"]["episodeLength_s"]
         self.max_episode_length = int(self.max_episode_length_s / self.dt + 0.5)
         self.allow_knee_contacts = self.cfg["env"]["learn"]["allowKneeContacts"]
@@ -138,7 +140,7 @@ class QuadrupedTerrain(VecTask):
         
         
         for key in self.rew_scales.keys():
-            self.rew_scales[key] = float(self.rew_scales[key]) * self.dt
+            self.rew_scales[key] = float(self.rew_scales[key]) * self.rl_dt
         self.torque_penalty_bound = self.cfg["env"]["learn"].get("torquePenaltyBound", 0.0)
         print(f"torque penalty bound = {self.torque_penalty_bound}")
 
@@ -256,7 +258,7 @@ class QuadrupedTerrain(VecTask):
         self.actions = torch.zeros(self.num_envs, self.num_actions, dtype=torch.float, device=self.device)
         self.last_actions = torch.zeros(self.num_envs, self.num_actions, dtype=torch.float, device=self.device)
         # self.actions_filt = torch.zeros(self.num_envs, self.num_actions, dtype=torch.float, device=self.device)
-        self.dof_pos_filt = torch.zeros(self.num_envs, self.num_actions, dtype=torch.float, device=self.device)
+        # self.dof_pos_filt = torch.zeros(self.num_envs, self.num_actions, dtype=torch.float, device=self.device)
         self.air_time = torch.zeros(self.num_envs, 4, dtype=torch.float, device=self.device)  # feet air time
         self.stance_time = torch.zeros(self.num_envs, 4, dtype=torch.float, device=self.device)  # feet stance time
         self.last_feet_contact_force = torch.zeros(self.num_envs, 4, 3, dtype=torch.float, device=self.device)
@@ -568,7 +570,7 @@ class QuadrupedTerrain(VecTask):
 
         # joint acc penalty
         # rew["joint_acc"] = torch.square(self.last_dof_vel - self.dof_vel).sum(dim=1)
-        dof_acc = (self.dof_vel - self.last_dof_vel) * self.dt_inv  # TODO check if [:] is needed
+        dof_acc = (self.dof_vel - self.last_dof_vel) * self.rl_dt_inv  # TODO check if [:] is needed # TODO
         rew["joint_acc"] = square_sum(dof_acc)  # TODO Check this
         # rew["joint_acc"] = torch.abs(dof_acc).sum(dim=1)  #TODO Check this
 
@@ -611,7 +613,7 @@ class QuadrupedTerrain(VecTask):
 
         # action rate penalty
         # rew["action_rate"] = torch.square(self.last_actions - self.actions).sum(dim=1)
-        action_rate = (self.actions - self.last_actions) * self.dt_inv
+        action_rate = (self.actions - self.last_actions) * self.rl_dt_inv
         rew["action_rate"] = torch.square(action_rate).sum(dim=1)
         # rew["action_rate"] = torch.abs((self.last_actions - self.actions)*self.dt_inv).sum(dim=1)
 
@@ -619,7 +621,7 @@ class QuadrupedTerrain(VecTask):
         feet_no_contact = ~self.feet_contact
         # air time reward (reward long swing)
         first_contact = (self.air_time > 0.0) * self.feet_contact
-        self.air_time += self.dt
+        self.air_time += self.rl_dt
         # reward only on first contact with the ground
         rew["air_time"] = (
             torch.sum((self.air_time + self.air_time_offset) * first_contact, dim=1, dtype=torch.float)
@@ -629,7 +631,7 @@ class QuadrupedTerrain(VecTask):
 
         # feet stance time reward (reward long stance)
         first_no_contact = (self.stance_time > 0.0) * feet_no_contact
-        self.stance_time += self.dt
+        self.stance_time += self.rl_dt
         # reward only on first leaving the ground
         rew["stance_time"] = (
             torch.sum((self.stance_time + self.stance_time_offset) * first_no_contact, dim=1, dtype=torch.float)
@@ -712,10 +714,10 @@ class QuadrupedTerrain(VecTask):
                 "action": self.actions,
                 "action_rate": action_rate,
                 "contact": self.feet_contact,
-                "rew_buf":self.rew_buf * self.dt_inv
+                "rew_buf":self.rew_buf * self.rl_dt_inv
             }
             for key in rew.keys():
-                data[f"rew_{key}"] = rew[key] * self.dt_inv
+                data[f"rew_{key}"] = rew[key] * self.rl_dt_inv
             self.data_publisher.publish(data)
 
     def reset_idx(self, env_ids):
@@ -750,7 +752,7 @@ class QuadrupedTerrain(VecTask):
 
         self.last_actions[env_ids] = 0.0
         # self.actions_filt[env_ids] = 0.0
-        self.dof_pos_filt[env_ids] = self.dof_pos[env_ids]
+        # self.dof_pos_filt[env_ids] = self.dof_pos[env_ids]
         self.last_feet_contact_force[env_ids] = 0.0
         self.last_dof_vel[env_ids] = 0.0
         self.air_time[env_ids] = 0.0
@@ -897,7 +899,7 @@ class QuadrupedTerrain(VecTask):
         # update last_...
         self.last_actions[:] = self.actions[:]
         # self.actions_filt[:] = self.actions_filt * 0.97 + self.actions * 0.03
-        self.dof_pos_filt[:] = self.dof_pos_filt * 0.97 + self.dof_pos * 0.03
+        # self.dof_pos_filt[:] = self.dof_pos_filt * 0.97 + self.dof_pos * 0.03
         self.last_dof_vel[:] = self.dof_vel[:]
         self.last_feet_contact_force[:] = self.feet_contact_force[:]
 

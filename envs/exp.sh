@@ -159,7 +159,10 @@ dog3kg(){
     task=RobotDog
     PLAY_ARGS+=(
         # checkpoint=../assets/checkpoints/RobotDog.pth
-        checkpoint=../outputs/RobotDog/False/2024-05-14_15-20-17-dog3kg/runs/RobotDog_14-15-20-17/nn/RobotDog.pth
+        # checkpoint=../outputs/RobotDog/False/2024-05-14_15-20-17-dog3kg/runs/RobotDog_14-15-20-17/nn/RobotDog.pth
+        # checkpoint=../outputs/RobotDog/False/2024-05-14_23-33-01-dog3kg/runs/RobotDog_14-23-33-01/nn/RobotDog.pth
+        # checkpoint=../outputs/RobotDog/False/2024-05-15_17-58-21-dog3kg/runs/RobotDog_15-17-58-21/nn/RobotDog.pth
+        checkpoint=../outputs/RobotDog/False/2024-05-15_18-19-59/runs/RobotDog_15-18-19-59/nn/RobotDog.pth
         num_envs=1
         task.env.enableUDP=true
         pipeline="cpu"
@@ -218,13 +221,27 @@ dog(){
     )
 }
 
+a1(){
+    # bash run.sh a1Terrain -p
+    base
+    task=A1Terrain
+    PLAY_ARGS+=(
+        # checkpoint=../outputs/A1Terrain/False/2024-05-15_23-54-50/runs/A1Terrain_15-23-54-50/nn/A1Terrain.pth
+        checkpoint=../outputs/A1Terrain/False/2024-05-16_00-50-46/runs/A1Terrain_16-00-50-46/nn/A1Terrain.pth
+        task.env.enableUDP=true
+        num_envs=15
+    )
+    BASE_ARGS+=(
+        task.env.terrain.terrainType=plane
+    )
+}
 
 a1Terrain(){
     # bash run.sh a1Terrain -p
     base
     task=A1Terrain
-    checkpoint=../assets/checkpoints/A1Terrain.pth
     PLAY_ARGS+=(
+        checkpoint=../assets/checkpoints/A1Terrain.pth
         task.env.enableUDP=true
         num_envs=15
         task.env.terrain.terrainType=plane

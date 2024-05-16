@@ -140,7 +140,7 @@ env:
         scale: -0.00002 # -0.000025
         fcn: square_sum
       jointAcc:
-        scale: -2.0e-7 # -0.0025
+        scale: -2.0e-6 # -0.0025
         fcn: square_sum
       jointVel:
         scale: -0.0
@@ -155,14 +155,14 @@ env:
         scale: -0.0
         fcn: reverse_bell
       feetAirTime:
-        scale:  1.0
+        scale:  0.1
         fcn: duration_since_condition_reward
-        offset: -0.3 # [s]
+        offset: -0.5 # [s]
       # feetAirTimeMin_s: 0.3 # [s]
       feetStanceTime:
-        scale: 1.0
+        scale: 0.1
         fcn: duration_since_condition_reward
-        offset: -0.3 # [s]
+        offset: -0.5 # [s]
       # feetStanceTimeMin_s: 0.3 # [s]
       feetContactForce:
         scale: 0.0
@@ -185,7 +185,7 @@ env:
         scale: -0.0
         fcn: abs
       actionRate:
-        scale: -2.0e-5
+        scale: -2.0e-4
         fcn: square_sum
       # cosmetics
       hip:
