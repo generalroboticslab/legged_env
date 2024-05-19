@@ -3,35 +3,11 @@ import open3d as o3d
 # import urdfpy
 import yourdfpy
 import numpy as np
-
-
-# def get_urdf_scene(urdf:urdfpy.URDF,cfg=None,use_collision=True):
-#     """Visualize the URDF in a given configuration.
-#     Parameters
-#     ----------
-#     cfg : dict or (n), float
-#         A map from joints or joint names to configuration values for
-#         each joint, or a list containing a value for each actuated joint
-#         in sorted order from the base link.
-#         If not specified, all joints are assumed to be in their default
-#         configurations.
-#     use_collision : bool
-#         If True, the collision geometry is visualized instead of
-#         the visual geometry.
-#     """
-#     fk = urdf.collision_trimesh_fk()
-#     if use_collision:
-#         fk = urdf.collision_trimesh_fk(cfg=cfg)
-#     else:
-#         fk = urdf.visual_trimesh_fk(cfg=cfg)
-
-#     scene = trimesh.scene.Scene()
-#     for tm in fk:
-#         pose = fk[tm]
-#         mesh = tm
-#         scene.add_geometry(mesh, transform=pose)
-#     return scene
-
+import os
+import shutil
+from functools import partial
+from itertools import chain
+import copy
 
 def get_urdf_bounding_box(urdf:yourdfpy.URDF):
     """return urdf bounding box
@@ -155,3 +131,52 @@ def scene_to_vf(scene: trimesh.Scene):
     vertices = np.vstack(vertices_list)
     faces = np.vstack(faces_list)
     return vertices, faces
+
+
+def write_urdf(urdf, new_path, old_path, copy_mesh=False):
+    """Writes a URDF file, optionally copying mesh files and adjusting paths.
+    
+    Args:
+        urdf: the URDF object to write.
+        new_path: The path to write the new URDF file to.
+        old_path: The path of the original URDF file.
+        copy_mesh: If True, mesh files are copied and paths adjusted in the new URDF.
+    """
+    # --- Path Handling ---
+    new_dir, new_urdf_name = os.path.split(os.path.abspath(new_path))
+    old_dir, _ = os.path.split(os.path.abspath(old_path))  # Old URDF name not used here
+    rel_dir = os.path.relpath(old_dir, new_dir)
+
+    os.makedirs(new_dir, exist_ok=True)  # Create directory if it doesn't exist
+
+    # --- Mesh Copying (if enabled) ---
+    if copy_mesh:
+        new_urdf = copy.deepcopy(urdf)
+        new_mesh_dir_rel = "meshes"
+        new_mesh_dir = os.path.join(new_dir, new_mesh_dir_rel)
+        os.makedirs(new_mesh_dir, exist_ok=True)
+
+        mesh_set = set() 
+        for link in new_urdf.link_map.values():
+            for v in chain(link.collisions, link.visuals):
+                if v.geometry and v.geometry.mesh.filename not in mesh_set:
+                    # Copy the mesh file and update the path in the URDF
+                    old_mesh_path = os.path.join(old_dir, v.geometry.mesh.filename)
+                    new_mesh_path = os.path.join(new_mesh_dir, os.path.basename(v.geometry.mesh.filename))
+                    shutil.copy2(old_mesh_path, new_mesh_path)
+                    v.geometry.mesh.filename = os.path.join(new_mesh_dir_rel, os.path.basename(v.geometry.mesh.filename))
+                    mesh_set.add(v.geometry.mesh.filename) 
+
+        # Set filename handler to null to avoid errors
+        prev_filename_handler = new_urdf._filename_handler
+        new_urdf._filename_handler = yourdfpy.filename_handler_null 
+
+    # --- URDF Writing ---
+    prev_filename_handler = urdf._filename_handler
+    if copy_mesh:
+        new_urdf.write_xml_file(new_path)
+        new_urdf._filename_handler = prev_filename_handler
+    else:
+        urdf._filename_handler = partial(yourdfpy.filename_handler_relative, dir=rel_dir)
+        urdf.write_xml_file(new_path)
+        urdf._filename_handler = prev_filename_handler
