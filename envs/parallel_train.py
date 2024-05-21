@@ -23,14 +23,19 @@ class Launcher:
         self.failed_processes = []
         self.last_log_time = 0
         self.remaining_experiments = collections.deque()
+        self.worker_thread = None
 
     def add(self,experiments):
+        # list of dict(cmd="str_command",root_dir="root_directory",exp_env_vars=None)
         self.remaining_experiments.extend(experiments)
         
     def run(self):
         # self.thread.start()
         self._run()
-    
+        
+    # def run_async(self):
+    #     # thread = threading.Thread(target=self.worker_function, args=("Worker Thread",))
+
     def find_least_busy_gpu(self):
         least_busy_gpu = None
         gpu_available_processes = 0
@@ -161,8 +166,7 @@ if __name__=="__main__":
     entry_point="example_entry_point.py"
     entry_point=os.path.abspath(os.path.join(os.path.dirname(__file__),entry_point))
     experiments = [dict(cmd=f"python {entry_point} task=A1Terrain",root_dir=f"exp_{k}",exp_env_vars=None) for k in range(5)]
-
-
+    
     # cmd_lists = ["python train.py task=A1Terrain test=true num_envs=2 task.env.terrain.terrainType=plane"]
     # cmd_lists = ["python train.py task=RobotDog test=True num_envs=2 task.env.urdfAsset.file='scaled_top_legs_dog.urdf' ++task.env.urdfAsset.root='/home/grl/repo/RobotsMakingRobots/assets/URDFsForBoxi/scaled_top_legs_dog' task.env.baseHeightTarget=0.2694601156286657 task.env.baseInitState.pos=[0,0,0.2694601156286657] task.env.baseInitState.rot=[0,0,0,1] task.env.defaultJointAngles.joint_1_0=0 task.env.defaultJointAngles.joint_1_1=0 task.env.defaultJointAngles.joint_1_2=0 task.env.defaultJointAngles.joint_1_3=0 task.env.defaultJointAngles.joint_2_0=0 task.env.defaultJointAngles.joint_2_1=0 task.env.defaultJointAngles.joint_2_2=0 task.env.defaultJointAngles.joint_2_3=0 task.env.desiredJointAngles.joint_1_0=0 task.env.desiredJointAngles.joint_1_1=0 task.env.desiredJointAngles.joint_1_2=0 task.env.desiredJointAngles.joint_1_3=0 task.env.desiredJointAngles.joint_2_0=0 task.env.desiredJointAngles.joint_2_1=0 task.env.desiredJointAngles.joint_2_2=0 task.env.desiredJointAngles.joint_2_3=0 task.env.urdfAsset.hipName=body_1 task.env.urdfAsset.kneeName=body_1 task.env.urdfAsset.footName=body_2 task.env.urdfAsset.hipJointName=joint_1 task.env.terrain.terrainType=plane"]
 
