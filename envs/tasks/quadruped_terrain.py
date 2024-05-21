@@ -296,7 +296,7 @@ class QuadrupedTerrain(VecTask):
             self.cam_target_pos = self.cfg["env"]["viewer"]["lookat"]
             if self.viewer_follow:
                 self.cam_target_pos= self.root_state[0, :3].clone().cpu() 
-                self.cam_pos= self.viewer_follow_offset+self.cam_target_pos
+                self.cam_pos= self.viewer_follow_offset.cpu() +self.cam_target_pos
             self.gym.viewer_camera_look_at(self.viewer, None, gymapi.Vec3(*self.cam_pos), gymapi.Vec3(*self.cam_target_pos))
             
         if self.enable_udp:  # plotJuggler related
@@ -342,8 +342,12 @@ class QuadrupedTerrain(VecTask):
         noise_vec = torch.cat(noise_vec_lists, dim=-1).to(self.device)
         return noise_vec
 
+    # def load_asset(self):
+        
+        
+        
     def _create_envs(self, num_envs, spacing, num_per_row):
-        cfg_asset = copy.deepcopy(self.cfg["env"]["urdfAsset"])
+        cfg_asset = self.cfg["env"]["urdfAsset"]
         asset_root = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../assets'))
         if "root" in cfg_asset:
             asset_root = cfg_asset["root"]
@@ -377,6 +381,76 @@ class QuadrupedTerrain(VecTask):
         self.asset = self.gym.load_asset(self.sim, asset_root, asset_file, asset_options)
         self.num_dof = self.gym.get_asset_dof_count(self.asset)
         self.num_bodies = self.gym.get_asset_rigid_body_count(self.asset)
+
+
+        body_names = self.gym.get_asset_rigid_body_names(self.asset)
+        self.dof_names = self.gym.get_asset_dof_names(self.asset)
+
+
+        def get_matching_str(source, destination,comment=""):
+            """Finds case-insensitive partial matches between source and destination lists."""
+            if type(source) is str: # one to many
+                matches = [item for item in destination if source.lower() in item.lower()]  
+                if not matches:
+                    raise KeyError(f"cannot locate {source} [{comment}\navailables are {destination}")
+                return matches
+            # one to one     
+            def find_matches(src_item):
+                matches = [item for item in destination if src_item.lower() in item.lower()]
+                if not matches:
+                    raise KeyError(f"cannot locate {src_item}. [{comment}]")
+                elif len(matches) > 1:
+                    raise KeyError(f"find multiple instances for {src_item}. [{comment}]")
+                return matches[0]  # Return just the first match
+            return [find_matches(item) for item in source]
+
+        
+        # body
+        base_name = get_matching_str(source=base_name, destination=body_names, comment="base_name")[0]
+        hip_names = get_matching_str(source=hip_name, destination=body_names, comment="hip_name")
+        feet_names = get_matching_str(source=foot_name, destination=body_names, comment="foot_name")
+        knee_names = get_matching_str(source=knee_name, destination=body_names, comment="knee_name")
+
+
+        ######################
+        # base_name = [s for s in body_names if base_name.lower() in s.lower()][0]
+        # hip_names = [s for s in body_names if hip_name.lower() in s.lower()]
+        # feet_names = [s for s in body_names if foot_name.lower() in s.lower()]
+        # knee_names = [s for s in body_names if knee_name.lower() in s.lower()]
+        # find_rb_handle = functools.partial(self.gym.find_actor_rigid_body_handle, self.envs[0], self.actor_handles[0])
+        # self.base_id = find_rb_handle(base_name)
+        # self.hip_ids = torch.tensor([find_rb_handle(n) for n in hip_names], dtype=torch.long, device=self.device)
+        # self.knee_ids = torch.tensor([find_rb_handle(n) for n in knee_names], dtype=torch.long, device=self.device)
+        # self.feet_ids = torch.tensor([find_rb_handle(n) for n in feet_names], dtype=torch.long, device=self.device)
+        
+        # # joints 
+        # dof_hip_names = get_matching_str(source=hip_joint_name,destination=self.dof_names, comment="hip_joint_name")
+        # find_dof_handle = functools.partial(self.gym.find_actor_dof_handle, self.envs[0], self.actor_handles[0])
+        # self.dof_hip_ids = torch.tensor(
+        #     [find_dof_handle(n) for n in dof_hip_names], dtype=torch.long, device=self.device
+        # )
+        
+        asset_rigid_body_dict = self.gym.get_asset_rigid_body_dict(self.asset)
+        self.base_id = asset_rigid_body_dict[base_name]
+        self.hip_ids = torch.tensor([asset_rigid_body_dict[n] for n in hip_names], dtype=torch.long, device=self.device)
+        self.knee_ids = torch.tensor([asset_rigid_body_dict[n] for n in knee_names], dtype=torch.long, device=self.device)
+        self.feet_ids = torch.tensor([asset_rigid_body_dict[n] for n in feet_names], dtype=torch.long, device=self.device)
+
+        # joints
+        dof_hip_names = get_matching_str(source=hip_joint_name,destination=self.dof_names, comment="hip_joint_name")
+        asset_dof_dict = self.gym.get_asset_dof_dict(self.asset)
+        self.dof_hip_ids = torch.tensor([asset_dof_dict[n] for n in dof_hip_names], dtype=torch.long, device=self.device)
+        
+
+        print(f"base = {base_name}: {self.base_id}")
+        print(f"hip = {dict(zip(hip_names,self.hip_ids.tolist()))}")
+        print(f"knee = {dict(zip(knee_names,self.knee_ids.tolist()))}")
+        print(f"feet = {dict(zip(feet_names,self.feet_ids.tolist()))}")
+        print(f"dof_hip = {dict(zip(dof_hip_names,self.dof_hip_ids.tolist()))}")
+        assert self.base_id!=-1
+        assert len(self.dof_hip_ids)==4
+        # assert self.dof_hip_ids.tolist() == [0, 3, 6, 9]
+        ####################
 
         # prepare friction randomization
         rigid_shape_prop = self.gym.get_asset_rigid_shape_properties(self.asset)
@@ -439,61 +513,6 @@ class QuadrupedTerrain(VecTask):
             self.gym.set_actor_dof_properties(env_handle, actor_handle, self.dof_props)
             self.envs.append(env_handle)
             self.actor_handles.append(actor_handle)
-            
-        body_names = self.gym.get_asset_rigid_body_names(self.asset)
-        self.dof_names = self.gym.get_asset_dof_names(self.asset)
-
-
-        def get_matching_str(source, destination,comment=""):
-            """Finds case-insensitive partial matches between source and destination lists."""
-            if type(source) is str: # one to many
-                matches = [item for item in destination if source.lower() in item.lower()]  
-                if not matches:
-                    raise KeyError(f"cannot locate {source} [{comment}\navailables are {destination}")
-                return matches
-            # one to one     
-            def find_matches(src_item):
-                matches = [item for item in destination if src_item.lower() in item.lower()]
-                if not matches:
-                    raise KeyError(f"cannot locate {src_item}. [{comment}]")
-                elif len(matches) > 1:
-                    raise KeyError(f"find multiple instances for {src_item}. [{comment}]")
-                return matches[0]  # Return just the first match
-            return [find_matches(item) for item in source]
-
-        
-        # body
-        base_name = get_matching_str(source=base_name, destination=body_names, comment="base_name")[0]
-        hip_names = get_matching_str(source=hip_name, destination=body_names, comment="hip_name")
-        feet_names = get_matching_str(source=foot_name, destination=body_names, comment="foot_name")
-        knee_names = get_matching_str(source=knee_name, destination=body_names, comment="knee_name")
-
-        
-        # base_name = [s for s in body_names if base_name.lower() in s.lower()][0]
-        # hip_names = [s for s in body_names if hip_name.lower() in s.lower()]
-        # feet_names = [s for s in body_names if foot_name.lower() in s.lower()]
-        # knee_names = [s for s in body_names if knee_name.lower() in s.lower()]
-        find_rb_handle = functools.partial(self.gym.find_actor_rigid_body_handle, self.envs[0], self.actor_handles[0])
-        self.base_id = find_rb_handle(base_name)
-        self.hip_ids = torch.tensor([find_rb_handle(n) for n in hip_names], dtype=torch.long, device=self.device)
-        self.knee_ids = torch.tensor([find_rb_handle(n) for n in knee_names], dtype=torch.long, device=self.device)
-        self.feet_indices = torch.tensor([find_rb_handle(n) for n in feet_names], dtype=torch.long, device=self.device)
-        # joints 
-        dof_hip_names = get_matching_str(source=hip_joint_name,destination=self.dof_names, comment="hip_joint_name")
-        find_dof_handle = functools.partial(self.gym.find_actor_dof_handle, self.envs[0], self.actor_handles[0])
-        self.dof_hip_ids = torch.tensor(
-            [find_dof_handle(n) for n in dof_hip_names], dtype=torch.long, device=self.device
-        )
-
-        print(f"base = {base_name}: {self.base_id}")
-        print(f"hip = {dict(zip(hip_names,self.hip_ids.tolist()))}")
-        print(f"knee = {dict(zip(knee_names,self.knee_ids.tolist()))}")
-        print(f"feet = {dict(zip(feet_names,self.feet_indices.tolist()))}")
-        print(f"dof_hip = {dict(zip(dof_hip_names,self.dof_hip_ids.tolist()))}")
-        assert self.base_id!=-1
-        assert len(self.dof_hip_ids)==4
-        # assert self.dof_hip_ids.tolist() == [0, 3, 6, 9]
-
 
         if self.cfg["env"]["learn"]["randomizeBaseMass"]:
             added_masses = np.random.uniform(*self.cfg["env"]["learn"]["addedMassRange"], self.num_envs)
@@ -598,8 +617,8 @@ class QuadrupedTerrain(VecTask):
         # rew["impact"] = torch.norm(feet_contact_diff,dim=2).sum(dim=1)
 
         # stumbling penalty
-        stumble = (torch.norm(self.contact_forces[:, self.feet_indices, :2], dim=2) > 5.0) * (
-            torch.abs(self.contact_forces[:, self.feet_indices, 2]) < 1.0
+        stumble = (torch.norm(self.contact_forces[:, self.feet_ids, :2], dim=2) > 5.0) * (
+            torch.abs(self.contact_forces[:, self.feet_ids, 2]) < 1.0
         )
         rew["stumble"] = torch.sum(stumble, dim=1, dtype=torch.float)
 
@@ -643,7 +662,7 @@ class QuadrupedTerrain(VecTask):
         # rew["contact"] = torch.sum(self.feet_contact, dim=1,dtype=torch.float)* (~nonzero_command)
 
         # penalize high contact forces
-        contact_force_norm = torch.norm(self.contact_forces[:, self.feet_indices, :], dim=-1)
+        contact_force_norm = torch.norm(self.contact_forces[:, self.feet_ids, :], dim=-1)
         rew["contact_force"] = torch.sum((contact_force_norm - self.max_feet_contact_force).clip(min=0.0), dim=1)
 
         # cosmetic penalty for hip motion
@@ -694,7 +713,7 @@ class QuadrupedTerrain(VecTask):
         if self.enable_udp:  # send UDP info to plotjuggler
             self.t += self.dt
 
-            foot_pos_rel = self.rb_state[:, self.feet_indices, 0:3] - self.root_state[:, :3].view(self.num_envs, 1, 3)
+            foot_pos_rel = self.rb_state[:, self.feet_ids, 0:3] - self.root_state[:, :3].view(self.num_envs, 1, 3)
             foot_pos = quat_rotate_inverse(self.base_quat.repeat_interleave(4, dim=0), foot_pos_rel.view(-1, 3)).view(
                 self.num_envs, 4, 3
             )
@@ -795,7 +814,7 @@ class QuadrupedTerrain(VecTask):
         if self.viewer and self.viewer_follow:
             # do modify camera position
             self.cam_target_pos = self.root_state[0, :3].clone().cpu() 
-            self.cam_pos = self.viewer_follow_offset+self.cam_target_pos
+            self.cam_pos = self.viewer_follow_offset.cpu()+self.cam_target_pos
             self.gym.viewer_camera_look_at(self.viewer, None, gymapi.Vec3(*self.cam_pos), gymapi.Vec3(*self.cam_target_pos))     
         super().render()
         return
@@ -887,9 +906,9 @@ class QuadrupedTerrain(VecTask):
         self.commands[:, 2] = torch.clip(0.5 * wrap_to_pi(self.commands[:, 3] - heading), -1.0, 1.0)
         # feet contact
         # self.contact = torch.norm(contact_forces[:, feet_indices, :], dim=2) > 1.
-        self.feet_contact_force = self.contact_forces[:, self.feet_indices, :]
+        self.feet_contact_force = self.contact_forces[:, self.feet_ids, :]
         self.feet_contact = self.feet_contact_force[:, :, 2] > 1.0  # todo check with norm
-        self.feet_lin_vel = self.rb_state[:, self.feet_indices, 7:10]
+        self.feet_lin_vel = self.rb_state[:, self.feet_ids, 7:10]
 
         # compute observations, rewards, resets, ...
         self.check_termination()
