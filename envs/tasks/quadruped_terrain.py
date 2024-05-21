@@ -28,11 +28,13 @@
 
 import numpy as np
 import os
-import copy
-import functools
+import sys
+import time
+# import copy
+# import functools
 from typing import Dict, Any, Tuple
-from operator import inv, itemgetter
-from gym import spaces
+from operator import itemgetter
+# from gym import spaces
 
 from isaacgym.torch_utils import *
 from isaacgym import gymtorch
@@ -53,7 +55,16 @@ class QuadrupedTerrain(VecTask):
     """
 
     def __init__(self, cfg, rl_device, sim_device, graphics_device_id, headless, virtual_screen_capture, force_render):
+        """Initialise the `VecTask`.
 
+        Args:
+            config: config dictionary for the environment.
+            sim_device: the device to simulate physics on. eg. 'cuda:0' or 'cpu'
+            graphics_device_id: the device ID to render with.
+            headless: Set to False to disable viewer rendering.
+            virtual_screen_capture: Set to True to allow the users get captured screen in RGB array via `env.render(mode='rgb_array')`. 
+            force_render: Set to True to always force rendering in the steps (if the `control_freq_inv` is greater than 1 we suggest stting this arg to True)
+        """
         self.cfg = cfg
         self.custom_origins = False
         self.debug_viz = self.cfg["env"]["enableDebugVis"]
@@ -94,12 +105,12 @@ class QuadrupedTerrain(VecTask):
         
         # other
         self.decimation = self.cfg["env"]["control"]["decimation"]
-        self.dt = self.decimation * self.cfg["sim"]["dt"]
+        self.dt = self.cfg["sim"]["dt"]
         self.dt_inv = 1.0 / self.dt
         self.rl_dt = self.dt*self.decimation
         self.rl_dt_inv = 1.0 / self.rl_dt
         self.max_episode_length_s = self.cfg["env"]["learn"]["episodeLength_s"]
-        self.max_episode_length = int(self.max_episode_length_s / self.dt + 0.5)
+        self.max_episode_length = int(self.max_episode_length_s / self.rl_dt + 0.5)
         self.allow_knee_contacts = self.cfg["env"]["learn"]["allowKneeContacts"]
         self.kp = self.cfg["env"]["control"]["stiffness"]
         self.kd = self.cfg["env"]["control"]["damping"]
@@ -198,23 +209,62 @@ class QuadrupedTerrain(VecTask):
         assert self.cfg["env"]["numObservations"] == num_obs
         
         
-
-        super().__init__(
+        super(VecTask,self).__init__( # call the grandparent class __init__
             config=self.cfg,
             rl_device=rl_device,
             sim_device=sim_device,
             graphics_device_id=graphics_device_id,
-            headless=headless,
-            virtual_screen_capture=virtual_screen_capture,
-            force_render=force_render,
-        )
+            headless=headless)
+        
+        #### super().__init__
+        self.virtual_screen_capture = virtual_screen_capture
+        self.virtual_display = None
+        if self.virtual_screen_capture:
+            from pyvirtualdisplay.smartdisplay import SmartDisplay
+            SCREEN_CAPTURE_RESOLUTION = (1027, 768)
+            self.virtual_display = SmartDisplay(size=SCREEN_CAPTURE_RESOLUTION)
+            self.virtual_display.start()
+        self.force_render = force_render
+
+        # self.sim_params = self._VecTask__parse_sim_params(self.cfg["physics_engine"], self.cfg["sim"])
+        self.sim_params = self._parse_sim_params()
+                
+        # optimization flags for pytorch JIT
+        torch._C._jit_set_profiling_mode(False)
+        torch._C._jit_set_profiling_executor(False)
+
+        self.gym = gymapi.acquire_gym()
+
+        # randomization_related_parameters
+        self.first_randomization = True
+        self.original_props = {}
+        self.dr_randomizations = {}
+        self.actor_params_generator = None
+        self.extern_actor_params = {}
+        self.last_step = -1
+        self.last_rand_step = -1
+        for env_id in range(self.num_envs):
+            self.extern_actor_params[env_id] = None
+
+        # create envs, sim and viewer
+        self.sim_initialized = False
+        self.create_sim()
+        self.gym.prepare_sim(self.sim)
+        self.sim_initialized = True
+
+        self.set_viewer()
+        self.allocate_buffers()
+
+        self.obs_dict = {}
+        
+        #######
 
         # height points to device
         self.height_points = self.height_points.to(self.device)
 
         # push robot
         self.should_push_robots = self.cfg["env"]["learn"]["pushRobots"]
-        self.push_interval = int(self.cfg["env"]["learn"]["pushInterval_s"] / self.dt + 0.5)
+        self.push_interval = int(self.cfg["env"]["learn"]["pushInterval_s"] / self.rl_dt + 0.5)
         self.push_vel_min = torch.tensor(self.cfg["env"]["learn"]["pushVelMin"], dtype=torch.float, device=self.device)
         self.push_vel_max = torch.tensor(self.cfg["env"]["learn"]["pushVelMax"], dtype=torch.float, device=self.device)
 
@@ -288,7 +338,6 @@ class QuadrupedTerrain(VecTask):
         # self.enable_viewer_sync = False  # by default freeze the viewer until "V" is pressed
         
         if self.graphics_device_id != -1 and self.viewer:
-            
             self.gym.subscribe_viewer_keyboard_event(
                 self.viewer, gymapi.KEY_F, "toggle_viewer_follow")
                         
@@ -303,27 +352,73 @@ class QuadrupedTerrain(VecTask):
             self.t = 0
             self.data_publisher = DataPublisher(is_enabled=True)
 
-    def process_keyboard_events(self,event):
-        if event.action == "toggle_viewer_follow" and event.value > 0:
-            self.viewer_follow = not self.viewer_follow
-    
+    def _parse_sim_params(self):
+        """Parse the config dictionary for physics stepping settings.
+        Returns
+            IsaacGym SimParams object with updated settings.
+        """
+        config_sim = self.cfg["sim"]
+        physics_engine = self.cfg["physics_engine"]
+        
+        sim_params = gymapi.SimParams()
+        # assign general sim parameters
+        sim_params.dt = config_sim["dt"]
+        sim_params.num_client_threads = config_sim.get("num_client_threads", 0)
+        sim_params.use_gpu_pipeline = config_sim["use_gpu_pipeline"]
+        sim_params.substeps = config_sim.get("substeps", 2)
+
+        # assign up-axis
+        if config_sim["up_axis"] == "z":
+            sim_params.up_axis = gymapi.UP_AXIS_Z
+        elif config_sim["up_axis"] == "y":
+            sim_params.up_axis = gymapi.UP_AXIS_Y
+        else:
+            raise ValueError(f"Invalid physics up-axis: {config_sim['up_axis']}")
+
+        # assign gravity
+        sim_params.gravity = gymapi.Vec3(*config_sim["gravity"])
+
+        # configure physics parameters
+        if physics_engine == "physx":
+            self.physics_engine = gymapi.SIM_PHYSX
+            # set the parameters
+            if "physx" in config_sim:
+                for opt in config_sim["physx"].keys():
+                    if opt == "contact_collection":
+                        setattr(sim_params.physx, opt, gymapi.ContactCollection(config_sim["physx"][opt]))
+                    else:
+                        setattr(sim_params.physx, opt, config_sim["physx"][opt])
+        elif physics_engine=="flex":
+            self.physics_engine = gymapi.SIM_FLEX
+            # set the parameters
+            if "flex" in config_sim:
+                for opt in config_sim["flex"].keys():
+                    setattr(sim_params.flex, opt, config_sim["flex"][opt])
+        else:
+            raise ValueError(f"Invalid physics engine backend: {self.cfg['physics_engine']}")
+
+        return sim_params
     
     def create_sim(self):
-        self.up_axis_idx = 2  # index of up axis: Y=1, Z=2
+        """Creates the physics simulation and terrain."""
+        self.up_axis_idx = {"x":0,"y":1,"z":2}[self.cfg["sim"]["up_axis"]]  # index of up axis: x=0, y=1, z=2
         self.sim = super().create_sim(self.device_id, self.graphics_device_id, self.physics_engine, self.sim_params)
-        self.terrain_type = self.cfg["env"]["terrain"]["terrainType"]
+        
+        self.load_asset()
+        
 
         # create plane/triangle mesh/heigh field
+        self.terrain_type = self.cfg["env"]["terrain"]["terrainType"]
         self.terrain = Terrain(
             self.cfg["env"]["terrain"], num_robots=self.num_envs, device=self.device, gym=self.gym, sim=self.sim
         )
         if self.terrain_type in {'trimesh', 'heightfiled'}:
             self.custom_origins = True
-
+        
         self._create_envs(self.num_envs, self.cfg["env"]['envSpacing'], int(np.sqrt(self.num_envs)))
 
     def _get_noise_scale_vec(self):
-
+        """Calculates noise scaling factors for observations."""
         cfg_learn = self.cfg["env"]["learn"]
         self.add_noise = cfg_learn["addNoise"]
         noise_level = cfg_learn["noiseLevel"]
@@ -342,11 +437,10 @@ class QuadrupedTerrain(VecTask):
         noise_vec = torch.cat(noise_vec_lists, dim=-1).to(self.device)
         return noise_vec
 
-    # def load_asset(self):
-        
-        
-        
-    def _create_envs(self, num_envs, spacing, num_per_row):
+    def load_asset(self):
+        """Loads the robot asset (URDF).
+        Requires gym to be initialized
+        """
         cfg_asset = self.cfg["env"]["urdfAsset"]
         asset_root = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../assets'))
         if "root" in cfg_asset:
@@ -410,25 +504,6 @@ class QuadrupedTerrain(VecTask):
         hip_names = get_matching_str(source=hip_name, destination=body_names, comment="hip_name")
         feet_names = get_matching_str(source=foot_name, destination=body_names, comment="foot_name")
         knee_names = get_matching_str(source=knee_name, destination=body_names, comment="knee_name")
-
-
-        ######################
-        # base_name = [s for s in body_names if base_name.lower() in s.lower()][0]
-        # hip_names = [s for s in body_names if hip_name.lower() in s.lower()]
-        # feet_names = [s for s in body_names if foot_name.lower() in s.lower()]
-        # knee_names = [s for s in body_names if knee_name.lower() in s.lower()]
-        # find_rb_handle = functools.partial(self.gym.find_actor_rigid_body_handle, self.envs[0], self.actor_handles[0])
-        # self.base_id = find_rb_handle(base_name)
-        # self.hip_ids = torch.tensor([find_rb_handle(n) for n in hip_names], dtype=torch.long, device=self.device)
-        # self.knee_ids = torch.tensor([find_rb_handle(n) for n in knee_names], dtype=torch.long, device=self.device)
-        # self.feet_ids = torch.tensor([find_rb_handle(n) for n in feet_names], dtype=torch.long, device=self.device)
-        
-        # # joints 
-        # dof_hip_names = get_matching_str(source=hip_joint_name,destination=self.dof_names, comment="hip_joint_name")
-        # find_dof_handle = functools.partial(self.gym.find_actor_dof_handle, self.envs[0], self.actor_handles[0])
-        # self.dof_hip_ids = torch.tensor(
-        #     [find_dof_handle(n) for n in dof_hip_names], dtype=torch.long, device=self.device
-        # )
         
         asset_rigid_body_dict = self.gym.get_asset_rigid_body_dict(self.asset)
         self.base_id = asset_rigid_body_dict[base_name]
@@ -451,7 +526,10 @@ class QuadrupedTerrain(VecTask):
         assert len(self.dof_hip_ids)==4
         # assert self.dof_hip_ids.tolist() == [0, 3, 6, 9]
         ####################
-
+        
+        
+    def _create_envs(self, num_envs, spacing, num_per_row):
+        """Creates multiple environments with randomized properties."""
         # prepare friction randomization
         rigid_shape_prop = self.gym.get_asset_rigid_shape_properties(self.asset)
         friction_range = self.cfg["env"]["learn"]["frictionRange"]
@@ -524,6 +602,7 @@ class QuadrupedTerrain(VecTask):
                 self.gym.set_actor_rigid_body_properties(env_handle, actor_handle, body_props, recomputeInertia=True)
 
     def check_termination(self):
+        """Checks if the episode should terminate."""
         self.reset_buf = torch.norm(self.contact_forces[:, self.base_id, :], dim=1) > 1.0
         if not self.allow_knee_contacts:
             knee_contact = torch.norm(self.contact_forces[:, self.knee_ids, :], dim=2) > 1.0
@@ -533,7 +612,7 @@ class QuadrupedTerrain(VecTask):
         )
 
     def compute_observations(self):
-
+        """Computes observations for the current state."""
         self.get_heights()
         heights = torch.clip(self.heights_relative - self.target_base_height, -1.0, 1.0) * self.heightmap_scale
 
@@ -555,6 +634,7 @@ class QuadrupedTerrain(VecTask):
             self.obs_buf += self.noise_vec
 
     def compute_reward(self):
+        """Computes the reward for the current state and action."""
         rew = {}
         # velocity tracking reward
         lin_vel_error = square_sum(self.commands[:, :2] - self.base_lin_vel[:, :2])
@@ -711,7 +791,7 @@ class QuadrupedTerrain(VecTask):
         self.rew_buf += self.rew_scales["termination"] * self.reset_buf * ~self.timeout_buf
 
         if self.enable_udp:  # send UDP info to plotjuggler
-            self.t += self.dt
+            self.t += self.rl_dt
 
             foot_pos_rel = self.rb_state[:, self.feet_ids, 0:3] - self.root_state[:, :3].view(self.num_envs, 1, 3)
             foot_pos = quat_rotate_inverse(self.base_quat.repeat_interleave(4, dim=0), foot_pos_rel.view(-1, 3)).view(
@@ -740,6 +820,7 @@ class QuadrupedTerrain(VecTask):
             self.data_publisher.publish(data)
 
     def reset_idx(self, env_ids):
+        """Resets the specified environments."""
         len_ids = len(env_ids)
         if len_ids == 0:
             return
@@ -783,13 +864,14 @@ class QuadrupedTerrain(VecTask):
         self.extras["episode"] = {}
         for key in self.episode_sums.keys():
             raw_sum = torch.mean(self.episode_sums[key][env_ids]) / self.max_episode_length_s  # rewards per second
-            self.extras["episode"][f'rew_{key}_raw'] = raw_sum * self.dt  # scaled by policy dt
+            self.extras["episode"][f'rew_{key}_raw'] = raw_sum * self.rl_dt  # scaled by policy dt
             self.extras["episode"][f'rew_{key}'] = raw_sum * self.rew_scales[key]
             self.episode_sums[key][env_ids] = 0.0
         self.extras["episode"]["terrain_level"] = self.terrain_level_mean
         self.extras["episode"]["heights_curriculum_ratio"] = self.heights_curriculum_ratio
 
     def update_terrain_level(self, env_ids):
+        """Updates the terrain level for curriculum learning."""
         if not self.init_done or not self.curriculum:
             # don't change on initial reset
             return
@@ -804,19 +886,78 @@ class QuadrupedTerrain(VecTask):
         self.terrain_level_mean = self.terrain_levels.float().mean()
 
     def push_robots(self):
+        """Applies random pushes to the robots."""
         self.root_state[:, 7:13] = torch_rand_tensor(
             self.push_vel_min, self.push_vel_max, (self.num_envs, 6), device=self.device
         )  # lin vel x/y/z
         self.gym.set_actor_root_state_tensor(self.sim, self.root_state_raw)
 
 
-    def render(self):
-        if self.viewer and self.viewer_follow:
-            # do modify camera position
-            self.cam_target_pos = self.root_state[0, :3].clone().cpu() 
-            self.cam_pos = self.viewer_follow_offset.cpu()+self.cam_target_pos
-            self.gym.viewer_camera_look_at(self.viewer, None, gymapi.Vec3(*self.cam_pos), gymapi.Vec3(*self.cam_target_pos))     
-        super().render()
+    def render(self,mode="rgb_array"):
+        """Draw the frame to the viewer, and check for keyboard events."""
+        if self.viewer:
+            # check for window closed
+            if self.gym.query_viewer_has_closed(self.viewer):
+                sys.exit()
+
+            # check for keyboard events
+            for evt in self.gym.query_viewer_action_events(self.viewer):
+                if evt.action == "QUIT" and evt.value > 0:
+                    sys.exit()
+                elif evt.action == "toggle_viewer_sync" and evt.value > 0:
+                    self.enable_viewer_sync = not self.enable_viewer_sync
+                elif evt.action == "record_frames" and evt.value > 0:
+                    self.record_frames = not self.record_frames
+                elif evt.action == "toggle_viewer_follow" and evt.value > 0:
+                    self.viewer_follow = not self.viewer_follow
+                
+            # fetch results
+            if self.device != 'cpu':
+                self.gym.fetch_results(self.sim, True)
+
+            # step graphics
+            if self.enable_viewer_sync:
+                self.gym.step_graphics(self.sim)
+                self.gym.draw_viewer(self.viewer, self.sim, True)
+
+                # Wait for dt to elapse in real time.
+                # This synchronizes the physics simulation with the rendering rate.
+                self.gym.sync_frame_time(self.sim)
+
+                # it seems like in some cases sync_frame_time still results in higher-than-realtime framerate
+                # this code will slow down the rendering to real time
+                now = time.time()
+                delta = now - self.last_frame_time
+                if self.render_fps < 0:
+                    # render at control frequency
+                    render_dt = self.dt * self.control_freq_inv  # render every control step
+                else:
+                    render_dt = 1.0 / self.render_fps
+
+                if delta < render_dt:
+                    time.sleep(render_dt - delta)
+
+                self.last_frame_time = time.time()
+
+            else:
+                self.gym.poll_viewer_events(self.viewer)
+
+            if self.record_frames:
+                if not os.path.isdir(self.record_frames_dir):
+                    os.makedirs(self.record_frames_dir, exist_ok=True)
+
+                self.gym.write_viewer_image_to_file(self.viewer, join(self.record_frames_dir, f"frame_{self.control_steps}.png"))
+
+            if self.virtual_display and mode == "rgb_array":
+                img = self.virtual_display.grab()
+                return np.array(img)
+        
+            # do modify camera position if viewer_follow
+            if self.viewer_follow:
+                self.cam_target_pos = self.root_state[0, :3].clone().cpu() 
+                self.cam_pos = self.viewer_follow_offset.cpu()+self.cam_target_pos
+                self.gym.viewer_camera_look_at(self.viewer, None, gymapi.Vec3(*self.cam_pos), gymapi.Vec3(*self.cam_target_pos))   
+
         return
 
     def step(self, actions: torch.Tensor) -> Tuple[Dict[str, torch.Tensor], torch.Tensor, torch.Tensor, Dict[str, Any]]:
@@ -930,8 +1071,44 @@ class QuadrupedTerrain(VecTask):
             # draw height lines
             self.gym.clear_lines(self.viewer)
             # self.gym.refresh_rigid_body_state_tensor(self.sim)
-            sphere_geom = gymutil.WireframeSphereGeometry(0.02, 4, 4, None, color=(1, 1, 0))
+            sphere_geom = gymutil.WireframeSphereGeometry(0.01, 5, 5, None, color=(1, 1, 0))
+            
+            # visualizing command 
+            anchor_point = self.root_state[:,:3]
+            viz_cmd_start_point = torch.clone(anchor_point) # base pos
+            # viz_cmd_start_point[:,2]+=0.5
+
+            viz_cmd_xy_endpoint = torch.zeros(size=(self.num_envs,3),dtype=torch.float32,device=self.device)
+            viz_cmd_xy_endpoint[:,:2] = self.commands[:,:2]
+            viz_cmd_xy_endpoint = (viz_cmd_start_point+quat_apply_yaw(self.base_quat,viz_cmd_xy_endpoint)).cpu().numpy() #scaled
+            
+            viz_cmd_yaw_endpoint = torch.clone(viz_cmd_start_point)
+            viz_cmd_yaw_endpoint[:,2]+=self.commands[:,2]
+            
+            
+            viz_cmd_yaw_endpoint = viz_cmd_yaw_endpoint.cpu().numpy()
+            viz_cmd_start_point = viz_cmd_start_point.cpu().numpy()
+            
+            verts = np.column_stack([viz_cmd_start_point,viz_cmd_xy_endpoint,viz_cmd_start_point,viz_cmd_yaw_endpoint])
+            verts = verts.reshape((-1,12)).view(dtype=gymapi.Vec3.dtype)
+            
+            # colors = np.zeros((self.num_envs,4,3),dtype=np.float32)
+            # colors[:,:]=(1,1,0)
+            # colors = colors.ravel().view(dtype=gymapi.Vec3.dtype)
+
+            colors = np.empty(2, dtype=gymapi.Vec3.dtype)
+            colors[0] = (1,1,0)
+            colors[1] = (1,1,0)
+            
             for i in range(self.num_envs):
+                self.gym.add_lines(self.viewer,self.envs[i],colors.shape[0],verts[i],colors)
+                sphere_pose = gymapi.Transform(gymapi.Vec3(*tuple(viz_cmd_xy_endpoint[i])), r=None)
+                gymutil.draw_lines(sphere_geom, self.gym, self.viewer, self.envs[i], sphere_pose)
+
+                sphere_pose = gymapi.Transform(gymapi.Vec3(*tuple(viz_cmd_yaw_endpoint[i])), r=None)
+                gymutil.draw_lines(sphere_geom, self.gym, self.viewer, self.envs[i], sphere_pose)
+
+            for i in range(self.num_envs): # draw height points
                 base_pos = (self.root_state[i, :3]).cpu().numpy()
                 heights = self.heights_absolute[i].cpu().numpy()
                 height_points = (
