@@ -87,7 +87,7 @@ class QuadrupedTerrain(VecTask):
         self.device = "cpu"
         if self.cfg["sim"]["use_gpu_pipeline"]:
             if self.device_type.lower() in {"cuda","gpu"}:
-                self.device = "cuda" + ":" + str(self.device_id)
+                self.device = f"cuda:{self.device_id}"
             else:
                 print("GPU Pipeline can only be used with GPU simulation. Forcing CPU Pipeline.")
                 self.cfg["sim"]["use_gpu_pipeline"] = False
@@ -97,7 +97,6 @@ class QuadrupedTerrain(VecTask):
         enable_camera_sensors = self.cfg["env"].get("enableCameraSensors", False)
         if enable_camera_sensors == False and self.headless == True:
             self.graphics_device_id = -1
-        
         
         # self.sim_params = self._VecTask__parse_sim_params(self.cfg["physics_engine"], self.cfg["sim"])
         self.sim_params = self._parse_sim_params()
@@ -109,7 +108,7 @@ class QuadrupedTerrain(VecTask):
         self.sim = super().create_sim(self.device_id, self.graphics_device_id, self.physics_engine, self.sim_params)
         self.load_asset()
         
-        self.num_environments = self.cfg["env"]["numEnvs"]
+        self.num_environments = self.cfg["env"]["numEnvs"] # self.num_envs
         self.num_agents = self.cfg["env"].get("numAgents", 1)  # used for multi-agent environments
         
         # normalization
@@ -124,6 +123,35 @@ class QuadrupedTerrain(VecTask):
         self.command_x_range = self.cfg["env"]["randomCommandVelocityRanges"]["linear_x"]
         self.command_y_range = self.cfg["env"]["randomCommandVelocityRanges"]["linear_y"]
         self.command_yaw_range = self.cfg["env"]["randomCommandVelocityRanges"]["yaw"]
+        # treat commends below this threshold as zero [m/s]
+        self.command_zero_threshold = self.cfg["env"]["commandZeroThreshold"]
+        
+        # default joint positions [rad]
+        self.named_default_dof_pos = self.cfg["env"].get("defaultJointAngles",{n:0 for n in self.dof_names})
+        
+        # desired joint positions [rad]
+        self.named_desired_dof_pos = self.cfg["env"].get("desiredJointAngles",self.named_default_dof_pos)
+
+        self.default_dof_pos = torch.tensor(
+            itemgetter(*self.dof_names)(self.named_default_dof_pos), dtype=torch.float, device=self.device
+        ).repeat(self.num_envs, 1)
+
+        self.desired_dof_pos = torch.tensor(
+            itemgetter(*self.dof_names)(self.named_desired_dof_pos), dtype=torch.float, device=self.device
+        ).repeat(self.num_envs, 1)
+
+
+        # target base height [m]
+        self.target_base_height = self.cfg["env"].get("baseHeightTarget",None)
+        if self.target_base_height is None:
+            urdf = self._asset_urdf
+            urdf.update_cfg(self.named_default_dof_pos)
+            bounding_box = urdf.collision_scene.bounding_box
+            base_height_offset = 0.05
+            self.target_base_height = -bounding_box.bounds[0,2]
+            self.cfg["env"]["baseInitState"]["pos"][2] = float(self.target_base_height+base_height_offset)
+            print(f"{bc.WARNING}[infer from URDF] target_base_height = {self.target_base_height:.4f} {bc.ENDC}")
+            print(f"{bc.WARNING}[infer from URDF] self.cfg['env']['baseInitState']['pos'][2] = {self.cfg['env']['baseInitState']['pos'][2]:.4f} {bc.ENDC}")
         
         # base init state
         pos = self.cfg["env"]["baseInitState"]["pos"]
@@ -146,11 +174,14 @@ class QuadrupedTerrain(VecTask):
         self.rl_dt_inv = 1.0 / self.rl_dt
         self.max_episode_length_s = self.cfg["env"]["learn"]["episodeLength_s"]
         self.max_episode_length = int(self.max_episode_length_s / self.rl_dt + 0.5)
-        
+
         # other
         self.allow_knee_contacts = self.cfg["env"]["learn"]["allowKneeContacts"]
         self.curriculum = self.cfg["env"]["terrain"]["curriculum"]
+        
         self.enable_udp = self.cfg["env"]["enableUDP"]
+        if self.enable_udp:  # plotJuggler related
+            self.data_publisher = DataPublisher(is_enabled=True)
 
         # reward scales
         cfg_reward = self.cfg["env"]["learn"]["reward"]
@@ -177,7 +208,7 @@ class QuadrupedTerrain(VecTask):
             "slip": cfg_reward["feetSlip"]["scale"],
             "action": cfg_reward["action"]["scale"],
             "action_rate": cfg_reward["actionRate"]["scale"],
-            "hip": cfg_reward["hip"]["scale"],
+            # "hip": cfg_reward["hip"]["scale"],
             "dof_limit": cfg_reward["dofLimit"]["scale"], # TODO CHANGE THIS
             "contact_force": cfg_reward["feetContactForce"]["scale"],
         }
@@ -199,27 +230,11 @@ class QuadrupedTerrain(VecTask):
         self.air_time_offset = float(cfg_reward["feetAirTime"]["offset"])
         self.stance_time_offset = float(cfg_reward["feetStanceTime"]["offset"])
 
-        # treat commends below this threshold as zero [m/s]
-        self.command_zero_threshold = self.cfg["env"]["commandZeroThreshold"]
-
-        # target base height [m]
-        self.target_base_height = self.cfg["env"]["baseHeightTarget"]
-
-        # default joint positions [rad]
-        self.named_default_dof_pos = self.cfg["env"].get("defaultJointAngles",{n:0 for n in self.dof_names})
-        
-        # desired joint positions [rad]
-        self.named_desired_dof_pos = self.cfg["env"].get("desiredJointAngles",self.named_default_dof_pos)
-
-        self.default_dof_pos = torch.tensor(
-            itemgetter(*self.dof_names)(self.named_default_dof_pos), dtype=torch.float, device=self.device
-        ).repeat(self.num_envs, 1)
-
-        self.desired_dof_pos = torch.tensor(
-            itemgetter(*self.dof_names)(self.named_desired_dof_pos), dtype=torch.float, device=self.device
-        ).repeat(self.num_envs, 1)
-
-        
+        # push robot
+        self.should_push_robots = self.cfg["env"]["learn"]["pushRobots"]
+        self.push_interval = int(self.cfg["env"]["learn"]["pushInterval_s"] / self.rl_dt + 0.5)
+        self.push_vel_min = torch.tensor(self.cfg["env"]["learn"]["pushVelMin"], dtype=torch.float, device=self.device)
+        self.push_vel_max = torch.tensor(self.cfg["env"]["learn"]["pushVelMax"], dtype=torch.float, device=self.device)
 
         # heightmap
         self.init_height_points()  # height_points in cpu
@@ -315,13 +330,6 @@ class QuadrupedTerrain(VecTask):
         self.obs_dict = {}
         
         #######
-
-        # push robot
-        self.should_push_robots = self.cfg["env"]["learn"]["pushRobots"]
-        self.push_interval = int(self.cfg["env"]["learn"]["pushInterval_s"] / self.rl_dt + 0.5)
-        self.push_vel_min = torch.tensor(self.cfg["env"]["learn"]["pushVelMin"], dtype=torch.float, device=self.device)
-        self.push_vel_max = torch.tensor(self.cfg["env"]["learn"]["pushVelMax"], dtype=torch.float, device=self.device)
-
         # get gym GPU state tensors
         self.root_state_raw = self.gym.acquire_actor_root_state_tensor(self.sim)
         self.dof_state_raw = self.gym.acquire_dof_state_tensor(self.sim)
@@ -398,10 +406,6 @@ class QuadrupedTerrain(VecTask):
                 self.cam_target_pos= self.root_state[0, :3].clone().cpu() 
                 self.cam_pos= self.viewer_follow_offset.cpu() +self.cam_target_pos
             self.gym.viewer_camera_look_at(self.viewer, None, gymapi.Vec3(*self.cam_pos), gymapi.Vec3(*self.cam_target_pos))
-            
-        if self.enable_udp:  # plotJuggler related
-            self.t = 0
-            self.data_publisher = DataPublisher(is_enabled=True)
 
 
     def _parse_sim_params(self):
@@ -471,30 +475,40 @@ class QuadrupedTerrain(VecTask):
         noise_vec_lists = [torch.ones(self.obs_dim_dict[name]) * noise_dict[name] for name in self.obs_names]
         noise_vec = torch.cat(noise_vec_lists, dim=-1).to(self.device)
         return noise_vec
-
+    
+    @property
+    def asset_urdf(self):
+        try:
+            return self._asset_urdf
+        except AttributeError:
+            import yourdfpy
+            self._asset_urdf = yourdfpy.URDF.load(self.asset_path,
+                          build_scene_graph=False,
+                          load_meshes=False,
+                          load_collision_meshes=True,
+                          build_collision_scene_graph=True
+                          )
+            return self._asset_urdf
+            
+            
     def load_asset(self):
         """Loads the robot asset (URDF).
         Requires gym to be initialized
         """
         cfg_asset = self.cfg["env"]["urdfAsset"]
         asset_root = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../assets'))
-        if "root" in cfg_asset:
+        if "root" in cfg_asset: # root directory
             asset_root = cfg_asset["root"]
         asset_file = cfg_asset["file"]
-        # body names
-        base_name = cfg_asset["baseName"]
-        hip_name = cfg_asset["hipName"]
-        foot_name = cfg_asset["footName"]
-        knee_name = cfg_asset["kneeName"]
-        # joint names
-        hip_joint_name = cfg_asset["hipJointName"]
+        self.asset_path = os.path.join(asset_root,asset_file)
 
+        
         # bitwise filter for elements in the same collisionGroup to mask off collision
         self.collision_filter = cfg_asset["collision_filter"]
 
         asset_options = gymapi.AssetOptions()
         # defaults
-        asset_options.default_dof_drive_mode = gymapi.DOF_MODE_EFFORT
+        asset_options.default_dof_drive_mode = int(gymapi.DOF_MODE_EFFORT)
         asset_options.density = 0.001
         asset_options.angular_damping = 0.0
         asset_options.linear_damping = 0.0
@@ -516,12 +530,6 @@ class QuadrupedTerrain(VecTask):
 
         def get_matching_str(source, destination,comment=""):
             """Finds case-insensitive partial matches between source and destination lists."""
-            if type(source) is str: # one to many
-                matches = [item for item in destination if source.lower() in item.lower()]  
-                if not matches:
-                    raise KeyError(f"cannot locate {source} [{comment}\navailables are {destination}")
-                return matches
-            # one to one     
             def find_matches(src_item):
                 matches = [item for item in destination if src_item.lower() in item.lower()]
                 if not matches:
@@ -529,34 +537,70 @@ class QuadrupedTerrain(VecTask):
                 elif len(matches) > 1:
                     raise KeyError(f"find multiple instances for {src_item}. [{comment}]")
                 return matches[0]  # Return just the first match
-            return [find_matches(item) for item in source]
-
+            if isinstance(source, str): # one to many
+                matches = [item for item in destination if source.lower() in item.lower()]  
+                if not matches:
+                    raise KeyError(f"cannot locate {source} [{comment}\navailables are {destination}")
+                return matches
+            else: # one to one     
+                return [find_matches(item) for item in source]
         
         # body
-        base_name = get_matching_str(source=base_name, destination=self.body_names, comment="base_name")[0]
-        hip_names = get_matching_str(source=hip_name, destination=self.body_names, comment="hip_name")
-        feet_names = get_matching_str(source=foot_name, destination=self.body_names, comment="foot_name")
-        knee_names = get_matching_str(source=knee_name, destination=self.body_names, comment="knee_name")
-        
         asset_rigid_body_dict = self.gym.get_asset_rigid_body_dict(self.asset)
-        self.base_id = asset_rigid_body_dict[base_name]
-        self.hip_ids = torch.tensor([asset_rigid_body_dict[n] for n in hip_names], dtype=torch.long, device=self.device)
-        self.knee_ids = torch.tensor([asset_rigid_body_dict[n] for n in knee_names], dtype=torch.long, device=self.device)
-        self.feet_ids = torch.tensor([asset_rigid_body_dict[n] for n in feet_names], dtype=torch.long, device=self.device)
+        asset_rigid_body_id_dict = {value: key for key, value in asset_rigid_body_dict.items()}
+        
+        
+        # body: base
+        base_name = cfg_asset.get("baseName",None)
+        if base_name is None: # infer base_name
+            self.base_id = 0
+            base_name = asset_rigid_body_id_dict[self.base_id]
+        else:
+            base_name = get_matching_str(source=base_name, destination=self.body_names, comment="base_name")[0]
+            self.base_id = asset_rigid_body_dict[base_name]
+        
+        
+        # hip_name = cfg_asset.get("hipName",None)
+        # hip_names = get_matching_str(source=hip_name, destination=self.body_names, comment="hip_name")
+        # self.hip_ids = torch.tensor([asset_rigid_body_dict[n] for n in hip_names], dtype=torch.long, device=self.device)
 
-        # joints
-        dof_hip_names = get_matching_str(source=hip_joint_name,destination=self.dof_names, comment="hip_joint_name")
-        asset_dof_dict = self.gym.get_asset_dof_dict(self.asset)
-        self.dof_hip_ids = torch.tensor([asset_dof_dict[n] for n in dof_hip_names], dtype=torch.long, device=self.device)
+        foot_name = cfg_asset.get("footName",None)
+        if foot_name is None: # find feet by by infering the feet are leaf links, they do not appear in any joint.parent
+            urdf = self.asset_urdf
+            # TODO check if this will still wrok when isaacgym.gymapi.AssetOptions.collapse_fixed_joints is True.
+            joint_parents = {joint.parent for joint in urdf.joint_map.values()} # Set of links with parent joints
+            feet_names = [link_name for link_name,link in urdf.link_map.items() if link_name not in joint_parents]
+        else:
+            feet_names = get_matching_str(source=foot_name, destination=self.body_names, comment="foot_name")
+        self.feet_ids = torch.tensor([asset_rigid_body_dict[n] for n in feet_names], dtype=torch.long, device=self.device)
+        assert(self.feet_ids.numel() > 0)
+        
+        # TODO CHANGE KNEE COLLISIONN TO A MORE GENARIC TYPE OF REWARD: collision for anything other than the foot maybe?
+        knee_name = cfg_asset.get("kneeName",None)
+        if knee_name is None:
+            # HACK: exclude base link and feet, include all other links
+            exclude_link_names = set(feet_names)
+            exclude_link_names.add(base_name)
+            knee_names = set(asset_rigid_body_dict.keys()) - exclude_link_names
+        else:
+            knee_names = get_matching_str(source=knee_name, destination=self.body_names, comment="knee_name")
+        self.knee_ids = torch.tensor([asset_rigid_body_dict[n] for n in knee_names], dtype=torch.long, device=self.device)
+
+        # # joints
+        # hip_joint_name = cfg_asset["hipJointName"]
+        # asset_dof_dict = self.gym.get_asset_dof_dict(self.asset)
+        # asset_dof_id_dict = {value: key for key, value in asset_dof_dict.items()}
+        # dof_hip_names = get_matching_str(source=hip_joint_name,destination=self.dof_names, comment="hip_joint_name")
+        # self.dof_hip_ids = torch.tensor([asset_dof_dict[n] for n in dof_hip_names], dtype=torch.long, device=self.device)
         
 
         print(f"base = {base_name}: {self.base_id}")
-        print(f"hip = {dict(zip(hip_names,self.hip_ids.tolist()))}")
+        # print(f"hip = {dict(zip(hip_names,self.hip_ids.tolist()))}")
         print(f"knee = {dict(zip(knee_names,self.knee_ids.tolist()))}")
         print(f"feet = {dict(zip(feet_names,self.feet_ids.tolist()))}")
-        print(f"dof_hip = {dict(zip(dof_hip_names,self.dof_hip_ids.tolist()))}")
+        # print(f"dof_hip = {dict(zip(dof_hip_names,self.dof_hip_ids.tolist()))}")
         assert self.base_id!=-1
-        assert len(self.dof_hip_ids)==4
+        # assert len(self.dof_hip_ids)==4
         # assert self.dof_hip_ids.tolist() == [0, 3, 6, 9]
         ####################
         
@@ -778,11 +822,11 @@ class QuadrupedTerrain(VecTask):
         contact_force_norm = torch.norm(self.contact_forces[:, self.feet_ids, :], dim=-1)
         rew["contact_force"] = torch.sum((contact_force_norm - self.max_feet_contact_force).clip(min=0.0), dim=1)
 
-        # cosmetic penalty for hip motion
-        # rew["hip"] = torch.sum(torch.abs(self.dof_pos[:, [0, 3, 6, 9]] - self.default_dof_pos[:, [0, 3, 6, 9]]), dim=1)
-        # rew["hip"] = (self.dof_pos[:, self.dof_hip_ids] - self.default_dof_pos[:, self.dof_hip_ids]).abs().sum(dim=1)
-        # rew["hip"] =(self.dof_pos - self.default_dof_pos).abs().sum(dim=1)
-        rew["hip"] = (self.dof_pos[:, self.dof_hip_ids] - self.desired_dof_pos[:, self.dof_hip_ids]).abs().sum(dim=1)
+        # # cosmetic penalty for hip motion
+        # # rew["hip"] = torch.sum(torch.abs(self.dof_pos[:, [0, 3, 6, 9]] - self.default_dof_pos[:, [0, 3, 6, 9]]), dim=1)
+        # # rew["hip"] = (self.dof_pos[:, self.dof_hip_ids] - self.default_dof_pos[:, self.dof_hip_ids]).abs().sum(dim=1)
+        # # rew["hip"] =(self.dof_pos - self.default_dof_pos).abs().sum(dim=1)
+        # rew["hip"] = (self.dof_pos[:, self.dof_hip_ids] - self.desired_dof_pos[:, self.dof_hip_ids]).abs().sum(dim=1)
 
         # penalty for position exceeding dof limit
         # rew["dof_limit"] = out_of_bound_norm(self.dof_pos, self.dof_lower, self.dof_upper)
@@ -815,7 +859,7 @@ class QuadrupedTerrain(VecTask):
             + rew["stance_time"]
             # + rew["contact"]
             + rew["contact_force"]
-            + rew["hip"]
+            # + rew["hip"]
             + rew["dof_limit"]
         )
         self.rew_buf = torch.clip(self.rew_buf, min=0.0, max=None)
@@ -824,14 +868,12 @@ class QuadrupedTerrain(VecTask):
         self.rew_buf += self.rew_scales["termination"] * self.reset_buf * ~self.timeout_buf
 
         if self.enable_udp:  # send UDP info to plotjuggler
-            self.t += self.rl_dt
-
             foot_pos_rel = self.rb_state[:, self.feet_ids, 0:3] - self.root_state[:, :3].view(self.num_envs, 1, 3)
             foot_pos = quat_rotate_inverse(self.base_quat.repeat_interleave(4, dim=0), foot_pos_rel.view(-1, 3)).view(
                 self.num_envs, 4, 3
             )
             data = {
-                "t": self.t,
+                "t": self.control_steps*self.rl_dt,
                 "time_air":self.air_time,
                 "time_stance":self.stance_time,
                 "foot_pos": foot_pos,
@@ -1026,6 +1068,8 @@ class QuadrupedTerrain(VecTask):
 
         # compute observations, rewards, resets, ...
         self.post_physics_step()
+        
+        self.control_steps += 1
 
         # fill time out buffer: set to 1 if we reached the max episode length AND the reset buffer is 1. Timeout == 1 makes sense only if the reset buffer is 1.
         self.timeout_buf = (self.progress_buf >= self.max_episode_length - 1) & (self.reset_buf != 0)

@@ -84,21 +84,21 @@ env:
     LH_KFE: 0.8     # [rad]
     RF_KFE: -0.8    # [rad]
     RH_KFE: 0.8     # [rad]
-  desiredJointAngles:
-    LF_HAA: 0.03    # [rad]
-    LH_HAA: 0.03    # [rad]
-    RF_HAA: -0.03   # [rad]
-    RH_HAA: -0.03   # [rad]
+  # desiredJointAngles:
+  #   LF_HAA: 0.03    # [rad]
+  #   LH_HAA: 0.03    # [rad]
+  #   RF_HAA: -0.03   # [rad]
+  #   RH_HAA: -0.03   # [rad]
 
-    LF_HFE: 0.4     # [rad]
-    LH_HFE: -0.4    # [rad]
-    RF_HFE: 0.4     # [rad]
-    RH_HFE: -0.4    # [rad]
+  #   LF_HFE: 0.4     # [rad]
+  #   LH_HFE: -0.4    # [rad]
+  #   RF_HFE: 0.4     # [rad]
+  #   RH_HFE: -0.4    # [rad]
 
-    LF_KFE: -0.8    # [rad]
-    LH_KFE: 0.8     # [rad]
-    RF_KFE: -0.8    # [rad]
-    RH_KFE: 0.8     # [rad]
+  #   LF_KFE: -0.8    # [rad]
+  #   LH_KFE: 0.8     # [rad]
+  #   RF_KFE: -0.8    # [rad]
+  #   RH_KFE: 0.8     # [rad]
 
 
   urdfAsset:
@@ -112,13 +112,13 @@ env:
     # root: "" # override defualt asset_root
     file: "urdf/anymal_c/urdf/anymal_minimal.urdf"
     # Body
-    baseName: base
-    hipName: hip
-     # shank if collapsing fixed joint, foot otherwise
+    # baseName: base
+    # hipName: hip
+    ## shank if collapsing fixed joint, foot otherwise
     kneeName: thigh
     footName: shank
-    # joint
-    hipJointName: HAA
+    # # joint
+    # hipJointName: HAA
   assetDofProperties: # set_actor_dof_properties (override)
     # damping: 0.5
 
@@ -198,10 +198,10 @@ env:
       actionRate:
         scale: -2.0e-4
         fcn: square_sum
-      # cosmetics
-      hip:
-        scale: -0. #25
-        fcn: hip_reward
+      # # cosmetics
+      # hip:
+      #   scale: -0. #25
+      #   fcn: hip_reward
       dofLimit: # TODO
         scale: -0
         fcn: out_of_bound_abs_sum

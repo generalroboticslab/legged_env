@@ -8,7 +8,7 @@ env:
   numObservations: "infer" #49 #165 #188
   numActions: "infer"
   envSpacing: 1.  # [m]
-  enableDebugVis: False
+  enableDebugVis: True
   enableUDP: False # whether to debug in udp
 
   observationNames:
@@ -49,7 +49,8 @@ env:
     vLinear: [0.0, 0.0, 0.0]  # x,y,z [m/s]
     vAngular: [0.0, 0.0, 0.0]  # x,y,z [rad/s]
   
-  baseHeightTarget: 0.25 # target base height [m]
+  # baseHeightTarget: 0.25 # target base height [m]
+  baseHeightTarget:
 
   randomCommandVelocityRanges:
     # train
@@ -80,16 +81,16 @@ env:
     joint_1_3: 0   # [rad]
     joint_2_3: 0   # [rad]
 
-  desiredJointAngles:
-    joint_1_0: 0   # [rad]
-    joint_2_0: 0   # [rad]
-    joint_1_1: 0   # [rad]
-    joint_2_1: 0   # [rad]
+  # desiredJointAngles:
+  #   joint_1_0: 0   # [rad]
+  #   joint_2_0: 0   # [rad]
+  #   joint_1_1: 0   # [rad]
+  #   joint_2_1: 0   # [rad]
 
-    joint_1_2: 0   # [rad]
-    joint_2_2: 0   # [rad]
-    joint_1_3: 0   # [rad]
-    joint_2_3: 0   # [rad]
+  #   joint_1_2: 0   # [rad]
+  #   joint_2_2: 0   # [rad]
+  #   joint_1_3: 0   # [rad]
+  #   joint_2_3: 0   # [rad]
 
   urdfAsset:
     collision_filter: 0
@@ -101,13 +102,13 @@ env:
       replace_cylinder_with_capsule: True
     # root: "" # override defualt asset_root
     file: "urdf/RobotDog/RobotDog7kg.urdf"
-    baseName: base
-    hipName: body_1
-    # shank if collapsing fixed joint, foot otherwise
-    kneeName: body_1 # there is no knee
-    footName: body_2
-    # joint
-    hipJointName: [joint_1_0,joint_1_1,joint_1_2,joint_1_3]
+    # baseName: base
+    # hipName: body_1
+    ## shank if collapsing fixed joint, foot otherwise
+    # kneeName: body_1 # there is no knee
+    # footName: body_2
+    # # joint
+    # hipJointName: [joint_1_0,joint_1_1,joint_1_2,joint_1_3]
   # assetDofProperties: # set_actor_dof_properties (override)
     # damping: 0.5
 
@@ -187,10 +188,10 @@ env:
       actionRate:
         scale: -2.0e-4
         fcn: square_sum
-      # cosmetics
-      hip:
-        scale: -0. #25
-        fcn: hip_reward
+      # # cosmetics
+      # hip:
+      #   scale: -0. #25
+      #   fcn: hip_reward
       dofLimit: # TODO
         scale: -0
         fcn: out_of_bound_abs_sum

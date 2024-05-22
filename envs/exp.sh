@@ -23,6 +23,30 @@
 #     )
 # }
 
+dog3kgv1(){
+    base
+    task=RobotDog
+    PLAY_ARGS+=(
+        # checkpoint=../outputs/RobotDog/False/2024-05-17_11-13-14-3kg_x0.4/runs/RobotDog_17-11-13-15/nn/RobotDog.pth
+        # checkpoint=../outputs/RobotDog/False/2024-05-17_11-31-35/runs/RobotDog_17-11-31-35/nn/RobotDog.pth
+        checkpoint=../outputs/RobotDog/False/2024-05-17_11-36-03/runs/RobotDog_17-11-36-03/nn/RobotDog.pth
+        checkpoint=../outputs/RobotDog/False/2024-05-17_11-39-56/runs/RobotDog_17-11-39-57/nn/RobotDog.pth
+        num_envs=1
+        task.env.enableUDP=true
+        pipeline="cpu"
+        task.env.learn.episodeLength_s=5
+        # task.env.randomCommandVelocityRanges.linear_x=[0.5,0.5]
+        # task.env.randomCommandVelocityRanges.linear_y=[0.,0.]
+        # task.env.randomCommandVelocityRanges.yaw=[1,1]
+    )
+    BASE_ARGS+=(
+    task.env.urdfAsset.file="urdf/RobotDog/RobotDog3kg.urdf"
+    task.env.terrain.terrainType=plane
+    task.env.randomCommandVelocityRanges.linear_x=[-0.5,0.5]
+    task.env.randomCommandVelocityRanges.linear_y=[-0.5,0.5]
+    task.env.randomCommandVelocityRanges.yaw=[-1,1]
+    )
+}
 
 dog_m1(){ # variant
     base

@@ -85,16 +85,16 @@ env:
     FR_calf_joint: -1.5    # [rad]
     RR_calf_joint: -1.5    # [rad]
 
-  desiredJointAngles:
-    FL_hip_joint:  0.1     # [rad]
-    RL_hip_joint:  0.1     # [rad]
-    FR_hip_joint: -0.1     # [rad]
-    RR_hip_joint: -0.1     # [rad]
+  # desiredJointAngles:
+  #   FL_hip_joint:  0.1     # [rad]
+  #   RL_hip_joint:  0.1     # [rad]
+  #   FR_hip_joint: -0.1     # [rad]
+  #   RR_hip_joint: -0.1     # [rad]
 
-    FL_thigh_joint: 0.8    # [rad]
-    RL_thigh_joint: 1.0    # [rad]
-    FR_thigh_joint: 0.8    # [rad]
-    RR_thigh_joint: 1.0    # [rad]
+  #   FL_thigh_joint: 0.8    # [rad]
+  #   RL_thigh_joint: 1.0    # [rad]
+  #   FR_thigh_joint: 0.8    # [rad]
+  #   RR_thigh_joint: 1.0    # [rad]
 
     FL_calf_joint: -1.5    # [rad]
     RL_calf_joint: -1.5    # [rad]
@@ -114,16 +114,16 @@ env:
     # root: "" # override defualt asset_root
     file: "urdf/a1/a1_minimum.urdf"
     # Body
-    baseName: base
-    hipName: hip
-    # calf if collapsing fixed joint, foot otherwise
+    # baseName: base
+    # hipName: hip
+    ## calf if collapsing fixed joint, foot otherwise
     kneeName: calf
     footName: foot 
     # kneeName: thigh
     # footName: calf # calf if collapsing fixed joint, foot otherwise
     # collapse_fixed_joints: True
-    # joint
-    hipJointName: hip
+    ## joint
+    # hipJointName: hip
   assetDofProperties: # set_actor_dof_properties (override)
     damping: 0.5
 
@@ -203,10 +203,10 @@ env:
       actionRate:
         scale: -2.0e-4
         fcn: square_sum
-      # cosmetics
-      hip:
-        scale: -0. #25
-        fcn: hip_reward
+      # # cosmetics
+      # hip:
+      #   scale: -0. #25
+      #   fcn: hip_reward
       dofLimit: # TODO
         scale: -0
         fcn: out_of_bound_abs_sum
