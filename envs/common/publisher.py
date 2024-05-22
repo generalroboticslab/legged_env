@@ -4,6 +4,8 @@ import orjson
 import msgpack
 import torch
 import numpy as np
+import select
+import threading
 
 class DataPublisher:
     """
@@ -22,7 +24,7 @@ class DataPublisher:
         target_url: str = 'udp://localhost:9870',
         encoding_type: str = 'msgpack',
         is_broadcast: bool = False,
-        is_enabled: bool = False,
+        is_enabled: bool = True,
         **socket_kwargs,
     ):
         """
@@ -94,6 +96,63 @@ class DataPublisher:
             self.socket.sendto(encoded_data, (self.hostname, self.url.port))
 
 
+class DataReceiver:
+    """
+    Receives data published by a DataPublisher instance using a non-blocking socket.
+    """
+
+    def __init__(
+        self, target_port: int = 9870, decoding_type: str = "msgpack"):
+        """
+        Initializes the DataReceiver.
+
+        Args:
+            target_port (int): The port to listen on for incoming data. Defaults to 9870.
+            decoding_type (str): The decoding method for data ("msgpack" or "json"). Defaults to "msgpack".
+        """   
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.socket.bind(("", target_port))
+        self.socket.setblocking(False)
+        decodings = {
+            "raw": lambda data: data,  # raw/bytes
+            "utf-8": lambda data: data.decode("utf-8"),
+            "msgpack": lambda data: msgpack.unpackb(data, raw=False),
+            "json": lambda data: orjson.loads(data),
+        }
+        if decoding_type not in decodings:
+            raise ValueError(f"Invalid decoding: {decoding_type}")
+        self.decode = decodings[decoding_type]
+        self.data = None
+        self.address = None
+        self._running = True  # Flag to control the receive loop
+
+    def receive(self, timeout=0.1, buffer_size=1024):
+        """Receive and decode data from the socket if available, otherwise return None."""
+        ready = select.select([self.socket], [], [], timeout)
+        if ready[0]:
+            data, self.address = self.socket.recvfrom(buffer_size)
+            self.data = self.decode(data)
+            # print(f"Received from {self.address}: {self.data}")
+            return self.data, self.address  # Return decoded data and sender address
+        else:
+            return None, None  # No data received within the timeout
+
+    def receive_continuously(self,timeout=0.1, buffer_size=1024):
+        """Continuously receive and decode data from the socket in a dedicated thread."""
+
+        def _receive_loop():
+            while self._running:
+                self.receive(timeout=timeout, buffer_size=buffer_size)
+
+        thread = threading.Thread(target=_receive_loop, daemon=True)
+        thread.start()
+
+    def stop(self):
+        """Stop continuous receiving."""
+        self._running = False
+        self.socket.close()
+
 def convert_to_python_builtin_types(nested_data: dict):
     """
     Converts nested data (including tensors and arrays) to built-in types.
@@ -117,3 +176,34 @@ def convert_to_python_builtin_types(nested_data: dict):
         else:
             converted_data[key] = value
     return converted_data
+
+
+if __name__=="__main__":
+    import time
+
+    # Sample data to publish
+    time_since_start = time.time()
+    def test_data():
+        """example test data"""
+        return {"time":time.time()-time_since_start,"sensor_id": np.random.randint(0,10), "temperature": 25.5, "humidity": 68}
+
+    # Create a publisher instance
+    publisher = DataPublisher(target_url="udp://localhost:9871", encoding_type="msgpack")
+
+    # Create a receiver instance
+    receiver = DataReceiver(target_port=9871, decoding_type="msgpack")
+
+    # Start continuous receiving in a thread
+    receiver.receive_continuously()
+
+    # Send data multiple times with a delay
+    for i in range(10):
+        publisher.publish(test_data())
+        print(f"Received from {receiver.address}: {receiver.data}")
+        time.sleep(0.001)  # add a small delay
+        
+
+    # Stop continuous receiving after a while
+    receiver.stop()
+
+    print("Publisher and Receiver have stopped.")
