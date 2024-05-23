@@ -371,9 +371,9 @@ class QuadrupedTerrain(VecTask):
         self.last_actions = torch.zeros(self.num_envs, self.num_actions, dtype=torch.float, device=self.device)
         # self.actions_filt = torch.zeros(self.num_envs, self.num_actions, dtype=torch.float, device=self.device)
         # self.dof_pos_filt = torch.zeros(self.num_envs, self.num_actions, dtype=torch.float, device=self.device)
-        self.air_time = torch.zeros(self.num_envs, 4, dtype=torch.float, device=self.device)  # feet air time
-        self.stance_time = torch.zeros(self.num_envs, 4, dtype=torch.float, device=self.device)  # feet stance time
-        self.last_feet_contact_force = torch.zeros(self.num_envs, 4, 3, dtype=torch.float, device=self.device)
+        self.air_time = torch.zeros(self.num_envs, self.num_feet, dtype=torch.float, device=self.device)  # feet air time
+        self.stance_time = torch.zeros(self.num_envs, self.num_feet, dtype=torch.float, device=self.device)  # feet stance time
+        self.last_feet_contact_force = torch.zeros(self.num_envs, self.num_feet, 3, dtype=torch.float, device=self.device)
         self.last_dof_vel = torch.zeros_like(self.dof_vel)
 
         # reward episode sums (unscaled)
@@ -496,13 +496,13 @@ class QuadrupedTerrain(VecTask):
         Requires gym to be initialized
         """
         cfg_asset = self.cfg["env"]["urdfAsset"]
-        asset_root = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../assets'))
-        if "root" in cfg_asset: # root directory
-            asset_root = cfg_asset["root"]
-        asset_file = cfg_asset["file"]
-        self.asset_path = os.path.join(asset_root,asset_file)
-
+        if "root" not in cfg_asset: # root directory
+            cfg_asset["root"] = 'assets' # relative to the legged_env folder
+        if not os.path.isabs(cfg_asset["root"]):
+            cfg_asset["root"] = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)),"./../../", cfg_asset["root"]))
         
+        self.asset_path = os.path.join(cfg_asset["root"], cfg_asset["file"])
+
         # bitwise filter for elements in the same collisionGroup to mask off collision
         self.collision_filter = cfg_asset["collision_filter"]
 
@@ -521,7 +521,7 @@ class QuadrupedTerrain(VecTask):
             else:
                 print(f"{bc.WARNING}{attribute} not in AssetOptions!{bc.ENDC}")
 
-        self.asset = self.gym.load_asset(self.sim, asset_root, asset_file, asset_options)
+        self.asset = self.gym.load_asset(self.sim, cfg_asset["root"], cfg_asset["file"], asset_options)
         self.num_dof = self.gym.get_asset_dof_count(self.asset)
         self.num_bodies = self.gym.get_asset_rigid_body_count(self.asset)
 
@@ -572,6 +572,7 @@ class QuadrupedTerrain(VecTask):
             feet_names = [link_name for link_name,link in urdf.link_map.items() if link_name not in joint_parents]
         else:
             feet_names = get_matching_str(source=foot_name, destination=self.body_names, comment="foot_name")
+        self.num_feet = len(feet_names)
         self.feet_ids = torch.tensor([asset_rigid_body_dict[n] for n in feet_names], dtype=torch.long, device=self.device)
         assert(self.feet_ids.numel() > 0)
         
@@ -869,8 +870,8 @@ class QuadrupedTerrain(VecTask):
 
         if self.enable_udp:  # send UDP info to plotjuggler
             foot_pos_rel = self.rb_state[:, self.feet_ids, 0:3] - self.root_state[:, :3].view(self.num_envs, 1, 3)
-            foot_pos = quat_rotate_inverse(self.base_quat.repeat_interleave(4, dim=0), foot_pos_rel.view(-1, 3)).view(
-                self.num_envs, 4, 3
+            foot_pos = quat_rotate_inverse(self.base_quat.repeat_interleave(self.num_feet, dim=0), foot_pos_rel.view(-1, 3)).view(
+                self.num_envs, self.num_feet, 3
             )
             data = {
                 "t": self.control_steps*self.rl_dt,

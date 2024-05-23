@@ -23,6 +23,35 @@
 #     )
 # }
 
+robogram(){
+    base
+    task=RobotDog
+    PLAY_ARGS+=(
+        
+        # checkpoint=../outputs/RobotDog/False/2024-05-23_09-50-54/runs/RobotDog_23-09-50-54/nn/RobotDog.pth
+        checkpoint=../outputs/RobotDog/False/2024-05-23_10-20-38/runs/RobotDog_23-10-20-39/nn/RobotDog.pth
+        num_envs=2
+        task.env.enableUDP=true
+        pipeline="cpu"
+        task.env.learn.episodeLength_s=5
+        # task.env.randomCommandVelocityRanges.linear_x=[0.5,0.5]
+        # task.env.randomCommandVelocityRanges.linear_y=[0.,0.]
+        # task.env.randomCommandVelocityRanges.yaw=[1,1]
+    )
+
+    BASE_ARGS+=(
+    task.env.urdfAsset.collision_filter=1
+    task.env.urdfAsset.AssetOptions.collapse_fixed_joints=false
+    # relative to the quadruped_terrain.py file
+    ++task.env.urdfAsset.root=../evolutionary_loop/assets/robogrammar_bank
+    task.env.urdfAsset.file="robot_1350/robot.urdf"
+    task.env.terrain.terrainType=plane
+    task.env.randomCommandVelocityRanges.linear_x=[-0.5,0.5]
+    task.env.randomCommandVelocityRanges.linear_y=[-0.5,0.5]
+    task.env.randomCommandVelocityRanges.yaw=[-1,1]
+    )
+}
+
 dog3kgv1(){
     base
     task=RobotDog
