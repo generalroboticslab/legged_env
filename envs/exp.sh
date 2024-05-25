@@ -23,6 +23,18 @@
 #     )
 # }
 
+robogram_u1(){
+    robogram
+    PLAY_ARGS+=(
+        checkpoint=null
+    )
+
+    BASE_ARGS+=(
+        task.env.urdfAsset.file="robot_3104/robot.urdf"
+    )
+
+}
+
 robogram(){
     base
     task=RobotDog
@@ -31,7 +43,7 @@ robogram(){
         # checkpoint=../outputs/RobotDog/False/2024-05-23_09-50-54/runs/RobotDog_23-09-50-54/nn/RobotDog.pth
         checkpoint=../outputs/RobotDog/False/2024-05-23_10-20-38/runs/RobotDog_23-10-20-39/nn/RobotDog.pth
         num_envs=2
-        task.env.enableUDP=true
+        task.env.dataPublisher.enable=true
         pipeline="cpu"
         task.env.learn.episodeLength_s=5
         # task.env.randomCommandVelocityRanges.linear_x=[0.5,0.5]
@@ -61,7 +73,7 @@ dog3kgv1(){
         checkpoint=../outputs/RobotDog/False/2024-05-17_11-36-03/runs/RobotDog_17-11-36-03/nn/RobotDog.pth
         checkpoint=../outputs/RobotDog/False/2024-05-17_11-39-56/runs/RobotDog_17-11-39-57/nn/RobotDog.pth
         num_envs=1
-        task.env.enableUDP=true
+        task.env.dataPublisher.enable=true
         pipeline="cpu"
         task.env.learn.episodeLength_s=5
         # task.env.randomCommandVelocityRanges.linear_x=[0.5,0.5]
@@ -88,7 +100,7 @@ dog_m1(){ # variant
         task.env.randomCommandVelocityRanges.linear_x=[0.2,0.2]
         task.env.randomCommandVelocityRanges.linear_y=[0,0]
         task.env.randomCommandVelocityRanges.yaw=[0,0]
-        task.env.enableUDP=True
+        task.env.dataPublisher.enable=True
         
         # # headless (server)
         # headless=true
@@ -217,7 +229,7 @@ dog3kg(){
         # checkpoint=../outputs/RobotDog/False/2024-05-15_17-58-21-dog3kg/runs/RobotDog_15-17-58-21/nn/RobotDog.pth
         checkpoint=../outputs/RobotDog/False/2024-05-15_18-19-59/runs/RobotDog_15-18-19-59/nn/RobotDog.pth
         num_envs=1
-        task.env.enableUDP=true
+        task.env.dataPublisher.enable=true
         pipeline="cpu"
     )
     BASE_ARGS+=(
@@ -237,7 +249,7 @@ dog(){
         checkpoint=../assets/checkpoints/RobotDog.pth
         num_envs=1
         # task.env.terrain.terrainType=plane
-        # task.env.enableUDP=True
+        # task.env.dataPublisher.enable=True
         # # headless (server)
         # headless=true
         # graphics_device_id=-1
@@ -281,7 +293,7 @@ a1(){
     PLAY_ARGS+=(
         # checkpoint=../outputs/A1Terrain/False/2024-05-15_23-54-50/runs/A1Terrain_15-23-54-50/nn/A1Terrain.pth
         checkpoint=../outputs/A1Terrain/False/2024-05-16_00-50-46/runs/A1Terrain_16-00-50-46/nn/A1Terrain.pth
-        task.env.enableUDP=true
+        task.env.dataPublisher.enable=true
         num_envs=15
     )
     BASE_ARGS+=(
@@ -295,7 +307,7 @@ a1Terrain(){
     task=A1Terrain
     PLAY_ARGS+=(
         checkpoint=../assets/checkpoints/A1Terrain.pth
-        task.env.enableUDP=true
+        task.env.dataPublisher.enable=true
         num_envs=15
         task.env.terrain.terrainType=plane
         task.env.terrain.numLevels=3

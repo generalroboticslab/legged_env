@@ -9,7 +9,12 @@ env:
   numActions: "infer"
   envSpacing: 1.  # [m]
   enableDebugVis: false
-  enableUDP: False # whether to debug in udp
+
+  dataPublisher:
+    enable: false
+    target_url: 'udp://localhost:9870'
+    # optionally can add:
+    # keys:[name_of_item_to_publish]
 
   observationNames:
     - linearVelocity

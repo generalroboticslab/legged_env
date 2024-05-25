@@ -22,9 +22,9 @@ class DataPublisher:
     def __init__(
         self,
         target_url: str = 'udp://localhost:9870',
-        encoding_type: str = 'msgpack',
-        is_broadcast: bool = False,
-        is_enabled: bool = True,
+        encoding: str = 'msgpack',
+        broadcast: bool = False,
+        enable: bool = True,
         **socket_kwargs,
     ):
         """
@@ -34,16 +34,16 @@ class DataPublisher:
         ----------
         target_url : str
             URL to which data will be sent.
-        encoding_type : str
+        encoding : str
             Encoding for sending data, default is 'json'.
-        is_broadcast : bool
+        broadcast : bool
             If True, data is broadcasted; defaults to True.
-        is_enabled : bool
+        enable : bool
             If False, publishing is inactive; defaults to False.
         socket_kwargs : 
             Additional keyword arguments for the socket.
         """
-        self.is_enabled = is_enabled
+        self.enable = enable
         self.url = urllib.parse.urlparse(target_url)
 
         # Validate scheme
@@ -56,12 +56,12 @@ class DataPublisher:
 
         # Create socket
         self.socket = socket.socket(family, socket_type, **socket_kwargs)
-        if is_broadcast:
+        if broadcast:
             self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-        self.hostname = '<broadcast>' if is_broadcast else self.url.hostname
+        self.hostname = '<broadcast>' if broadcast else self.url.hostname
 
         # Set encoding function
-        self._setup_encoding(encoding_type)
+        self._setup_encoding(encoding)
 
     def _get_socket_family(self):
         """Determine and return the appropriate socket family based on the URL."""
@@ -90,7 +90,7 @@ class DataPublisher:
         data : dict
             Data to be published.
         """
-        if self.is_enabled:
+        if self.enable:
             converted_data = convert_to_python_builtin_types(data)
             encoded_data = self.encode(converted_data)
             self.socket.sendto(encoded_data, (self.hostname, self.url.port))
@@ -102,13 +102,13 @@ class DataReceiver:
     """
 
     def __init__(
-        self, target_port: int = 9870, decoding_type: str = "msgpack"):
+        self, target_port: int = 9870, decoding: str = "msgpack"):
         """
         Initializes the DataReceiver.
 
         Args:
             target_port (int): The port to listen on for incoming data. Defaults to 9870.
-            decoding_type (str): The decoding method for data ("msgpack" or "json"). Defaults to "msgpack".
+            decoding (str): The decoding method for data (raw/utf-8/msgpack/json). Defaults to "msgpack".
         """   
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -120,9 +120,9 @@ class DataReceiver:
             "msgpack": lambda data: msgpack.unpackb(data, raw=False),
             "json": lambda data: orjson.loads(data),
         }
-        if decoding_type not in decodings:
-            raise ValueError(f"Invalid decoding: {decoding_type}")
-        self.decode = decodings[decoding_type]
+        if decoding not in decodings:
+            raise ValueError(f"Invalid decoding: {decoding}")
+        self.decode = decodings[decoding]
         self.data = None
         self.address = None
         self._running = True  # Flag to control the receive loop
@@ -188,10 +188,10 @@ if __name__=="__main__":
         return {"time":time.time()-time_since_start,"sensor_id": np.random.randint(0,10), "temperature": 25.5, "humidity": 68}
 
     # Create a publisher instance
-    publisher = DataPublisher(target_url="udp://localhost:9871", encoding_type="msgpack")
+    publisher = DataPublisher(target_url="udp://localhost:9871", encoding="msgpack")
 
     # Create a receiver instance
-    receiver = DataReceiver(target_port=9871, decoding_type="msgpack")
+    receiver = DataReceiver(target_port=9871, decoding="msgpack")
 
     # Start continuous receiving in a thread
     receiver.receive_continuously()

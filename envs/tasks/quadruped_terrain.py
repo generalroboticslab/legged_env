@@ -179,9 +179,10 @@ class QuadrupedTerrain(VecTask):
         self.allow_knee_contacts = self.cfg["env"]["learn"]["allowKneeContacts"]
         self.curriculum = self.cfg["env"]["terrain"]["curriculum"]
         
-        self.enable_udp = self.cfg["env"]["enableUDP"]
+        self.enable_udp:bool = self.cfg["env"]["dataPublisher"]["enable"]
         if self.enable_udp:  # plotJuggler related
-            self.data_publisher = DataPublisher(is_enabled=True)
+            self.data_publisher = DataPublisher(**self.cfg["env"]["dataPublisher"])
+            self.items_to_publish = self.cfg["env"]["dataPublisher"].get("keys",None)
 
         # reward scales
         cfg_reward = self.cfg["env"]["learn"]["reward"]
@@ -747,8 +748,8 @@ class QuadrupedTerrain(VecTask):
 
         # joint acc penalty
         # rew["joint_acc"] = torch.square(self.last_dof_vel - self.dof_vel).sum(dim=1)
-        dof_acc = (self.dof_vel - self.last_dof_vel) * self.rl_dt_inv  # TODO check if [:] is needed # TODO
-        rew["joint_acc"] = square_sum(dof_acc)  # TODO Check this
+        self.dof_acc = (self.dof_vel - self.last_dof_vel) * self.rl_dt_inv  # TODO check if [:] is needed # TODO
+        rew["joint_acc"] = square_sum(self.dof_acc)  # TODO Check this
         # rew["joint_acc"] = torch.abs(dof_acc).sum(dim=1)  #TODO Check this
 
         # joint vel penalty
@@ -790,8 +791,8 @@ class QuadrupedTerrain(VecTask):
 
         # action rate penalty
         # rew["action_rate"] = torch.square(self.last_actions - self.actions).sum(dim=1)
-        action_rate = (self.actions - self.last_actions) * self.rl_dt_inv
-        rew["action_rate"] = torch.square(action_rate).sum(dim=1)
+        self.action_rate = (self.actions - self.last_actions) * self.rl_dt_inv
+        rew["action_rate"] = torch.square(self.action_rate).sum(dim=1)
         # rew["action_rate"] = torch.abs((self.last_actions - self.actions)*self.dt_inv).sum(dim=1)
 
         nonzero_command = torch.norm(self.commands[:, :2], dim=1) > self.command_zero_threshold
@@ -869,31 +870,37 @@ class QuadrupedTerrain(VecTask):
         self.rew_buf += self.rew_scales["termination"] * self.reset_buf * ~self.timeout_buf
 
         if self.enable_udp:  # send UDP info to plotjuggler
-            foot_pos_rel = self.rb_state[:, self.feet_ids, 0:3] - self.root_state[:, :3].view(self.num_envs, 1, 3)
-            foot_pos = quat_rotate_inverse(self.base_quat.repeat_interleave(self.num_feet, dim=0), foot_pos_rel.view(-1, 3)).view(
-                self.num_envs, self.num_feet, 3
-            )
             data = {
                 "t": self.control_steps*self.rl_dt,
-                "time_air":self.air_time,
-                "time_stance":self.stance_time,
-                "foot_pos": foot_pos,
-                "base_height": self.heights_relative[:, -1],
+                "action": self.actions,
+                "action_rate": self.action_rate,
                 "dof_vel": self.dof_vel,
                 "dof_pos": self.dof_pos,
-                "dof_pos_target": (self.action_scale * self.actions + self.default_dof_pos),
-                "dof_acc": dof_acc,
+                "dof_pos_target": self.dof_pos_target,
+                "dof_acc": self.dof_acc,
                 "dof_effort": self.torque,
                 "base_lin_vel": self.base_lin_vel,
                 "base_ang_vel": self.base_ang_vel,
-                "action": self.actions,
-                "action_rate": action_rate,
+                "base_height": self.heights_relative[:, -1],
+                "time_air":self.air_time,
+                "time_stance":self.stance_time,
+                "foot_pos": self.foot_pos,
                 "contact": self.feet_contact,
-                "rew_buf":self.rew_buf * self.rl_dt_inv
+                "rew_buf" : self.rew_buf * self.rl_dt_inv,
+                "rew":{key:rew[key] * self.rl_dt_inv for key in rew}
             }
-            for key in rew.keys():
-                data[f"rew_{key}"] = rew[key] * self.rl_dt_inv
-            self.data_publisher.publish(data)
+              
+            if self.items_to_publish is not None:
+                data =  {key: data[key] for key in self.items_to_publish}
+            self.data_publisher.publish(data)  
+    
+    @property
+    def foot_pos(self):
+        """return foot position relative to the base in the body frame"""
+        foot_pos_rel = self.rb_state[:, self.feet_ids, 0:3] - self.root_state[:, :3].view(self.num_envs, 1, 3)
+        return quat_rotate_inverse(self.base_quat.repeat_interleave(self.num_feet, dim=0), foot_pos_rel.view(-1, 3)).view(
+            self.num_envs, self.num_feet, 3
+        )
 
     def reset_idx(self, env_ids):
         """Resets the specified environments."""
@@ -1022,7 +1029,7 @@ class QuadrupedTerrain(VecTask):
                 if not os.path.isdir(self.record_frames_dir):
                     os.makedirs(self.record_frames_dir, exist_ok=True)
 
-                self.gym.write_viewer_image_to_file(self.viewer, join(self.record_frames_dir, f"frame_{self.control_steps}.png"))
+                self.gym.write_viewer_image_to_file(self.viewer, os.path.join(self.record_frames_dir, f"frame_{self.control_steps}.png"))
 
             if self.virtual_display and mode == "rgb_array":
                 img = self.virtual_display.grab()
@@ -1091,10 +1098,10 @@ class QuadrupedTerrain(VecTask):
 
     def pre_physics_step(self, actions):
         self.actions = actions.clone().to(self.device)
-        dof_pos_target = self.action_scale * self.actions + self.default_dof_pos
+        self.dof_pos_target = self.action_scale * self.actions + self.default_dof_pos
         for i in range(self.decimation):
             torque = torch.clip(
-                self.kp * (dof_pos_target - self.dof_pos) - self.kd * self.dof_vel,
+                self.kp * (self.dof_pos_target - self.dof_pos) - self.kd * self.dof_vel,
                 -self.torque_limit,
                 self.torque_limit,
             )

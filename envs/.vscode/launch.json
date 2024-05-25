@@ -40,7 +40,7 @@
                 "task=A1Terrain",
                 "task.env.terrain.terrainType=plane",
                 "test=true",
-                "task.env.enableUDP=True",
+                "task.env.dataPublisher.enable=True",
 
                 // "headless=true",
                 // "task=AnymalTerrain",

@@ -9,7 +9,10 @@ env:
   numActions: 12
   envSpacing: 3.  # [m]
   enableDebugVis: False
-  enableUDP: False # whether to debug in udp
+  
+  dataPublisher:
+    enable: false
+    target_url: 'udp://localhost:9870'
 
   observationNames:
     - linearVelocity
