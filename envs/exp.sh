@@ -336,10 +336,12 @@ base(){
     PLAY_ARGS=(
         test=true
     )
-
+    
     TRAIN_ARGS=(
         headless=true
     )
     BASE_ARGS=()
-    KEYBOARD_ARGS=()
+    KEYBOARD_ARGS=(
+        task.env.viewer.keyboardOperator=true
+    )
 }

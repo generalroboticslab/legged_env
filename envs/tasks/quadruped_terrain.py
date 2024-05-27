@@ -384,13 +384,12 @@ class QuadrupedTerrain(VecTask):
         self.reset_idx(torch.arange(self.num_envs, device=self.device))
         self.init_done = True
         
-        # self.enable_viewer_sync = False  # by default freeze the viewer until "V" is pressed
-        
         # rendering
         self.set_viewer()
-        self.debug_viz = self.cfg["env"]["enableDebugVis"]
-        self.viewer_follow = self.cfg["env"]["viewer"]["follow"]
-        self.viewer_follow_offset=torch.tensor(self.cfg["env"]["viewer"].get("follower_offset",[0.5,0.5,0.5]))
+
+    def set_viewer(self):
+        """set viewers and camera events"""
+
         # rendering: virtual display
         self.virtual_display = None
         if self.virtual_screen_capture:
@@ -398,15 +397,71 @@ class QuadrupedTerrain(VecTask):
             SCREEN_CAPTURE_RESOLUTION = (1027, 768)
             self.virtual_display = SmartDisplay(size=SCREEN_CAPTURE_RESOLUTION)
             self.virtual_display.start()
+        
+        # todo: read from config
+        if self.headless == True:
+            self.viewer = None
+            return
+
+        # if running with a viewer, set up keyboard shortcuts and camera
             
-        if self.graphics_device_id != -1 and self.viewer:
-            self.gym.subscribe_viewer_keyboard_event(self.viewer, gymapi.KEY_F, "toggle_viewer_follow")
-            self.cam_pos = self.cfg["env"]["viewer"]["pos"]
-            self.cam_target_pos = self.cfg["env"]["viewer"]["lookat"]
-            if self.viewer_follow:
-                self.cam_target_pos= self.root_state[0, :3].clone().cpu() 
-                self.cam_pos= self.viewer_follow_offset.cpu() +self.cam_target_pos
-            self.gym.viewer_camera_look_at(self.viewer, None, gymapi.Vec3(*self.cam_pos), gymapi.Vec3(*self.cam_target_pos))
+        # self.enable_viewer_sync = False  # by default freeze the viewer until "V" is pressed
+        self.enable_viewer_sync = True
+    
+        # subscribe to keyboard shortcuts
+        self.viewer = self.gym.create_viewer(self.sim, gymapi.CameraProperties())
+        def subscribe_viewer_keyboard_event(key,event_str):
+            self.gym.subscribe_viewer_keyboard_event(self.viewer, key, event_str)
+        
+        subscribe_viewer_keyboard_event(gymapi.KEY_ESCAPE, "QUIT")
+        subscribe_viewer_keyboard_event(gymapi.KEY_V, "toggle_viewer_sync")
+        subscribe_viewer_keyboard_event(gymapi.KEY_R, "record_frames")
+        
+        self.enable_keyboard_operator: bool = self.cfg["env"]["viewer"]["keyboardOperator"]
+        if self.enable_keyboard_operator:
+            subscribe_viewer_keyboard_event(gymapi.KEY_I, "vx+")
+            subscribe_viewer_keyboard_event(gymapi.KEY_K, "vx-")
+            subscribe_viewer_keyboard_event(gymapi.KEY_J, "vy+")
+            subscribe_viewer_keyboard_event(gymapi.KEY_L, "vy-")
+            subscribe_viewer_keyboard_event(gymapi.KEY_U, "heading+")
+            subscribe_viewer_keyboard_event(gymapi.KEY_O, "heading-")
+            subscribe_viewer_keyboard_event(gymapi.KEY_0, "v=0")
+            self.keyboard_operator_cmd = torch.zeros(3,dtype=torch.float,device=self.device)
+        
+        subscribe_viewer_keyboard_event(gymapi.KEY_F, "toggle_viewer_follow")
+        
+        
+        # set the camera position based on up axis
+        # self.sim_params = self.gym.get_sim_params(self.sim)
+        if self.sim_params.up_axis == gymapi.UP_AXIS_Z:
+            self.cam_pos = gymapi.Vec3(20.0, 25.0, 3.0)
+            self.cam_target_pos = gymapi.Vec3(10.0, 15.0, 0.0)
+        else:
+            self.cam_pos = gymapi.Vec3(20.0, 3.0, 25.0)
+            self.cam_target_pos = gymapi.Vec3(10.0, 0.0, 15.0)
+
+        self.cam_pos = self.cfg["env"]["viewer"]["pos"]
+        self.cam_target_pos = self.cfg["env"]["viewer"]["lookat"]
+        
+        self.viewer_follow = self.cfg["env"]["viewer"]["follow"]
+        if self.viewer_follow:
+            self.viewer_follow_offset=torch.tensor(self.cfg["env"]["viewer"].get("follower_offset",[0.5,0.5,0.5]))
+            self.cam_target_pos= self.root_state[0, :3].clone().cpu() 
+            self.cam_pos= self.viewer_follow_offset.cpu() +self.cam_target_pos
+        
+        self.gym.viewer_camera_look_at(self.viewer, None, gymapi.Vec3(*self.cam_pos), gymapi.Vec3(*self.cam_target_pos))
+        
+
+
+        # self.gym.viewer_camera_look_at(self.viewer, None, self.cam_pos, self.cam_target_pos)
+        
+        self.debug_viz = self.cfg["env"]["enableDebugVis"]
+        
+        
+
+            
+        # if self.graphics_device_id != -1 and self.viewer:
+            
 
 
     def _parse_sim_params(self):
@@ -922,10 +977,12 @@ class QuadrupedTerrain(VecTask):
         dof_pos_offset = torch_rand_float(-0.1, 0.1, (len_ids, self.num_dof), self.device)
         self.dof_pos[env_ids] = self.default_dof_pos[env_ids] + dof_pos_offset
         self.dof_vel[env_ids] = torch_rand_float(-0.1, 0.1, (len_ids, self.num_dof), self.device)
-        self.gym.set_dof_state_tensor_indexed(self.sim, self.dof_state_raw, env_ids_raw, len_ids)
-
+        self.gym.set_dof_state_tensor_indexed(self.sim, self.dof_state_raw, env_ids_raw, len_ids) 
+        # vx
         self.commands[env_ids, 0] = torch_rand_float(*self.command_x_range, (len_ids, 1), self.device).squeeze()
+        # vy
         self.commands[env_ids, 1] = torch_rand_float(*self.command_y_range, (len_ids, 1), self.device).squeeze()
+        # heading
         self.commands[env_ids, 3] = torch_rand_float(*self.command_yaw_range, (len_ids, 1), self.device).squeeze()
 
         # # set small commands to zero # TODO CHANGE BACK
@@ -984,7 +1041,8 @@ class QuadrupedTerrain(VecTask):
                 sys.exit()
 
             # check for keyboard events
-            for evt in self.gym.query_viewer_action_events(self.viewer):
+            events = self.gym.query_viewer_action_events(self.viewer)
+            for evt in events:
                 if evt.action == "QUIT" and evt.value > 0:
                     sys.exit()
                 elif evt.action == "toggle_viewer_sync" and evt.value > 0:
@@ -993,6 +1051,30 @@ class QuadrupedTerrain(VecTask):
                     self.record_frames = not self.record_frames
                 elif evt.action == "toggle_viewer_follow" and evt.value > 0:
                     self.viewer_follow = not self.viewer_follow
+            if self.enable_keyboard_operator:
+                for evt in events:
+                    if evt.action == "vx+" and evt.value > 0:
+                        self.keyboard_operator_cmd[0] +=0.1
+                        print(f"{self.keyboard_operator_cmd}")
+                    elif evt.action == "vx-" and evt.value > 0:
+                        self.keyboard_operator_cmd[0] -=0.1
+                        print(f"{self.keyboard_operator_cmd}")
+                    elif evt.action == "vy+" and evt.value > 0:
+                        self.keyboard_operator_cmd[1] +=0.1
+                        print(f"{self.keyboard_operator_cmd}")
+                    elif evt.action == "vy-" and evt.value > 0:
+                        self.keyboard_operator_cmd[1] -=0.1
+                        print(f"{self.keyboard_operator_cmd}")
+                    elif evt.action == "heading+" and evt.value > 0:
+                        self.keyboard_operator_cmd[2] +=0.1
+                        print(f"{self.keyboard_operator_cmd}")
+                    elif evt.action == "heading-" and evt.value > 0:
+                        self.keyboard_operator_cmd[2] -=0.1  
+                        print(f"{self.keyboard_operator_cmd}")
+                    elif evt.action == "v=0" and evt.value > 0:
+                        self.keyboard_operator_cmd[:] = 0 
+                        print(f"{self.keyboard_operator_cmd}")
+                self.commands[:,[0,1,3]] = self.keyboard_operator_cmd
                 
             # fetch results
             if self.device != 'cpu':

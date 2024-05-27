@@ -84,7 +84,7 @@ function get_additional_args() {
     $ARG # source setup parameters
     ALL_ARGS=(task=$task ${BASE_ARGS[@]})
     if $KEYBOARD; then
-        ALL_ARGS+=${KEYBOARD_ARGS[@]}
+        ALL_ARGS+=(${KEYBOARD_ARGS[@]})
     fi
     # setting running args depending on mode
     if [ "$PLAY" == "true" ]; then

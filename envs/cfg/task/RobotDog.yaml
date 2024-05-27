@@ -273,6 +273,7 @@ env:
     pos: [0, 0, 10]  # [m]
     lookat: [1., 1, 9]  # [m]
     follow: True
+    keyboardOperator: False
 
   # set to True if you use camera sensors in the environment
   enableCameraSensors: False
