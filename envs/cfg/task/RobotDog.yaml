@@ -61,7 +61,7 @@ env:
     # train
     linear_x: [-0.5, 0.5] # min max [m/s]
     linear_y: [-0.5, 0.5]   # min max [m/s]
-    yaw: [-1, 1]    # min max [rad/s]
+    yaw: [-1, 1]    # min max [rad] yaw angle dirvergence
   commandZeroThreshold: 0 # [m/s] treat commends below this threshold as zero, search command_zero_threshold
 
   control:
