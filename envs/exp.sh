@@ -64,6 +64,70 @@ robogram(){
     )
 }
 
+bugv3(){
+    bug
+    PLAY_ARGS+=(
+        checkpoint=../outputs/RobotDog/False/2024-05-28_00-48-29/runs/RobotDog_28-00-48-29/nn/RobotDog.pth # can walk but very hesitant
+    )
+    TRAIN_ARGS+=(
+        task.env.learn.randomizeFriction=true
+        # task.env.learn.frictionRange=[0.5,1.5]
+        task.env.learn.frictionRange=[1.0,1.0] # sanity check: expecte to move
+        task.env.learn.randomizeBaseMass=false
+    )
+}
+
+bugv2(){
+    bug
+    PLAY_ARGS+=(
+        # checkpoint=../outputs/RobotDog/False/2024-05-27_13-48-14/runs/RobotDog_27-13-48-14/nn/RobotDog.pth
+        checkpoint=../outputs/RobotDog/False/2024-05-28_00-37-55/runs/RobotDog_28-00-37-55/nn/RobotDog.pth
+    )
+    TRAIN_ARGS+=(
+        task.env.learn.randomizeFriction=true
+        # task.env.learn.frictionRange=[0.5,1.5]
+        task.env.learn.frictionRange=[0.75,1.25]
+        task.env.learn.randomizeBaseMass=false
+    )
+}
+
+bugv1(){
+    bug
+    PLAY_ARGS+=(
+        checkpoint=../outputs/RobotDog/False/2024-05-27_11-32-26/runs/RobotDog_27-11-32-26/nn/RobotDog.pth
+        # fall on the ground
+    )
+    TRAIN_ARGS+=(
+        task.env.learn.randomizeFriction=true
+        task.env.learn.frictionRange=[0.5,1.5]
+        task.env.learn.randomizeBaseMass=true
+    )
+}
+
+bug(){
+    base
+    task=RobotDog
+    PLAY_ARGS+=(
+        num_envs=1
+        checkpoint=../outputs/RobotDog/False/2024-05-27_11-40-19/runs/RobotDog_27-11-40-19/nn/RobotDog.pth
+        # task.env.dataPublisher.enable=true
+        # task.env.learn.episodeLength_s=5
+        # task.env.randomCommandVelocityRanges.linear_x=[0.5,0.5]
+        # task.env.randomCommandVelocityRanges.linear_y=[0.,0.]
+        # task.env.randomCommandVelocityRanges.yaw=[1,1]
+    )
+    BASE_ARGS+=(
+    # task.env.terrain.terrainType=plane
+    ++task.env.urdfAsset.root="../evolutionary_loop/assets"
+    task.env.urdfAsset.file="BugBot4_BugBot3_top-z-0_BugBot2_bottom-x-0/BugBot4_BugBot3_top-z-0_BugBot2_bottom-x-0.urdf"
+    task.env.randomCommandVelocityRanges.linear_x=[-0.5,0.5]
+    task.env.randomCommandVelocityRanges.linear_y=[-0.5,0.5]
+    task.env.randomCommandVelocityRanges.yaw=[-1,1]
+    )
+}
+
+
+
 dog3kgv1(){
     base
     task=RobotDog
@@ -74,7 +138,6 @@ dog3kgv1(){
         checkpoint=../outputs/RobotDog/False/2024-05-17_11-39-56/runs/RobotDog_17-11-39-57/nn/RobotDog.pth
         num_envs=1
         task.env.dataPublisher.enable=true
-        pipeline="cpu"
         task.env.learn.episodeLength_s=5
         # task.env.randomCommandVelocityRanges.linear_x=[0.5,0.5]
         # task.env.randomCommandVelocityRanges.linear_y=[0.,0.]
@@ -92,7 +155,6 @@ dog3kgv1(){
 dog_m1(){ # variant
     base
     task=RobotDog
-
     PLAY_ARGS+=(
         checkpoint=/home/grl/repo/legged/outputs/RobotDog/False/2024-04-30_16-51-24/runs/RobotDog_30-16-51-24/nn/RobotDog.pth
         num_envs=2
