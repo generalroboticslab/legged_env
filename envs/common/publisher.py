@@ -7,6 +7,7 @@ import numpy as np
 import select
 import threading
 
+
 class DataPublisher:
     """
     Manages data publishing to a specified target URL.
@@ -102,14 +103,14 @@ class DataReceiver:
     """
 
     def __init__(
-        self, target_port: int = 9870, decoding: str = "msgpack"):
+            self, target_port: int = 9870, decoding: str = "msgpack"):
         """
         Initializes the DataReceiver.
 
         Args:
             target_port (int): The port to listen on for incoming data. Defaults to 9870.
             decoding (str): The decoding method for data (raw/utf-8/msgpack/json). Defaults to "msgpack".
-        """   
+        """
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.socket.bind(("", target_port))
@@ -138,7 +139,7 @@ class DataReceiver:
         else:
             return None, None  # No data received within the timeout
 
-    def receive_continuously(self,timeout=0.1, buffer_size=1024):
+    def receive_continuously(self, timeout=0.1, buffer_size=1024):
         """Continuously receive and decode data from the socket in a dedicated thread."""
 
         def _receive_loop():
@@ -152,6 +153,7 @@ class DataReceiver:
         """Stop continuous receiving."""
         self._running = False
         self.socket.close()
+
 
 def convert_to_python_builtin_types(nested_data: dict):
     """
@@ -178,17 +180,24 @@ def convert_to_python_builtin_types(nested_data: dict):
     return converted_data
 
 
-if __name__=="__main__":
+if __name__ == "__main__":
     import time
 
     # Sample data to publish
     time_since_start = time.time()
+
     def test_data():
         """example test data"""
-        return {"time":time.time()-time_since_start,"sensor_id": np.random.randint(0,10), "temperature": 25.5, "humidity": 68}
+        return {
+            "time": time.time()-time_since_start,
+            "sensor_id": np.random.randint(0, 10),
+            "temperature": 25.5,
+            "humidity": 68
+        }
 
     # Create a publisher instance
-    publisher = DataPublisher(target_url="udp://localhost:9871", encoding="msgpack")
+    publisher = DataPublisher(
+        target_url="udp://localhost:9871", encoding="msgpack")
 
     # Create a receiver instance
     receiver = DataReceiver(target_port=9871, decoding="msgpack")
@@ -201,7 +210,6 @@ if __name__=="__main__":
         publisher.publish(test_data())
         print(f"Received from {receiver.address}: {receiver.data}")
         time.sleep(0.001)  # add a small delay
-        
 
     # Stop continuous receiving after a while
     receiver.stop()

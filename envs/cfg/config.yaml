@@ -71,6 +71,7 @@ hydra:
   job:
     chdir: True
   run:
-    dir: ../outputs/${task_name}/${test}/${now:%Y-%m-%d_%H-%M-%S}
+    # dir: ../outputs/${task_name}/${test}/${now:%Y-%m-%d_%H-%M-%S}
+    dir: ../outputs/${task_name}/${test}/${now:%Y%m%d_%H%M%S}
 
     

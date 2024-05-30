@@ -34,6 +34,7 @@ from omegaconf import DictConfig, OmegaConf
 import isaacgym
 import isaacgymenvs
 import torch
+import numpy as np
 
 import sys
 import os
@@ -46,7 +47,6 @@ isaacgym_task_map["A1Terrain"] = QuadrupedTerrain
 isaacgym_task_map["AnymalTerrain"] = QuadrupedTerrain
 isaacgym_task_map["RobotDog"] = QuadrupedTerrain
 
-import numpy as np
 # using np.arange [star,end), step, round to 15 decimals
 OmegaConf.register_new_resolver(
     "arange", lambda start, stop, step: list(np.round(np.arange(start, stop, step), 15)), replace=True
@@ -56,6 +56,7 @@ OmegaConf.register_new_resolver(
 OmegaConf.register_new_resolver(
     "linspace", lambda start, stop, num: list(np.round(np.linspace(start, stop, num), 15)), replace=True
 )
+
 
 def preprocess_train_config(cfg, config_dict):
     """
@@ -99,7 +100,6 @@ def launch_rlg_hydra(cfg: DictConfig):
     from datetime import datetime
 
     # noinspection PyUnresolvedReferences
-    import isaacgym
     from isaacgymenvs.pbt.pbt import PbtAlgoObserver, initial_pbt_check
     from isaacgymenvs.utils.rlgames_utils import multi_gpu_get_rank
     from hydra.utils import to_absolute_path
@@ -174,7 +174,7 @@ def launch_rlg_hydra(cfg: DictConfig):
         },
     )
 
-    ige_env_cls = isaacgym_task_map[cfg.task_name]
+    ige_env_cls = isaacgym_task_map[cfg.task.name]
     dict_cls = ige_env_cls.dict_obs_cls if hasattr(ige_env_cls, 'dict_obs_cls') and ige_env_cls.dict_obs_cls else False
 
     if dict_cls:

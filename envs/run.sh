@@ -100,6 +100,7 @@ function get_additional_args() {
 
 function run_tasks() {
     for ARG in $ARGS; do
+        echo -e "\033[0;32mRunning: [$ARG]\033[0m"
         source_run_commands    
         get_additional_args
         cmd="$AUSTIN_ARGS python -u $DEBUG $ENTRY_POINT $ALL_ARGS"
