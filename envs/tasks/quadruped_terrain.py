@@ -49,6 +49,7 @@ from envs.common.publisher import DataPublisher
 from envs.common.terrrain import Terrain
 from isaacgym import gymutil
 
+from hydra.utils import to_absolute_path
 
 class QuadrupedTerrain(VecTask):
     """
@@ -552,7 +553,7 @@ class QuadrupedTerrain(VecTask):
             cfg_asset["root"] = 'assets'  # relative to the legged_env folder
         if not os.path.isabs(cfg_asset["root"]):
             cfg_asset["root"] = os.path.abspath(
-                os.path.join(os.path.dirname(os.path.abspath(__file__)), "./../../", cfg_asset["root"]))
+                os.path.join(os.path.dirname(to_absolute_path(__file__)), "./../../", cfg_asset["root"]))
         
         self.asset_path = os.path.join(cfg_asset["root"], cfg_asset["file"])
 
@@ -1059,10 +1060,10 @@ class QuadrupedTerrain(VecTask):
                         self.keyboard_operator_cmd[2] += 0.1
                         print(f"{self.keyboard_operator_cmd}")
                     elif evt.action == "heading-" and evt.value > 0:
-                        self.keyboard_operator_cmd[2] -= 0.1  
+                        self.keyboard_operator_cmd[2] -= 0.1
                         print(f"{self.keyboard_operator_cmd}")
                     elif evt.action == "v=0" and evt.value > 0:
-                        self.keyboard_operator_cmd[:] = 0 
+                        self.keyboard_operator_cmd[:] = 0
                         print(f"{self.keyboard_operator_cmd}")
                 self.commands[:, [0, 1, 3]] = self.keyboard_operator_cmd
                 
