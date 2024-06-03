@@ -22,8 +22,8 @@ function parse_arguments() {
             p)  # play mode
                 PLAY=true
                 ;;
-            u) export PUBLISH_TO_UDP=true ;;
-            k) KEYBOARD=true ;;
+            u)  export PUBLISH_TO_UDP=true ;;
+            k)  KEYBOARD=true ;;
             r) DRY_RUN=true ;;
             *) exit ;; #do nothing ;;
             esac
@@ -83,7 +83,7 @@ function source_run_commands() {
 function get_additional_args() {
     $ARG # source setup parameters
     ALL_ARGS=(task=$task ${BASE_ARGS[@]})
-    if $KEYBOARD; then
+    if [ "$KEYBOARD" == "true" ]; then
         ALL_ARGS+=(${KEYBOARD_ARGS[@]})
     fi
     # setting running args depending on mode
