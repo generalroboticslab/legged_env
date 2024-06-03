@@ -20,14 +20,25 @@ from isaacgym.terrain_utils import (
 
 class Terrain:
     def __init__(self, cfg: Mapping, num_robots: int, device: Union[torch.device, str], gym, sim) -> None:
+        """
+        Initializes the Terrain object with the given configuration parameters.
 
+        Parameters:
+            cfg (Mapping): A dictionary containing the configuration parameters for the terrain.
+            num_robots (int): The number of robots in the environment.
+            device (Union[torch.device, str]): The device to use for computation.
+            gym (GymApi): The GymApi object for creating the terrain.
+            sim (gymapi.Sim): The GymApi simulation object.
+
+        Returns:
+            None
+        """
         self.device = device
 
         self.terrain_type: str = cfg["terrainType"]
-        self.horizontal_scale = 0.1
-        self.vertical_scale = 0.005
-        # self.vertical_scale = 0.01
-        self.border_size = 25
+        self.horizontal_scale: float = cfg["horizontalScale"]
+        self.vertical_scale: float = cfg["verticalScale"]
+        self.border_size: float = cfg["borderSize"]
         self.env_length: float = cfg["mapLength"]
         self.env_width: float = cfg["mapWidth"]
         self.env_rows: int = cfg["numLevels"]
@@ -38,7 +49,7 @@ class Terrain:
         self.stair_width: float = cfg["stair"]["width"]
         self.stair_height: float = cfg["stair"]["height"]
 
-        self.slope = np.tan(np.deg2rad(22))  # 22 deg slope: ~0.4
+        self.slope = cfg["slope"]
 
         proportions = cfg["terrainProportions"]
         if len(proportions) == 6:
@@ -66,7 +77,7 @@ class Terrain:
 
         self.height_field_raw = np.zeros((self.tot_rows, self.tot_cols), dtype=np.int16)  # raw height field
 
-        if cfg["curriculum"]:
+        if cfg["curriculum"]:  # generate height field
             self.curriculum(num_robots, num_terrains=self.env_cols, num_levels=self.env_rows, randomize=False)
         else:
             self.curriculum(num_robots, num_terrains=self.env_cols, num_levels=self.env_rows, randomize=True)
@@ -110,7 +121,19 @@ class Terrain:
         self.height_samples = torch.tensor(self.height_field_raw, device=self.device).view(self.tot_rows, self.tot_cols)
         self.height_sample_limit = (self.height_samples.shape[0] - 2, self.height_samples.shape[1] - 2)
 
-    def curriculum(self, num_robots, num_terrains, num_levels,randomize):
+    def curriculum(self, num_robots, num_terrains, num_levels, randomize):
+        """
+        Generates a heght field for the terrain based on the given parameters.
+
+        Parameters:
+            num_robots (int): The total number of robots.
+            num_terrains (int): The total number of terrains.
+            num_levels (int): The total number of levels.
+            randomize (bool): Whether to randomize the level and choice.
+
+        Returns:
+            None
+        """
         num_robots_per_map = int(num_robots / num_terrains)
         left_over = num_robots % num_terrains
         proportions = np.round(self.proportions * self.env_cols).astype(int)
@@ -118,8 +141,8 @@ class Terrain:
             for i in range(num_levels):
 
                 if randomize:
-                    level = np.random.randint(0,self.env_rows)
-                    choice = np.random.randint(0,num_terrains)
+                    level = np.random.randint(0, self.env_rows)
+                    choice = np.random.randint(0, num_terrains)
                 else:
                     level = i
                     choice = j

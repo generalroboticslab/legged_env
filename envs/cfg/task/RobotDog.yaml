@@ -45,6 +45,10 @@ env:
       width: 0.31
       height: 0.18
     platformSize: 2.0 # [m]
+    horizontalScale: 0.1
+    verticalScale: 0.005
+    borderSize: 25
+    slope: 0.4 # corresponds to 20deg slope (tan(20deg) = 0.4)
     # tri mesh only:
     slopeTreshold: 0.5
 
@@ -146,7 +150,7 @@ env:
         scale: -0.00002 # -0.000025
         fcn: square_sum
       jointAcc:
-        scale: -2.0e-6 # -0.0025
+        scale: -5.0e-7 # -0.0025
         fcn: square_sum
       jointVel:
         scale: -0.0
@@ -191,7 +195,7 @@ env:
         scale: -0.0
         fcn: abs
       actionRate:
-        scale: -2.0e-4
+        scale: -5.0e-5
         fcn: square_sum
       # # cosmetics
       # hip:
