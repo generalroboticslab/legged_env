@@ -20,7 +20,7 @@
 │   │   └── train
 │   ├── common # common scripts
 │   │   ├── publisher.py
-│   │   ├── terrrain.py
+│   │   ├── terrain.py
 │   │   └── utils.py
 │   ├── exp.sh # experiment scripts
 │   ├── __init__.py

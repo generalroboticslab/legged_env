@@ -46,7 +46,7 @@ from isaacgymenvs.tasks.base.vec_task import VecTask
 import torch
 from envs.common.utils import bcolors as bc
 from envs.common.publisher import DataPublisher
-from envs.common.terrrain import Terrain
+from envs.common.terrain import Terrain
 from isaacgym import gymutil
 
 from hydra.utils import to_absolute_path
