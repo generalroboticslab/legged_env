@@ -325,7 +325,12 @@ class QuadrupedTerrain(VecTask):
         self.terrain = Terrain(
             self.cfg["env"]["terrain"], num_robots=self.num_envs, device=self.device, gym=self.gym, sim=self.sim
         )
-        self.custom_origins = self.terrain_type in {'trimesh', 'heightfiled'}  # True/False
+        if self.terrain_type in {'trimesh', 'heightfield'}:
+            self.custom_origins = True
+        elif self.terrain_type == 'plane':
+            self.custom_origins = False
+        else:
+            raise NotImplementedError(f'Unsupported terrain type: {self.terrain_type}')
         
         self._create_envs(self.num_envs, self.cfg["env"]['envSpacing'], int(np.sqrt(self.num_envs)))
 
