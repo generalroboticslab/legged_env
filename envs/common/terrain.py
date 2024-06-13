@@ -49,6 +49,9 @@ class Terrain:
         self.stair_width: float = cfg["stair"]["width"]
         self.stair_height: float = cfg["stair"]["height"]
 
+        self.uniform_height: float = cfg["uniform"]["height"]
+        self.uniform_step: float = cfg["uniform"]["step"]
+
         self.slope = cfg["slope"]
 
         proportions = cfg["terrainProportions"]
@@ -157,8 +160,8 @@ class Terrain:
                 stone_size = (2 - 1.5 * difficulty) * self.difficulty_scale
                 stone_distance = 0.1 * self.difficulty_scale * difficulty
 
-                uniform_height = 0.15 * self.difficulty_scale * difficulty
-                uniform_step = 0.025 * self.difficulty_scale
+                uniform_height = self.uniform_height * self.difficulty_scale * difficulty
+                uniform_step = max(self.uniform_step * self.difficulty_scale, self.vertical_scale)
                 # uniform_step = self.vertical_scale
                 uniform_downsample = self.horizontal_scale * 2
 
