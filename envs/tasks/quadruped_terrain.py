@@ -570,7 +570,11 @@ class QuadrupedTerrain(VecTask):
         asset_options.thickness = 0.01
         asset_options.disable_gravity = False
         for attribute in cfg_asset["AssetOptions"]:
-            if hasattr(asset_options, attribute):
+            if attribute == "vhacd_params":
+                vhacd_params = cfg_asset["AssetOptions"]["vhacd_params"]
+                for key in vhacd_params:
+                    setattr(asset_options.vhacd_params, key, vhacd_params[key])
+            elif hasattr(asset_options, attribute):
                 setattr(asset_options, attribute, cfg_asset["AssetOptions"][attribute])
             else:
                 print(f"{bc.WARNING}{attribute} not in AssetOptions!{bc.ENDC}")
