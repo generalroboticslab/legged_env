@@ -10,11 +10,11 @@
       //   "--skip-string-normalization",
       //   "--line-length=120"
       // ],
-      // "python.linting.flake8Enabled": true,
-      // "python.linting.flake8Args": [
-      //   "--max-line-length=120",
-      //   "--ignore=C408,E121,E123,E126,E24,E704,W503,W504,W605,I,N"
-      // ],
+      "python.linting.flake8Enabled": true,
+      "python.linting.flake8Args": [
+        "--max-line-length=120",
+        "--ignore=C408,E121,E123,E126,E24,E704,W503,W504,W605,I,N"
+      ],
       // "python.languageServer": "Pylance",
       // "files.exclude": {
       //   "__pycache__": true,

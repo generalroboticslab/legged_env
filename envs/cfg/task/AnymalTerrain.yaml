@@ -9,7 +9,7 @@ env:
   numActions: 12
   envSpacing: 3.  # [m]
   enableDebugVis: False
-  
+
   dataPublisher:
     enable: false
     target_url: 'udp://localhost:9870'
@@ -79,7 +79,7 @@ env:
     decimation: 4
   # controlFrequencyInv: 1 # Number of control action updates @ sim DT per policy DT
 
-  defaultJointAngles:  # = target angles when action = 0.0 (in rad)
+  defaultJointPositions:  # = target angles when action = 0.0 (in rad)
     LF_HAA: 0.03    # [rad]
     LH_HAA: 0.03    # [rad]
     RF_HAA: -0.03   # [rad]
@@ -94,7 +94,7 @@ env:
     LH_KFE: 0.8     # [rad]
     RF_KFE: -0.8    # [rad]
     RH_KFE: 0.8     # [rad]
-  # desiredJointAngles:
+  # desiredJointPositions:
   #   LF_HAA: 0.03    # [rad]
   #   LH_HAA: 0.03    # [rad]
   #   RF_HAA: -0.03   # [rad]
@@ -110,15 +110,14 @@ env:
   #   RF_KFE: -0.8    # [rad]
   #   RH_KFE: 0.8     # [rad]
 
-
   urdfAsset:
     collision_filter: 0
     AssetOptions:
-      collapse_fixed_joints: True
+      collapse_fixed_joints: true
       fix_base_link: false
       default_dof_drive_mode: 3 # see DofDriveMode (0: DOF_MODE_NONE, 1: DOF_MODE_POS, 2: DOF_MODE_VEL, 3: DOF_MODE_EFFORT)
-      flip_visual_attachments: True
-      replace_cylinder_with_capsule: True
+      flip_visual_attachments: true
+      replace_cylinder_with_capsule: true
     # root: "" # override defualt asset_root
     file: "urdf/anymal_c/urdf/anymal_minimal.urdf"
     # Body
@@ -136,6 +135,25 @@ env:
     x: "${linspace: -0.6, 0.6, 13}"
     y: "${linspace: -0.4, 0.4, 9}"
   
+  randomize:
+    friction:
+      enable: true
+      range: [0.5, 1.25]
+    baseMass:
+      enable: false
+      range: [-0.5, 0.5]
+    push:
+      enable: true
+      interval_s: 15
+      velMin: [-1,-1, 0, 0, 0, 0]
+      velMax: [ 1, 1, 0, 0, 0, 0]
+    initDofPos: # randomize dof position at reset
+      enable: true
+      range: [-0.1, 0.1]
+    initDofVel: # randomize dof velocity at reset
+      enable: true
+      range: [-0.1, 0.1]
+
   learn:
     allowKneeContacts: True
     terminalReward: 0.0
@@ -264,26 +282,13 @@ env:
     angularVelocityNoise: 0.2
     gravityNoise: 0.05
     heightMapNoise: 0.06
-
-    # randomization
-    #randomize friction
-    randomizeFriction: True
-    frictionRange: [0.5, 1.25]
-    # randomize base mass
-    randomizeBaseMass: False
-    addedMassRange: [-0.5, 0.5]
-    # push robot
-    pushRobots: True
-    pushInterval_s: 15
-    # push vel x/y/z [m/s], angular vel x/y/z [rad/s]
-    pushVelMin: [-1,-1, 0, 0, 0, 0]
-    pushVelMax: [ 1, 1, 0, 0, 0, 0]
-
+    
     # episode length in seconds
     episodeLength_s: 20
 
   # viewer cam:
   viewer:
+    sync: True # set to False to freeze the viewer
     refEnv: 0
     pos: [0, 0, 10]  # [m]
     lookat: [1., 1, 9]  # [m]

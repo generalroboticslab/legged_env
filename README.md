@@ -32,7 +32,7 @@
 │   │   └── ...
 │   ├── tasks # 
 │   │   ├── __init__.py
-│   │   └── quadruped_terrain.py
+│   │   └── legged_terrain.py
 │   └── train.py
 ├── outputs # contains trained results
 └── README.md

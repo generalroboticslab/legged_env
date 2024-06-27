@@ -151,7 +151,7 @@ def write_urdf(urdf, new_path, old_path, copy_mesh=False):
 
     # --- Mesh Copying (if enabled) ---
     if copy_mesh:
-        new_urdf = copy.deepcopy(urdf)
+        new_urdf = copy.copy(urdf)
         new_mesh_dir_rel = "meshes"
         new_mesh_dir = os.path.join(new_dir, new_mesh_dir_rel)
         os.makedirs(new_mesh_dir, exist_ok=True)

@@ -61,8 +61,7 @@ env:
     vLinear: [0.0, 0.0, 0.0]  # x,y,z [m/s]
     vAngular: [0.0, 0.0, 0.0]  # x,y,z [rad/s]
   
-  # baseHeightTarget: 0.25 # target base height [m]
-  baseHeightTarget:
+  baseHeightTarget: # 0.3 # target base height [m]
 
   randomCommandVelocityRanges:
     # train
@@ -82,7 +81,7 @@ env:
     decimation: 4
   # controlFrequencyInv: 1 # Number of control action updates @ sim DT per policy DT
 
-  # defaultJointAngles:  # = target angles when action = 0.0 (in rad)
+  # defaultJointPositions:  # = target angles when action = 0.0 (in rad)
   #   joint_1_0: 0   # [rad]
   #   joint_2_0: 0   # [rad]
   #   joint_1_1: 0   # [rad]
@@ -93,7 +92,7 @@ env:
   #   joint_1_3: 0   # [rad]
   #   joint_2_3: 0   # [rad]
 
-  # desiredJointAngles:
+  # desiredJointPositions:
   #   joint_1_0: 0   # [rad]
   #   joint_2_0: 0   # [rad]
   #   joint_1_1: 0   # [rad]
@@ -107,13 +106,13 @@ env:
   urdfAsset:
     collision_filter: 0
     AssetOptions:
-      collapse_fixed_joints: True
+      collapse_fixed_joints: true
       fix_base_link: false
       default_dof_drive_mode: 3 # see DofDriveMode (0: DOF_MODE_NONE, 1: DOF_MODE_POS, 2: DOF_MODE_VEL, 3: DOF_MODE_EFFORT)
-      flip_visual_attachments: False
-      replace_cylinder_with_capsule: True
+      flip_visual_attachments: false
+      replace_cylinder_with_capsule: true
     # root: "" # override defualt asset_root
-    file: "urdf/RobotDog/RobotDog7kg.urdf"
+    file: "urdf/RobotDog/RobotDog3kg.urdf"
     # baseName: base
     # hipName: body_1
     ## shank if collapsing fixed joint, foot otherwise
@@ -128,6 +127,25 @@ env:
     x: "${linspace: -0.6, 0.6, 13}"
     y: "${linspace: -0.4, 0.4, 9}"
   
+  randomize:
+    friction:
+      enable: false
+      range: [0.5, 1.25]
+    baseMass:
+      enable: false
+      range: [-0.5, 0.5]
+    push:
+      enable: false
+      interval_s: 15
+      velMin: [-1,-1, 0, 0, 0, 0]
+      velMax: [ 1, 1, 0, 0, 0, 0]
+    initDofPos: # randomize dof position at reset
+      enable: true
+      range: [-0.1, 0.1]
+    initDofVel: # randomize dof velocity at reset
+      enable: true
+      range: [-0.1, 0.1]
+
   learn:
     allowKneeContacts: True
     terminalReward: 0.0
@@ -208,33 +226,6 @@ env:
         scale: -0
         fcn: out_of_bound_abs_sum
         margin: 0
-    # # rewards
-    # terminalReward: 0.0
-    # linearVelocityXYRewardScale: 1.0
-    # linearVelocityZRewardScale: -4.0
-    # angularVelocityXYRewardScale: -0.05
-    # angularVelocityZRewardScale: 0.5
-    # orientationRewardScale: -0.5 #-1.
-    # torqueRewardScale: -0.00002 # -0.000025
-    # jointAccRewardScale: -2.0e-7 # -0.0025
-    # jointVelRewardScale: -0.0
-    # jointPosRewardScale: -0.0
-    # jointPowRewardScale: -0.0
-    # baseHeightRewardScale: -0.0 #5
-    # feetAirTimeRewardScale:  1.0
-    # feetAirTimeMin_s: 0.3 # [s]
-    # feetStanceTimeRewardScale: 1.0
-    # feetStanceTimeMin_s: 0.3 # [s]
-    # feetContactForceRewardScale: 0.0
-    # feetContactForceLimit: 100 #[N]
-    # feetImpactRewardScale: -0.0
-    # feetStumbleRewardScale: -0. #-2.0
-    # feetSlipRewardScale: -0.0
-    # kneeCollisionRewardScale: 0 # -0.25 
-    # actionRewardScale: -0.0
-    # actionRateRewardScale: -2.0e-5
-    # # cosmetics
-    # hipRewardScale: -0. #25
 
     # normalization
     linearVelocityScale: 2.0
@@ -256,26 +247,13 @@ env:
     angularVelocityNoise: 0.2
     gravityNoise: 0.05
     heightMapNoise: 0.06
-
-    # randomization
-    #randomize friction
-    randomizeFriction: False
-    frictionRange: [0.5, 1.25]
-    # randomize base mass
-    randomizeBaseMass: False
-    addedMassRange: [-0.5, 0.5]
-    # push robot
-    pushRobots: False
-    pushInterval_s: 15
-    # push vel x/y/z [m/s], angular vel x/y/z [rad/s]
-    pushVelMin: [-1,-1, 0, 0, 0, 0]
-    pushVelMax: [ 1, 1, 0, 0, 0, 0]
-
+    
     # episode length in seconds
     episodeLength_s: 20
 
   # viewer cam:
   viewer:
+    sync: True # set to False to freeze the viewer
     refEnv: 0
     pos: [0, 0, 10]  # [m]
     lookat: [1., 1, 9]  # [m]

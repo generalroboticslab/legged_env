@@ -1,41 +1,10 @@
-# Copyright (c) 2018-2022, NVIDIA Corporation
-# All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions are met:
-#
-# 1. Redistributions of source code must retain the above copyright notice, this
-#    list of conditions and the following disclaimer.
-#
-# 2. Redistributions in binary form must reproduce the above copyright notice,
-#    this list of conditions and the following disclaimer in the documentation
-#    and/or other materials provided with the distribution.
-#
-# 3. Neither the name of the copyright holder nor the names of its
-#    contributors may be used to endorse or promote products derived from
-#    this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
 import numpy as np
 import os
 import sys
 import time
 import datetime
-# import copy
-# import functools
 from typing import Dict, Any, Tuple
 from operator import itemgetter
-# from gym import spaces
 from gym import spaces
 
 from isaacgym.torch_utils import get_axis_params, torch_rand_float, quat_rotate_inverse, quat_apply, normalize
@@ -51,7 +20,7 @@ from isaacgym import gymutil
 
 from hydra.utils import to_absolute_path
 
-class QuadrupedTerrain(VecTask):
+class LeggedTerrain(VecTask):
     """
     issaac gym envs for task "A1Terrain" and "AnymalTerrain"
     """
@@ -138,26 +107,33 @@ class QuadrupedTerrain(VecTask):
         self.command_zero_threshold = self.cfg["env"]["commandZeroThreshold"]
 
         # default joint positions [rad]
-        self.named_default_dof_pos = self.cfg["env"].get("defaultJointAngles", {n: 0 for n in self.dof_names})
-
+        self.named_default_dof_pos = self.cfg["env"].get("defaultJointPositions", {n: 0 for n in self.dof_names})
         # desired joint positions [rad]
-        self.named_desired_dof_pos = self.cfg["env"].get("desiredJointAngles", self.named_default_dof_pos)
+        self.named_desired_dof_pos = self.cfg["env"].get("desiredJointPositions", self.named_default_dof_pos)
+        # initial joint positions [rad]
+        self.named_init_dof_pos = self.cfg["env"].get("initialJointPositions", self.named_default_dof_pos)
 
-        self.default_dof_pos = torch.tensor(
-            itemgetter(*self.dof_names)(self.named_default_dof_pos), dtype=torch.float, device=self.device
-        ).repeat(self.num_envs, 1)
-
-        self.desired_dof_pos = torch.tensor(
-            itemgetter(*self.dof_names)(self.named_desired_dof_pos), dtype=torch.float, device=self.device
-        ).repeat(self.num_envs, 1)
+        def get_dof_pos(value):
+            if isinstance(value, dict):
+                dof = torch.tensor(
+                    itemgetter(*self.dof_names)(value), dtype=torch.float, device=self.device
+                ).repeat(self.num_envs, 1)
+            else: # list
+                dof = torch.tensor(value, dtype=torch.float, device=self.device).repeat(self.num_envs, 1)
+                value = {n: v for n, v in zip(self.dof_names, value)}
+            return dof,value
+        
+        self.default_dof_pos,self.named_default_dof_pos = get_dof_pos(self.named_default_dof_pos)
+        self.desired_dof_pos,self.named_desired_dof_pos = get_dof_pos(self.named_desired_dof_pos)
+        self.init_dof_pos,self.named_init_dof_pos = get_dof_pos(self.named_init_dof_pos)
 
         # target base height [m]
         self.target_base_height = self.cfg["env"].get("baseHeightTarget",None)
         if self.target_base_height is None:
-            urdf = self._asset_urdf
+            urdf = self.asset_urdf
             urdf.update_cfg(self.named_default_dof_pos)
             bounding_box = urdf.collision_scene.bounding_box
-            base_height_offset = 0.05
+            base_height_offset= self.cfg["env"].get("baseHeightOffset",0.1)
             self.target_base_height = -bounding_box.bounds[0, 2]
             self.cfg["env"]["baseInitState"]["pos"][2] = float(self.target_base_height+base_height_offset)
             print(f"{bc.WARNING}[infer from URDF] target_base_height = {self.target_base_height:.4f} {bc.ENDC}")
@@ -240,11 +216,20 @@ class QuadrupedTerrain(VecTask):
         self.air_time_offset = float(cfg_reward["feetAirTime"]["offset"])
         self.stance_time_offset = float(cfg_reward["feetStanceTime"]["offset"])
 
-        # push robot
-        self.should_push_robots = self.cfg["env"]["learn"]["pushRobots"]
-        self.push_interval = int(self.cfg["env"]["learn"]["pushInterval_s"] / self.rl_dt + 0.5)
-        self.push_vel_min = torch.tensor(self.cfg["env"]["learn"]["pushVelMin"], dtype=torch.float, device=self.device)
-        self.push_vel_max = torch.tensor(self.cfg["env"]["learn"]["pushVelMax"], dtype=torch.float, device=self.device)
+        # ramdomize:push robot
+        randomize = self.cfg["env"]["randomize"]
+        self.should_push_robots = randomize["push"]["enable"]
+        self.push_interval = int(randomize["push"]["interval_s"] / self.rl_dt + 0.5)
+        self.push_vel_min = torch.tensor(randomize["push"]["velMin"], dtype=torch.float, device=self.device)
+        self.push_vel_max = torch.tensor(randomize["push"]["velMax"], dtype=torch.float, device=self.device)
+
+        # randomize: init_dof_pos
+        self.randomize_init_dof_pos = randomize["initDofPos"]["enable"]
+        self.randomize_init_dof_pos_range = randomize["initDofPos"]["range"]
+
+        # randomize: init_dof_vel
+        self.randomize_init_dof_vel = randomize["initDofVel"]["enable"]
+        self.randomize_init_dof_vel_range = randomize["initDofVel"]["range"]
 
         # heightmap
         self.init_height_points()  # height_points in cpu
@@ -259,7 +244,7 @@ class QuadrupedTerrain(VecTask):
             "dofVelocity": self.num_dof,
             "heightMap": self.num_height_points - 1,  # excluding the base origin measuring point
             "actions": self.num_dof,
-            "contact": 4,  # feet contact indicator
+            "contact": self.num_feet,  # feet contact indicator
         }
         self.obs_names = tuple(self.cfg["env"]["observationNames"])
         num_obs = np.sum(itemgetter(*self.obs_names)(self.obs_dim_dict))
@@ -354,11 +339,14 @@ class QuadrupedTerrain(VecTask):
         self.gym.refresh_rigid_body_state_tensor(self.sim)
 
         # create some wrapper tensors for different slices
+        # root_state: (num_actors, 13). 
+        # position([0:3]), rotation([3:7]), linear velocity([7:10]), angular velocity([10:13]).
         self.root_state = gymtorch.wrap_tensor(self.root_state_raw)
         self.dof_state = gymtorch.wrap_tensor(self.dof_state_raw)
         self.dof_pos = self.dof_state.view(self.num_envs, self.num_dof, 2)[..., 0]
         self.dof_vel = self.dof_state.view(self.num_envs, self.num_dof, 2)[..., 1]
         # rb_state: (num_envs,num_rigid_bodies,13)
+        # position([0:3]), rotation([3:7]), linear velocity([7:10]), angular velocity([10:13])
         self.rb_state = gymtorch.wrap_tensor(self.rb_state_raw).view(self.num_envs, -1, 13)
         # contact_forces: (num_envs, num_bodies, xyz axis)
         self.contact_forces = gymtorch.wrap_tensor(net_contact_forces).view(self.num_envs, -1, 3)
@@ -420,30 +408,35 @@ class QuadrupedTerrain(VecTask):
         # if running with a viewer, set up keyboard shortcuts and camera
             
         # self.enable_viewer_sync = False  # by default freeze the viewer until "V" is pressed
-        self.enable_viewer_sync = True
+        self.enable_viewer_sync: bool = self.cfg["env"]["viewer"]["sync"]
     
         # subscribe to keyboard shortcuts
         self.viewer = self.gym.create_viewer(self.sim, gymapi.CameraProperties())
 
-        def subscribe_viewer_keyboard_event(key, event_str):
+        def subscribe_keyboard_event(key, event_str):
             self.gym.subscribe_viewer_keyboard_event(self.viewer, key, event_str)
         
-        subscribe_viewer_keyboard_event(gymapi.KEY_ESCAPE, "QUIT")
-        subscribe_viewer_keyboard_event(gymapi.KEY_V, "toggle_viewer_sync")
-        subscribe_viewer_keyboard_event(gymapi.KEY_R, "record_frames")
+        subscribe_keyboard_event(gymapi.KEY_ESCAPE, "QUIT")
+        subscribe_keyboard_event(gymapi.KEY_V, "toggle_viewer_sync")
+        subscribe_keyboard_event(gymapi.KEY_R, "record_frames")
+        subscribe_keyboard_event(gymapi.KEY_9, "reset")
+
         
         self.enable_keyboard_operator: bool = self.cfg["env"]["viewer"]["keyboardOperator"]
         if self.enable_keyboard_operator:
-            subscribe_viewer_keyboard_event(gymapi.KEY_I, "vx+")
-            subscribe_viewer_keyboard_event(gymapi.KEY_K, "vx-")
-            subscribe_viewer_keyboard_event(gymapi.KEY_J, "vy+")
-            subscribe_viewer_keyboard_event(gymapi.KEY_L, "vy-")
-            subscribe_viewer_keyboard_event(gymapi.KEY_U, "heading+")
-            subscribe_viewer_keyboard_event(gymapi.KEY_O, "heading-")
-            subscribe_viewer_keyboard_event(gymapi.KEY_0, "v=0")
+            subscribe_keyboard_event(gymapi.KEY_I, "vx+")
+            subscribe_keyboard_event(gymapi.KEY_K, "vx-")
+            subscribe_keyboard_event(gymapi.KEY_J, "vy+")
+            subscribe_keyboard_event(gymapi.KEY_L, "vy-")
+            subscribe_keyboard_event(gymapi.KEY_U, "heading+")
+            subscribe_keyboard_event(gymapi.KEY_O, "heading-")
+            subscribe_keyboard_event(gymapi.KEY_0, "v=0")
             self.keyboard_operator_cmd = torch.zeros(3, dtype=torch.float, device=self.device)
         
-        subscribe_viewer_keyboard_event(gymapi.KEY_F, "toggle_viewer_follow")
+        subscribe_keyboard_event(gymapi.KEY_F, "toggle_viewer_follow")
+        # switch camera follow target
+        subscribe_keyboard_event(gymapi.KEY_LEFT_BRACKET, "ref_env-") # [
+        subscribe_keyboard_event(gymapi.KEY_RIGHT_BRACKET, "ref_env+") # ]
         
         # set the camera position based on up axis
         # self.sim_params = self.gym.get_sim_params(self.sim)
@@ -456,14 +449,15 @@ class QuadrupedTerrain(VecTask):
 
         self.cam_pos = self.cfg["env"]["viewer"]["pos"]
         self.cam_target_pos = self.cfg["env"]["viewer"]["lookat"]
-        
+        self.ref_env:int = int(self.cfg["env"]["viewer"]["refEnv"])%self.num_envs
+
         self.viewer_follow = self.cfg["env"]["viewer"]["follow"]
         if self.viewer_follow:
             self.viewer_follow_offset = torch.tensor(self.cfg["env"]["viewer"].get("follower_offset", [0.5, 0.5, 0.5]))
-            self.cam_target_pos = self.root_state[0, :3].clone().cpu() 
+            self.cam_target_pos = self.root_state[self.ref_env, :3].clone().cpu() 
             self.cam_pos = self.viewer_follow_offset.cpu() + self.cam_target_pos
         
-        self.gym.viewer_camera_look_at(self.viewer, None, gymapi.Vec3(*self.cam_pos), gymapi.Vec3(*self.cam_target_pos))
+        self.gym.viewer_camera_look_at(self.viewer, self.envs[self.ref_env], gymapi.Vec3(*self.cam_pos), gymapi.Vec3(*self.cam_target_pos))
         
         self.debug_viz = self.cfg["env"]["enableDebugVis"]
 
@@ -670,17 +664,32 @@ class QuadrupedTerrain(VecTask):
         
     def _create_envs(self, num_envs, spacing, num_per_row):
         """Creates multiple environments with randomized properties."""
-        # prepare friction randomization
-        rigid_shape_prop = self.gym.get_asset_rigid_shape_properties(self.asset)
-        friction_range = self.cfg["env"]["learn"]["frictionRange"]
-        # num_buckets = 100 # TODO do regression test
-        num_buckets = self.num_envs
-        friction_buckets = torch_rand_float(friction_range[0], friction_range[1], (num_buckets, 1), self.device)
 
         self.base_init_state = torch.tensor(self.base_init_state, dtype=torch.float, device=self.device)
         start_pose = gymapi.Transform()
         start_pose.p = gymapi.Vec3(*self.base_init_state[:3])
 
+        randomize = self.cfg["env"]["randomize"]
+        # friction randomization
+        randomize_friction:bool = randomize["friction"]["enable"]
+        if randomize_friction:
+            rigid_shape_prop = self.gym.get_asset_rigid_shape_properties(self.asset)
+            friction_buckets = torch_rand_float(*randomize["friction"]["range"], (self.num_envs, 1), self.device)
+        # baseMass randomization
+        randomize_base_mass:bool = randomize["baseMass"]["enable"]
+        if randomize_base_mass:
+            baseMass_buckets = torch_rand_float(*randomize["baseMass"]["range"], (self.num_envs, 1), self.device)
+            # added_masses = np.random.uniform(*self.cfg["env"]["learn"]["addedMassRange"], self.num_envs)
+
+        # dof properties
+        # lower: lower limit of DOF. in [radians] or [meters]
+        # upper: upper limit of DOF. in [radians] or [meters]
+        # velocity: Maximum velocity of DOF. in [radians/s] or [meters/s]
+        # effort: Maximum effort of DOF. in [N] or [Nm].
+        # stiffness: DOF stiffness.    
+        # damping: DOF damping.    
+        # friction: DOF friction coefficient, a generalized friction force is calculated as DOF force multiplied by friction.
+        # armature: DOF armature, a value added to the diagonal of the joint-space inertia matrix. Physically, it corresponds to the rotating part of a motor - which increases the inertia of the joint, even when the rigid bodies connected by the joint can have very little inertia.
         self.dof_props = self.gym.get_asset_dof_properties(self.asset)
         # asset dof properties override
         asset_dof_properties = self.cfg["env"].get("assetDofProperties", {})
@@ -721,25 +730,23 @@ class QuadrupedTerrain(VecTask):
                 pos = self.env_origins[i].clone()
                 pos[:2] += torch_rand_float(*self.base_pos_xy_range, (2, 1), self.device).squeeze(1)
                 start_pose.p = gymapi.Vec3(*pos)
-
-            for s in range(len(rigid_shape_prop)):
-                rigid_shape_prop[s].friction = friction_buckets[i % num_buckets]
-            self.gym.set_asset_rigid_shape_properties(self.asset, rigid_shape_prop)
             actor_handle = self.gym.create_actor(
                 env_handle, self.asset, start_pose, "actor", i, self.collision_filter, 0
             )
+
+            if randomize_friction:
+                for s in range(len(rigid_shape_prop)):
+                    rigid_shape_prop[s].friction = friction_buckets[i]
+                self.gym.set_actor_rigid_shape_properties(env_handle, actor_handle, rigid_shape_prop)
             self.gym.set_actor_dof_properties(env_handle, actor_handle, self.dof_props)
+            
+            if randomize_base_mass:
+                body_props = self.gym.get_actor_rigid_body_properties(env_handle, actor_handle)
+                body_props[self.base_id].mass += baseMass_buckets[i]
+                self.gym.set_actor_rigid_body_properties(env_handle, actor_handle, body_props, recomputeInertia=True)
+
             self.envs.append(env_handle)
             self.actor_handles.append(actor_handle)
-
-        if self.cfg["env"]["learn"]["randomizeBaseMass"]:
-            added_masses = np.random.uniform(*self.cfg["env"]["learn"]["addedMassRange"], self.num_envs)
-            for i in range(self.num_envs):
-                env_handle = self.envs[i]
-                actor_handle = self.actor_handles[i]
-                body_props = self.gym.get_actor_rigid_body_properties(env_handle, actor_handle)
-                body_props[self.base_id].mass += added_masses[i]
-                self.gym.set_actor_rigid_body_properties(env_handle, actor_handle, body_props, recomputeInertia=True)
 
     def check_termination(self):
         """Checks if the episode should terminate."""
@@ -850,10 +857,8 @@ class QuadrupedTerrain(VecTask):
         # rew["action"] = self.actions_filt.abs().sum(dim=1)  # filtered
 
         # action rate penalty
-        # rew["action_rate"] = torch.square(self.last_actions - self.actions).sum(dim=1)
         self.action_rate = (self.actions - self.last_actions) * self.rl_dt_inv
         rew["action_rate"] = torch.square(self.action_rate).sum(dim=1)
-        # rew["action_rate"] = torch.abs((self.last_actions - self.actions)*self.dt_inv).sum(dim=1)
 
         nonzero_command = torch.norm(self.commands[:, :2], dim=1) > self.command_zero_threshold
         feet_no_contact = ~self.feet_contact
@@ -944,7 +949,10 @@ class QuadrupedTerrain(VecTask):
                 "foot_pos": self.foot_pos,
                 "contact": self.feet_contact,
                 "rew_buf": self.rew_buf * self.rl_dt_inv,
-                "rew": {key: rew[key] * self.rl_dt_inv for key in rew}
+                "commands": self.commands,
+                "rew": {key: rew[key] * self.rl_dt_inv for key in rew},
+                "rew_rel":{key: rew[key]/self.rew_buf for key in rew},
+                "self.rb_state": self.rb_state[:,self.feet_ids]
             }
               
             if self.items_to_publish is not None:
@@ -974,11 +982,17 @@ class QuadrupedTerrain(VecTask):
             self.root_state[env_ids] = self.base_init_state
         self.gym.set_actor_root_state_tensor_indexed(self.sim, self.root_state_raw, env_ids_raw, len_ids)
 
-        # positions_offset = torch_rand_float(0.5, 1.5, (len_ids, self.num_dof), self.device)
-        dof_pos_offset = torch_rand_float(-0.1, 0.1, (len_ids, self.num_dof), self.device)
-        self.dof_pos[env_ids] = self.default_dof_pos[env_ids] + dof_pos_offset
-        self.dof_vel[env_ids] = torch_rand_float(-0.1, 0.1, (len_ids, self.num_dof), self.device)
-        self.gym.set_dof_state_tensor_indexed(self.sim, self.dof_state_raw, env_ids_raw, len_ids) 
+        if self.randomize_init_dof_pos:
+            dof_pos_offset = torch_rand_float(*self.randomize_init_dof_pos_range, (len_ids, self.num_dof), self.device)
+            self.dof_pos[env_ids] = self.init_dof_pos[env_ids] + dof_pos_offset
+        else:
+            self.dof_pos[env_ids] = self.init_dof_pos[env_ids]
+        if self.randomize_init_dof_vel:
+            self.dof_vel[env_ids] = torch_rand_float(*self.randomize_init_dof_vel_range, (len_ids, self.num_dof), self.device)
+        else:
+            self.dof_vel[env_ids,:] = 0
+        self.gym.set_dof_state_tensor_indexed(self.sim, self.dof_state_raw, env_ids_raw, len_ids)
+
         # vx
         self.commands[env_ids, 0] = torch_rand_float(*self.command_x_range, (len_ids, 1), self.device).squeeze()
         # vy
@@ -1021,7 +1035,10 @@ class QuadrupedTerrain(VecTask):
         self.terrain_levels[env_ids] -= 1 * (distance < command_distance * 0.25)
         # TODO check level up/down condition
         # self.terrain_levels[env_ids] += 1 * (distance > command_distance*0.5)
-        self.terrain_levels[env_ids] += 1 * (distance > self.terrain.env_length / 2)
+        # level up if run over the terrain or move at least 75% of the command distance
+        self.terrain_levels[env_ids] += 1 * torch.logical_or(
+            distance > self.terrain.env_length / 2, distance > command_distance * 0.75)
+        
         self.terrain_levels[env_ids] = torch.clip(self.terrain_levels[env_ids], 0) % self.terrain.env_rows
         self.env_origins[env_ids] = self.terrain.env_origins[self.terrain_levels[env_ids], self.terrain_types[env_ids]]
         self.terrain_level_mean = self.terrain_levels.float().mean()
@@ -1051,6 +1068,13 @@ class QuadrupedTerrain(VecTask):
                     self.record_frames = not self.record_frames
                 elif evt.action == "toggle_viewer_follow" and evt.value > 0:
                     self.viewer_follow = not self.viewer_follow
+                elif evt.action == "reset" and evt.value>0:
+                    # reset
+                    self.progress_buf[:]= self.max_episode_length
+                elif evt.action == "ref_env-" and evt.value > 0:
+                    self.ref_env = (self.ref_env-1)%self.num_envs
+                elif evt.action == "ref_env+" and evt.value > 0:
+                    self.ref_env = (self.ref_env+1)%self.num_envs
             if self.enable_keyboard_operator:
                 for evt in events:
                     if evt.action == "vx+" and evt.value > 0:
@@ -1120,10 +1144,10 @@ class QuadrupedTerrain(VecTask):
         
             # do modify camera position if viewer_follow
             if self.viewer_follow:
-                self.cam_target_pos = self.root_state[0, :3].clone().cpu() 
+                self.cam_target_pos = self.root_state[self.ref_env, :3].clone().cpu() 
                 self.cam_pos = self.viewer_follow_offset.cpu()+self.cam_target_pos
                 self.gym.viewer_camera_look_at(
-                    self.viewer, None, gymapi.Vec3(*self.cam_pos), gymapi.Vec3(*self.cam_target_pos))   
+                    self.viewer, self.envs[self.ref_env], gymapi.Vec3(*self.cam_pos), gymapi.Vec3(*self.cam_target_pos))   
 
         return
 
@@ -1137,9 +1161,9 @@ class QuadrupedTerrain(VecTask):
             Observations are dict of observations (currently only one member called 'obs')
         """
 
-        # randomize actions
-        if self.dr_randomizations.get('actions', None):
-            actions = self.dr_randomizations['actions']['noise_lambda'](actions)
+        # # randomize actions # TODO: rurrently need to completely bypass this
+        # if self.dr_randomizations.get('actions', None):
+        #     actions = self.dr_randomizations['actions']['noise_lambda'](actions)
 
         action_tensor = torch.clamp(actions, -self.clip_actions, self.clip_actions)
         # apply actions
@@ -1167,9 +1191,9 @@ class QuadrupedTerrain(VecTask):
         # Timeout == 1 makes sense only if the reset buffer is 1.
         self.timeout_buf = (self.progress_buf >= self.max_episode_length - 1) & (self.reset_buf != 0)
 
-        # randomize observations
-        if self.dr_randomizations.get('observations', None):
-            self.obs_buf = self.dr_randomizations['observations']['noise_lambda'](self.obs_buf)
+        # # randomize observations #TODO currently need to completely bypass dr_randomizations
+        # if self.dr_randomizations.get('observations', None):
+        #     self.obs_buf = self.dr_randomizations['observations']['noise_lambda'](self.obs_buf)
 
         self.extras["time_outs"] = self.timeout_buf.to(self.rl_device)
 
@@ -1383,3 +1407,36 @@ def bell(x: torch.Tensor, a: float, b: float, c: float) -> torch.Tensor:
 @torch.jit.script
 def reverse_bell(x: torch.Tensor, a: float, b: float, c: float) -> torch.Tensor:
     return 1 - 1 / (1 + torch.pow(torch.abs(x / a - c), b))
+
+
+## this script is derived from anymal_terrain.py in IsaacGymEnvs
+# https://github.com/isaac-sim/IsaacGymEnvs/blob/main/isaacgymenvs/tasks/anymal_terrain.py
+# the orignal script contains the copyright notice as below
+#
+# Copyright (c) 2018-2022, NVIDIA Corporation
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice, this
+#    list of conditions and the following disclaimer.
+#
+# 2. Redistributions in binary form must reproduce the above copyright notice,
+#    this list of conditions and the following disclaimer in the documentation
+#    and/or other materials provided with the distribution.
+#
+# 3. Neither the name of the copyright holder nor the names of its
+#    contributors may be used to endorse or promote products derived from
+#    this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.

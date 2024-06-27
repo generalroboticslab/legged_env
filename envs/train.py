@@ -42,10 +42,11 @@ sys.path.append(isaacgymenvs.__path__[0])  # fix isaacgymenvs imports
 sys.path.append(os.path.abspath(__file__ + "/../.."))  # fix envs imports
 
 from isaacgymenvs.tasks import isaacgym_task_map
-from envs.tasks.quadruped_terrain import QuadrupedTerrain
-isaacgym_task_map["A1Terrain"] = QuadrupedTerrain
-isaacgym_task_map["AnymalTerrain"] = QuadrupedTerrain
-isaacgym_task_map["RobotDog"] = QuadrupedTerrain
+from envs.tasks.legged_terrain import LeggedTerrain
+isaacgym_task_map["A1Terrain"] = LeggedTerrain
+isaacgym_task_map["AnymalTerrain"] = LeggedTerrain
+isaacgym_task_map["RobotDog"] = LeggedTerrain
+isaacgym_task_map["Biped"] = LeggedTerrain
 
 # using np.arange [star,end), step, round to 15 decimals
 OmegaConf.register_new_resolver(

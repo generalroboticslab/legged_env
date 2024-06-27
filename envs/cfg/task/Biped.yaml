@@ -1,13 +1,13 @@
 # used to create the object
-name: A1Terrain
+name: Biped
 
 physics_engine: 'physx'
 
 env:
   numEnvs: ${resolve_default:4096,${...num_envs}}
   numObservations: "infer" #49 #165 #188
-  numActions: 12
-  envSpacing: 3.  # [m]
+  numActions: "infer"
+  envSpacing: 1.  # [m]
   enableDebugVis: false
 
   dataPublisher:
@@ -21,11 +21,12 @@ env:
     - commands
     - dofPosition
     - dofVelocity
-    - heightMap
+    # - heightMap
     - actions
+    # - contact
 
   terrain:
-    terrainType: trimesh # {none, plane, trimesh,heightfield}
+    terrainType: plane # {none, plane, trimesh,heightfield}
     staticFriction: 1.0  # [-]
     dynamicFriction: 1.0  # [-]
     restitution: 0.        # [-]
@@ -66,34 +67,34 @@ env:
     linear_x: [-1., 1.] # min max [m/s]
     linear_y: [-1., 1.]   # min max [m/s]
     yaw: [-3.14, 3.14]    # min max [rad] yaw angle dirvergence
-  commandZeroThreshold: 0.05 # [m/s] treat commends below this threshold as zero
+  commandZeroThreshold: 0.00 # [m/s] treat commends below this threshold as zero
 
   control:
     # PD Drive parameters:
-    stiffness: 40.0  # [N*m/rad]
-    damping: 1.0     # [N*m*s/rad]
-    limit: 33        # [N*m]
+    stiffness: 80.0  # [N*m/rad]
+    damping: 2.0     # [N*m*s/rad]
+    limit: 80        # [N*m]
     # action scale: target angle = actionScale * action + defaultAngle
     actionScale: 0.5
     # decimation: Number of control action updates @ sim DT per policy DT
     decimation: 4
   # controlFrequencyInv: 1 # Number of control action updates @ sim DT per policy DT
 
-  defaultJointPositions:  # = target angles when action = 0.0 (in rad)
-    FL_hip_joint:  0.1     # [rad]
-    RL_hip_joint:  0.1     # [rad]
-    FR_hip_joint: -0.1     # [rad]
-    RR_hip_joint: -0.1     # [rad]
+  # defaultJointPositions:  # = target angles when action = 0.0 (in rad)
+  #   FL_hip_joint:  0.1     # [rad]
+  #   RL_hip_joint:  0.1     # [rad]
+  #   FR_hip_joint: -0.1     # [rad]
+  #   RR_hip_joint: -0.1     # [rad]
 
-    FL_thigh_joint: 0.8    # [rad]
-    RL_thigh_joint: 1.0    # [rad]
-    FR_thigh_joint: 0.8    # [rad]
-    RR_thigh_joint: 1.0    # [rad]
+  #   FL_thigh_joint: 0.8    # [rad]
+  #   RL_thigh_joint: 1.0    # [rad]
+  #   FR_thigh_joint: 0.8    # [rad]
+  #   RR_thigh_joint: 1.0    # [rad]
 
-    FL_calf_joint: -1.5    # [rad]
-    RL_calf_joint: -1.5    # [rad]
-    FR_calf_joint: -1.5    # [rad]
-    RR_calf_joint: -1.5    # [rad]
+  #   FL_calf_joint: -1.5    # [rad]
+  #   RL_calf_joint: -1.5    # [rad]
+  #   FR_calf_joint: -1.5    # [rad]
+  #   RR_calf_joint: -1.5    # [rad]
 
   # desiredJointPositions:
   #   FL_hip_joint:  0.1     # [rad]
@@ -120,20 +121,20 @@ env:
       flip_visual_attachments: false
       replace_cylinder_with_capsule: true
     # root: "" # override defualt asset_root
-    file: "urdf/a1/a1_minimum.urdf"
+    file: "urdf/biped/biped_v6.urdf"
     # Body
     # baseName: base
     # hipName: hip
     ## calf if collapsing fixed joint, foot otherwise
-    kneeName: calf
-    footName: foot 
+    # kneeName: calf
+    # footName: foot 
     # kneeName: thigh
     # footName: calf # calf if collapsing fixed joint, foot otherwise
     # collapse_fixed_joints: True
     ## joint
     # hipJointName: hip
-  assetDofProperties: # set_actor_dof_properties (override)
-    damping: 0.5
+  # assetDofProperties: # set_actor_dof_properties (override) # 'hasLimits', 'lower', 'upper', 'driveMode', 'velocity', 'effort', 'stiffness', 'damping', 'friction', 'armature'
+  #   damping: 0.5
 
   heightmap:
     x: "${linspace: -0.6, 0.6, 13}"
@@ -219,7 +220,7 @@ env:
         scale: -0. #-2.0
         fcn: sum
       feetSlip:
-        scale: -0.0
+        scale: -0.01
         fcn: slip_reward  
       kneeCollision:
         scale: -0.25 

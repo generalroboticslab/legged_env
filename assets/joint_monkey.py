@@ -33,21 +33,14 @@ class AssetDesc:
         self.file_name = file_name
         self.flip_visual_attachments = flip_visual_attachments
 
-
-asset_descriptors = [
-    # AssetDesc("urdf/bipedv6/bipedv6.urdf", False),
+asset_descriptors = [   
+    AssetDesc("urdf/biped/biped_v6.urdf", False),
     AssetDesc("urdf/RobotDog/RobotDog3kg.urdf", False),
-    # AssetDesc("urdf/RobotDog/RobotDog7kg.urdf", False),
-    # AssetDesc("urdf/a1/a1_minimum.urdf", False),
-    # AssetDesc("urdf/a1/a1_minimum_anymal_like.urdf", False),
-    # AssetDesc("urdf/a1/a1_simple.urdf", False),
-    # AssetDesc("urdf/a1/a1_ros.urdf", True),
-    # AssetDesc("urdf/a1/a1_pybullet.urdf", False),
-    # AssetDesc("urdf/anymal_c/urdf/anymal.urdf", True),
-    # AssetDesc("urdf/anymal_c/urdf/anymal_minimal.urdf", True),
-    # AssetDesc("urdf/anymal_c/urdf/anymal_minimal_a1_like.urdf", True),
-    # AssetDesc("urdf/px2_et1/urdf/px2_et1.urdf", False),
-    # AssetDesc("urdf/px2_et1/urdf/px2_et1_minimal.urdf", False),
+    AssetDesc("urdf/a1/a1_minimum.urdf", False),
+    AssetDesc("urdf/a1/a1_minimum_anymal_like.urdf", False),
+    AssetDesc("urdf/anymal_c/urdf/anymal.urdf", True),
+    AssetDesc("urdf/anymal_c/urdf/anymal_minimal.urdf", True),
+    AssetDesc("urdf/anymal_c/urdf/anymal_minimal_a1_like.urdf", True),
 
 ]
 
@@ -132,7 +125,7 @@ for k in range(50):
 
     #------------------------------------------------------------
     # load asset
-    asset_root = os.path.dirname(__file__)
+    asset_root = os.path.abspath(os.path.dirname(__file__))
     asset_file = asset_descriptors[args.asset_id].file_name
 
     asset_options = gymapi.AssetOptions()
@@ -142,6 +135,7 @@ for k in range(50):
     asset_options.collapse_fixed_joints = True
     asset_options.replace_cylinder_with_capsule = True
     asset_options.override_inertia = False
+    asset_options.vhacd_enabled = True
 
     asset_options.density = 0.001
     asset_options.angular_damping = 0.0
@@ -280,7 +274,7 @@ for k in range(50):
     gym.subscribe_viewer_keyboard_event(viewer, gymapi.KEY_R, "reset")
 
     init = False
-    freeze = True
+    freeze = False
     while not gym.query_viewer_has_closed(viewer):
         # Get input actions from the viewer and handle them appropriately
         for evt in gym.query_viewer_action_events(viewer):
