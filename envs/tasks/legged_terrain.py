@@ -258,6 +258,12 @@ class LeggedTerrain(VecTask):
             print(f"inferring, numObservations={num_obs}")
         assert self.cfg["env"]["numObservations"] == num_obs
 
+        self.asymmetric_obs = self.cfg["env"].get("asymmetric_observations", False)
+        if self.asymmetric_obs:
+            self.state_names = tuple(self.cfg["env"]["stateNames"])
+            num_state = np.sum(itemgetter(*self.state_names)(self.obs_dim_dict))
+            self.cfg["env"]["numStates"] = self.num_states = num_state
+
         infer_action = self.cfg["env"]["numActions"] == "infer"
         if infer_action:
             self.cfg["env"]["numActions"] = len(self.dof_names)
@@ -787,7 +793,11 @@ class LeggedTerrain(VecTask):
             "actions": self.actions,
             "contact": self.feet_contact,
         }
+        # update observation buffer
         self.obs_buf = torch.cat(itemgetter(*self.obs_names)(obs_dict), dim=-1)
+
+        if self.asymmetric_obs: # update state buffer
+            self.states_buf = torch.cat(itemgetter(*self.state_names)(obs_dict), dim=-1)
 
         if self.add_noise:
             self.noise_vec.uniform_(-1.0, 1.0).mul_(self.noise_scale_vec)  # scaled noise vector
@@ -873,7 +883,7 @@ class LeggedTerrain(VecTask):
         self.action_rate = (self.actions - self.last_actions) * self.rl_dt_inv
         rew["action_rate"] = torch.square(self.action_rate).sum(dim=1)
 
-        nonzero_command = torch.norm(self.commands[:, :2], dim=1) > self.command_zero_threshold
+        nonzero_command = torch.norm(self.commands[:, :2], dim=1) >= self.command_zero_threshold
         feet_no_contact = ~self.feet_contact
         # air time reward (reward long swing)
         first_contact = (self.air_time > 0.0) * self.feet_contact

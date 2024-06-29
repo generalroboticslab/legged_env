@@ -1,0 +1,34 @@
+params:
+  config:
+    central_value_config:
+      minibatch_size: 16384
+      mini_epochs: 5
+      learning_rate: 3.e-4
+      lr_schedule: adaptive
+      schedule_type: standard
+      kl_threshold: 0.008
+      clip_value: True
+      normalize_input: True
+      truncate_grads: True
+
+      network:
+        name: actor_critic
+        central_value: True
+        mlp:
+          units: [512, 256, 128]
+          activation: elu
+          d2rl: False
+          initializer:
+            name: default
+          regularizer:
+            name: None
+
+    # num_actors: ${....task.env.numEnvs} # seems to be not needed
+    name: ${resolve_default:BipedAsymm,${....experiment}}
+    # value_bootstrap: False # doe not seems to help too much
+    # mixed_precision: False
+
+
+defaults:
+  - LeggedTerrainPPO
+  - _self_

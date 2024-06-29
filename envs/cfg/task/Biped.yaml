@@ -24,6 +24,9 @@ env:
     # - heightMap
     - actions
     # - contact
+  
+  asymmetric_observations: False
+  stateNames: [linearVelocity, angularVelocity, projectedGravity, commands, dofPosition, dofVelocity, actions]
 
   terrain:
     terrainType: plane # {none, plane, trimesh,heightfield}
