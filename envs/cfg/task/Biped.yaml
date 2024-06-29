@@ -115,7 +115,7 @@ env:
   urdfAsset:
     collision_filter: 0
     AssetOptions:
-      collapse_fixed_joints: false
+      collapse_fixed_joints: true
       fix_base_link: false
       default_dof_drive_mode: 3 # see DofDriveMode (0: DOF_MODE_NONE, 1: DOF_MODE_POS, 2: DOF_MODE_VEL, 3: DOF_MODE_EFFORT)
       flip_visual_attachments: false

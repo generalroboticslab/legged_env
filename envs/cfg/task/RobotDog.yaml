@@ -37,10 +37,10 @@ env:
     mapWidth: 10.
     numLevels: 10
     maxInitMapLevel: 0
-    difficultySale: 1.0 # multiplier for terrain height
+    difficultySale: 0.2 # multiplier for terrain height
     numTerrains: 20
-    # terrain types: [smooth slope, rough slope, stairs up, stairs down, discrete, stepping stone]
-    terrainProportions: [0.2, 0.2, 0.2, 0.2, 0.2, 0]
+    # terrain types: [rough_up, rough_down, rough_flat, stair_up, stair_down, smooth_up, smooth_down, discrete, stepping_stone]
+    terrainProportions: [1,1,1,0,0,0,1,1,0,0]
     stair: # stairs up/down terrain
       width: 0.31
       height: 0.18
@@ -111,6 +111,10 @@ env:
       default_dof_drive_mode: 3 # see DofDriveMode (0: DOF_MODE_NONE, 1: DOF_MODE_POS, 2: DOF_MODE_VEL, 3: DOF_MODE_EFFORT)
       flip_visual_attachments: false
       replace_cylinder_with_capsule: true
+      # vhacd_enabled: true
+      # vhacd_params:
+      #   max_convex_hulls: 3
+      #   max_num_vertices_per_ch: 16
     # root: "" # override defualt asset_root
     file: "urdf/RobotDog/RobotDog3kg.urdf"
     # baseName: base

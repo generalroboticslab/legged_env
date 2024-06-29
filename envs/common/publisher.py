@@ -118,7 +118,7 @@ class DataReceiver:
         decodings = {
             "raw": lambda data: data,  # raw/bytes
             "utf-8": lambda data: data.decode("utf-8"),
-            "msgpack": lambda data: msgpack.unpackb(data, raw=False),
+            "msgpack": lambda data: msgpack.unpackb(data),
             "json": lambda data: orjson.loads(data),
         }
         if decoding not in decodings:
@@ -128,7 +128,7 @@ class DataReceiver:
         self.address = None
         self._running = True  # Flag to control the receive loop
 
-    def receive(self, timeout=0.1, buffer_size=1024):
+    def receive(self, timeout=0.1, buffer_size=1024*1024*8):
         """Receive and decode data from the socket if available, otherwise return None."""
         ready = select.select([self.socket], [], [], timeout)
         if ready[0]:
@@ -139,7 +139,7 @@ class DataReceiver:
         else:
             return None, None  # No data received within the timeout
 
-    def receive_continuously(self, timeout=0.1, buffer_size=1024):
+    def receive_continuously(self, timeout=0.1, buffer_size=1024*1024*8):
         """Continuously receive and decode data from the socket in a dedicated thread."""
 
         def _receive_loop():
