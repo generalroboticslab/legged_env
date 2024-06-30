@@ -244,8 +244,10 @@ class LeggedTerrain(VecTask):
             "commands": 3,  # vel_x,vel_y, vel_yaw, (excluding heading)
             "dofPosition": self.num_dof,
             "dofVelocity": self.num_dof,
+            "dofForceTarget": self.num_dof,
             "dofForce": self.num_dof,
             "heightMap": self.num_height_points - 1,  # excluding the base origin measuring point
+            "baseHeight": 1,
             "actions": self.num_dof,
             "contact": self.num_feet,  # feet contact indicator
         }
@@ -538,6 +540,7 @@ class LeggedTerrain(VecTask):
             "dofVelocity": cfg_learn["dofVelocityNoise"] * noise_level * self.dof_vel_scale,
             "dofForce": 0, # TODO, MAYBE ADD NOISE FOR DOF FORCE
             "heightMap": cfg_learn["heightMapNoise"] * noise_level * self.heightmap_scale,
+            "baseHeight": 0,
             "actions": 0,  # previous actions
             "contact": 0,  # feet contact
         }
@@ -791,6 +794,7 @@ class LeggedTerrain(VecTask):
             "dofVelocity": self.dof_vel * self.dof_vel_scale,
             "dofForceTarget": self.dof_force_target * self.dof_force_target_scale,
             "dofForce": self.dof_force * self.dof_force_scale,
+            "baseHeight": heights[:, [-1]],
             "heightMap": heights[:, :-1],
             "actions": self.actions,
             "contact": self.feet_contact,
