@@ -103,7 +103,11 @@ class DataReceiver:
     """
 
     def __init__(
-            self, target_port: int = 9870, decoding: str = "msgpack"):
+            self, 
+            target_port: int = 9870, 
+            decoding: str = "msgpack",
+            broadcast: bool = False,
+            ):
         """
         Initializes the DataReceiver.
 
@@ -113,7 +117,11 @@ class DataReceiver:
         """
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.socket.bind(("", target_port))
+        self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+        ip_address = ""
+        if broadcast:
+            ip_address = '<broadcast>'
+        self.socket.bind((ip_address, target_port))
         self.socket.setblocking(False)
         decodings = {
             "raw": lambda data: data,  # raw/bytes
@@ -186,30 +194,34 @@ if __name__ == "__main__":
     # Sample data to publish
     time_since_start = time.time()
 
-    def test_data():
+    def test_data(i):
         """example test data"""
         return {
-            "time": time.time()-time_since_start,
+            "id": i,
             "sensor_id": np.random.randint(0, 10),
             "temperature": 25.5,
-            "humidity": 68
+            "time": time.time()-time_since_start,
         }
 
     # Create a publisher instance
     publisher = DataPublisher(
-        target_url="udp://localhost:9871", encoding="msgpack")
+        target_url="udp://localhost:9871", encoding="msgpack",broadcast=True)
 
     # Create a receiver instance
-    receiver = DataReceiver(target_port=9871, decoding="msgpack")
-
-    # Start continuous receiving in a thread
-    receiver.receive_continuously()
+    num_receivers = 2
+    receivers = []
+    for i in range(num_receivers):
+        receiver = DataReceiver(target_port=9871, decoding="msgpack",broadcast=True)
+        # Start continuous receiving in a thread
+        receiver.receive_continuously()     
+        receivers.append(receiver)
 
     # Send data multiple times with a delay
     for i in range(10):
-        publisher.publish(test_data())
-        print(f"Received from {receiver.address}: {receiver.data}")
-        time.sleep(0.001)  # add a small delay
+        publisher.publish(test_data(i))
+        for k,receiver in enumerate(receivers):
+            print(f"receiver [{k}] {receiver.address}: {receiver.data}")
+        time.sleep(1e-5)  # add a small delay
 
     # Stop continuous receiving after a while
     receiver.stop()
