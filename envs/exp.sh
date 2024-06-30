@@ -1,10 +1,98 @@
 # #!/bin/bash
+biped_c2r8(){
+    biped_c2
+    change_hydra_dir
+    PLAY_ARGS+=(
+        # bad gait, worse than biped_c2r5
+        checkpoint=outputs/Biped/train/biped_c2r8/runs/BipedAsymm_29-20-27-06/nn/BipedAsymm.pth
+        # test=export
+        # num_envs=1 # exported policy only works with 1 num of env
+
+    )
+    BASE_ARGS+=(
+        train=BipedPPOAsymm
+        task.env.asymmetric_observations=True
+        # observation does not have linearVelocity
+        task.env.observationNames=[angularVelocity,projectedGravity,commands,dofPosition,dofVelocity,actions]
+        task.env.stateNames=[linearVelocity,angularVelocity,projectedGravity,commands,dofPosition,dofVelocity,dofForce,dofForceTarget,actions]
+
+        # same as biped_c2r3
+        task.env.learn.reward.feetSlip.scale=-0.1
+        task.env.randomCommandVelocityRanges.linear_x=[-0.1,0.5]
+        task.env.randomCommandVelocityRanges.linear_y=[0,0]
+        task.env.randomCommandVelocityRanges.yaw=[0,0]
+
+        # # for logging names
+        # "hydra.run.dir=..//outputs//\$\{task_name\}//\$\{test\}//${FUNCNAME[0]}"
+    )
+}
+
+
+biped_c2r7(){
+    biped_c2
+    change_hydra_dir
+    PLAY_ARGS+=(
+        # small steps, worse than biped_c2r5
+        checkpoint=outputs/Biped/train/biped_c2r7/runs/BipedAsymm_29-20-26-55/nn/BipedAsymm.pth
+        # test=export
+        # num_envs=1 # exported policy only works with 1 num of env
+
+    )
+    BASE_ARGS+=(
+        train=BipedPPOAsymm
+        task.env.asymmetric_observations=True
+        # observation does not have linearVelocity
+        task.env.observationNames=[angularVelocity,projectedGravity,commands,dofPosition,dofVelocity,actions]
+        task.env.stateNames=[linearVelocity,angularVelocity,projectedGravity,commands,dofPosition,dofVelocity,dofForceTarget,actions]
+
+        # same as biped_c2r3
+        task.env.learn.reward.feetSlip.scale=-0.1
+        task.env.randomCommandVelocityRanges.linear_x=[-0.1,0.5]
+        task.env.randomCommandVelocityRanges.linear_y=[0,0]
+        task.env.randomCommandVelocityRanges.yaw=[0,0]
+
+        # # for logging names
+        # "hydra.run.dir=..//outputs//\$\{task_name\}//\$\{test\}//${FUNCNAME[0]}"
+    )
+}
+
+
+biped_c2r6(){
+    biped_c2
+    change_hydra_dir
+    PLAY_ARGS+=(
+        # similar to biped_c2r5
+        checkpoint=outputs/Biped/train/biped_c2r6/runs/BipedAsymm_29-20-26-48/nn/BipedAsymm.pth
+        # test=export
+        # num_envs=1 # exported policy only works with 1 num of env
+
+    )
+    BASE_ARGS+=(
+        train=BipedPPOAsymm
+        task.env.asymmetric_observations=True
+        # observation does not have linearVelocity
+        task.env.observationNames=[angularVelocity,projectedGravity,commands,dofPosition,dofVelocity,actions]
+        task.env.stateNames=[linearVelocity,angularVelocity,projectedGravity,commands,dofPosition,dofVelocity,dofForce,actions]
+
+        # same as biped_c2r3
+        task.env.learn.reward.feetSlip.scale=-0.1
+        task.env.randomCommandVelocityRanges.linear_x=[-0.1,0.5]
+        task.env.randomCommandVelocityRanges.linear_y=[0,0]
+        task.env.randomCommandVelocityRanges.yaw=[0,0]
+
+        # # for logging names
+        # "hydra.run.dir=..//outputs//\$\{task_name\}//\$\{test\}//${FUNCNAME[0]}"
+    )
+}
+
 
 biped_c2r5(){
     biped_c2
+    change_hydra_dir
     PLAY_ARGS+=(
-        test=export
-        num_envs=1 # exported policy only works with 1 num of env
+
+        # test=export
+        # num_envs=1 # exported policy only works with 1 num of env
 
         checkpoint=outputs/Biped/train/biped_c2r5/runs/BipedAsymm_29-18-21-24/nn/BipedAsymm.pth
     )
@@ -21,13 +109,14 @@ biped_c2r5(){
         task.env.randomCommandVelocityRanges.linear_y=[0,0]
         task.env.randomCommandVelocityRanges.yaw=[0,0]
 
-        # for logging names
-        "hydra.run.dir=..//outputs//\$\{task_name\}//\$\{test\}//${FUNCNAME[0]}"
+        # # for logging names
+        # "hydra.run.dir=..//outputs//\$\{task_name\}//\$\{test\}//${FUNCNAME[0]}"
     )
 }
 
 biped_c2r4(){
     biped_c2
+    change_hydra_dir
     PLAY_ARGS+=(
 
         # checkpoint=outputs/Biped/train/biped_c2r4/runs/BipedAsymm_29-17-59-32/nn/BipedAsymm.pth # mixed_precision: True
@@ -41,9 +130,6 @@ biped_c2r4(){
         task.env.randomCommandVelocityRanges.linear_x=[-0.1,0.5]
         task.env.randomCommandVelocityRanges.linear_y=[0,0]
         task.env.randomCommandVelocityRanges.yaw=[0,0]
-
-        # for logging names
-        "hydra.run.dir=..//outputs//\$\{task_name\}//\$\{test\}//${FUNCNAME[0]}"
     )
 }
 
@@ -51,6 +137,7 @@ biped_c2r4(){
 
 biped_c2r3(){
     biped_c2
+    change_hydra_dir
     PLAY_ARGS+=(
         checkpoint=outputs/Biped/train/biped_c2r3/runs/Biped_29-17-14-05/nn/Biped.pth
     )
@@ -59,22 +146,18 @@ biped_c2r3(){
         task.env.randomCommandVelocityRanges.linear_x=[-0.1,0.5]
         task.env.randomCommandVelocityRanges.linear_y=[0,0]
         task.env.randomCommandVelocityRanges.yaw=[0,0]
-
-        # for logging names
-        "hydra.run.dir=..//outputs//\$\{task_name\}//\$\{test\}//${FUNCNAME[0]}"
     )
 }
 
 biped_c2r2(){
     biped_c2
+    change_hydra_dir
     PLAY_ARGS+=(
         # ok
         checkpoint=outputs/Biped/train/biped_c2r2_20240629_163756/runs/Biped_29-16-37-56/nn/Biped.pth
     )
     BASE_ARGS+=(
         task.env.learn.reward.feetSlip.scale=-0.1
-        # for logging names
-        "hydra.run.dir=..//outputs//\$\{task_name\}//\$\{test\}//${FUNCNAME[0]}"
     )
 }
 
@@ -85,7 +168,7 @@ biped_c2r1(){
     )
     BASE_ARGS+=(
         task.env.learn.reward.feetSlip.scale=-0.05
-        # for logging names
+        # change_hydra_dir
         "hydra.run.dir=..//outputs//\$\{task_name\}//\$\{test\}//${FUNCNAME[0]}"
     )
 }
@@ -401,6 +484,11 @@ base(){
     )
 }
 
+change_hydra_dir(){
+    BASE_ARGS+=(
+        "hydra.run.dir=..//outputs//\$\{task_name\}//\$\{test\}//${FUNCNAME[1]}"
+    )
+}
 
 match_dyn(){
     match
@@ -467,3 +555,4 @@ match(){
         task.env.learn.episodeLength_s=555
     )
 }
+

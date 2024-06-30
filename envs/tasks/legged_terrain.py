@@ -103,6 +103,7 @@ class LeggedTerrain(VecTask):
         self.dof_vel_scale = self.cfg["env"]["learn"]["dofVelocityScale"]
         # TODO: MAYBE SET A BETTER SCALE FOR DOF FORCES
         self.dof_force_scale = self.cfg["env"]["learn"].get("dofForceScale",1/self.dof_force_target_limit)
+        self.dof_force_target_scale = self.cfg["env"]["learn"].get("dofForceTargetScale",1/self.dof_force_target_limit)
         self.heightmap_scale = self.cfg["env"]["learn"]["heightMapScale"]
         self.action_scale = self.cfg["env"]["control"]["actionScale"]
 
@@ -788,6 +789,7 @@ class LeggedTerrain(VecTask):
             "commands": self.commands[:, :3] * self.commands_scale,
             "dofPosition": self.dof_pos * self.dof_pos_scale,
             "dofVelocity": self.dof_vel * self.dof_vel_scale,
+            "dofForceTarget": self.dof_force_target * self.dof_force_target_scale,
             "dofForce": self.dof_force * self.dof_force_scale,
             "heightMap": heights[:, :-1],
             "actions": self.actions,

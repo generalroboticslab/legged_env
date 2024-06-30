@@ -115,7 +115,8 @@ def launch_rlg_hydra(cfg: DictConfig):
     from isaacgymenvs.utils.rlgames_utils import RLGPUEnv, RLGPUAlgoObserver, MultiObserver, ComplexObsRLGPUEnv
     from isaacgymenvs.utils.wandb_utils import WandbAlgoObserver
     from rl_games.common import env_configurations, vecenv
-    from rl_games.torch_runner import Runner
+    # from rl_games.torch_runner import Runner
+    from envs.common.torch_runner import Runner
     from rl_games.algos_torch import model_builder
     from isaacgymenvs.learning import amp_continuous
     from isaacgymenvs.learning import amp_players
@@ -249,9 +250,10 @@ def launch_rlg_hydra(cfg: DictConfig):
             f.write(OmegaConf.to_yaml(cfg))
 
     runner.run(
-        {
-            'train': not cfg.test,
-            'play': cfg.test,
+        {   
+            'export': cfg.test == "export",
+            'train':cfg.test in (False,"train"),
+            'play': cfg.test in (True,"play"),
             'checkpoint': cfg.checkpoint,
             'sigma': cfg.sigma if cfg.sigma != '' else None,
         }
