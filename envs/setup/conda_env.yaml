@@ -52,6 +52,7 @@ dependencies:
   - pytest
   - black
   - pip:
+    - sshkeyboard
     - ray
     - open3d
     - hydra-core

@@ -90,7 +90,7 @@ function get_additional_args() {
     if [ "$PLAY" == "true" ]; then
         ALL_ARGS+=(${PLAY_ARGS[@]})
         # update checkpoint
-        [ -e "$checkpoint" ] && ALL_ARGS+=("checkpoint=$checkpoint")
+        # [ -e "$checkpoint" ] && ALL_ARGS+=("checkpoint=$checkpoint")
     else # train
         ALL_ARGS+=(${TRAIN_ARGS[@]})
     fi

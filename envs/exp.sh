@@ -257,8 +257,216 @@ biped_c2r6(){
     )
 }
 
+biped_c2r5h3e6(){ #  ERFI=6, larger critic network, very similar to biped_c2r5h3, too large, bounds loss exploded
+    biped_c2r5h3
+    change_hydra_dir
 
-biped_c2r5(){ # 👍use this as baseline, asymmetric obs, feetSlip=-0.1
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_c2r5h3e6/runs/BipedAsymm_01-03-27-45/nn/BipedAsymm.pth
+        # test=export
+        # num_envs=1 # exported policy only works with 1 num of env
+    )
+    TRAIN_ARGS+=(
+        task.env.randomize.erfi.enable=true
+        task.env.randomize.erfi.rfi_range=[-6.0,6.0]
+        task.env.randomize.erfi.rao_range=[-6.0,6.0]
+    )
+}
+
+biped_c2r5h3e5(){ # ERFI, larger critic network, bounds loss exploded
+    biped_c2r5h3
+    change_hydra_dir
+
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_c2r5h3e5/runs/BipedAsymm_01-02-56-50/nn/BipedAsymm.pth
+        # test=export
+        # num_envs=1 # exported policy only works with 1 num of env
+    )
+    TRAIN_ARGS+=(
+        task.env.randomize.erfi.enable=true
+        task.env.randomize.erfi.rfi_range=[-5.0,5.0]
+        task.env.randomize.erfi.rao_range=[-5.0,5.0]
+    )
+}
+
+biped_c2r5h3e4(){ # ERFI, larger critic network
+    biped_c2r5h3
+    change_hydra_dir
+
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_c2r5h3e4/runs/BipedAsymm_01-02-24-44/nn/BipedAsymm.pth
+        # test=export
+        # num_envs=1 # exported policy only works with 1 num of env
+    )
+    TRAIN_ARGS+=(
+        task.env.randomize.erfi.enable=true
+        task.env.randomize.erfi.rfi_range=[-4.0,4.0]
+        task.env.randomize.erfi.rao_range=[-4.0,4.0]
+    )
+}
+
+
+
+biped_c2r5h3e3p3(){ # ERFI, larger critic, add baseHeight, 0 torque. bad! rotates during standing
+    biped_c2r5h3e3
+    change_hydra_dir
+
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_c2r5h3e3p3/runs/BipedAsymm_01-13-16-51/nn/BipedAsymm.pth
+        # test=export
+        # num_envs=1 # exported policy only works with 1 num of env
+    )
+    TRAIN_ARGS+=(
+        # checkpoint=outputs/Biped/train/biped_c2r5h3e3/runs/BipedAsymm_01-10-59-50/nn/BipedAsymm.pth
+    )
+    BASE_ARGS+=(
+        task.env.randomize.push.interval_s=3
+        task.env.randomize.push.velMin=[-0.3,-0.3,0,-0.3,-0.3,-0.3]
+        task.env.randomize.push.velMax=[0.3,0.3,0,0.3,0.3,0.3]
+        task.env.learn.reward.torque.scale=-0
+        task.env.learn.reward.baseHeight.scale=-0.05
+    )
+}
+
+
+biped_c2r5h3e3p2(){ # ERFI, larger critic, 0 torque reward, bad! lots of feet slip
+    biped_c2r5h3e3
+    change_hydra_dir
+
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_c2r5h3e3p2/runs/BipedAsymm_01-12-45-04/nn/BipedAsymm.pth
+        # test=export
+        # num_envs=1 # exported policy only works with 1 num of env
+    )
+    TRAIN_ARGS+=(
+        # checkpoint=outputs/Biped/train/biped_c2r5h3e3/runs/BipedAsymm_01-10-59-50/nn/BipedAsymm.pth
+    )
+    BASE_ARGS+=(
+        task.env.randomize.push.interval_s=3
+        task.env.randomize.push.velMin=[-0.3,-0.3,-0.3,-0.3,-0.3,-0.3]
+        task.env.randomize.push.velMax=[0.3,0.3,0.3,0.3,0.3,0.3]
+        task.env.learn.reward.torque.scale=-0
+    )
+}
+
+biped_c2r5h3e3p1(){ # ERFI, larger critic network, feet sliping.
+    biped_c2r5h3e3
+    change_hydra_dir
+
+    PLAY_ARGS+=(
+        # checkpoint=outputs/Biped/train/biped_c2r5h3e3p1/runs/BipedAsymm_01-12-03-48/nn/BipedAsymm.pth
+        checkpoint=outputs/Biped/train/biped_c2r5h3e3p1/runs/BipedAsymm_01-12-38-59/nn/BipedAsymm.pth
+        # test=export
+        # num_envs=1 # exported policy only works with 1 num of env
+    )
+    TRAIN_ARGS+=(
+        # checkpoint=outputs/Biped/train/biped_c2r5h3e3/runs/BipedAsymm_01-10-59-50/nn/BipedAsymm.pth
+    )
+    BASE_ARGS+=(
+        task.env.randomize.push.interval_s=3
+        task.env.randomize.push.velMin=[-0.3,-0.3,0,-0.3,-0.3,-0.3]
+        task.env.randomize.push.velMax=[0.3,0.3,0,0.3,0.3,0.3]
+    )
+}
+
+biped_c2r5h3e3(){ # ERFI, larger critic network, good!
+    biped_c2r5h3
+    change_hydra_dir
+
+    PLAY_ARGS+=(
+        # checkpoint=outputs/Biped/train/biped_c2r5h3e3/runs/BipedAsymm_01-02-14-48/nn/BipedAsymm.pth # rfi every dt
+        checkpoint=outputs/Biped/train/biped_c2r5h3e3/runs/BipedAsymm_01-10-59-50/nn/BipedAsymm.pth
+        # test=export
+        # num_envs=1 # exported policy only works with 1 num of env
+    )
+    TRAIN_ARGS+=(
+        task.env.randomize.erfi.enable=true
+        task.env.randomize.erfi.rfi_range=[-3.0,3.0]
+        task.env.randomize.erfi.rao_range=[-3.0,3.0]
+    )
+}
+
+biped_c2r5h3e2(){ # ERFI, larger critic network
+    biped_c2r5h3
+    change_hydra_dir
+
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_c2r5h3e2/runs/BipedAsymm_01-03-20-57/nn/BipedAsymm.pth
+        # test=export
+        # num_envs=1 # exported policy only works with 1 num of env
+    )
+    TRAIN_ARGS+=(
+        task.env.randomize.erfi.enable=true
+        task.env.randomize.erfi.rfi_range=[-2.0,2.0]
+        task.env.randomize.erfi.rao_range=[-2.0,2.0]
+    )
+}
+
+biped_c2r5h3e1(){ # ERFI, larger critic network
+    biped_c2r5h3
+    change_hydra_dir
+
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_c2r5h3e1/runs/BipedAsymm_01-02-23-22/nn/BipedAsymm.pth
+        # test=export
+        # num_envs=1 # exported policy only works with 1 num of env
+    )
+    TRAIN_ARGS+=(
+        task.env.randomize.erfi.enable=true
+        task.env.randomize.erfi.rfi_range=[-1.0,1.0]
+        task.env.randomize.erfi.rao_range=[-1.0,1.0]
+    )
+}
+
+biped_c2r5h3(){ # larger critic network, straight knee walking 👍
+    biped_c2r5
+    change_hydra_dir
+
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_c2r5h3/runs/BipedAsymm_30-11-21-22/nn/BipedAsymm.pth # new
+        # checkpoint=outputs/Biped/train/biped_c2r5h3/runs/BipedAsymm_30-11-21-22/nn/BipedAsymm.pth
+        # test=export
+        # num_envs=1 # exported policy only works with 1 num of env
+    )
+    BASE_ARGS+=(
+        train.params.network.mlp.units=[512,256,128]
+        train.params.config.central_value_config.network.mlp.units=[1024,512,256]
+    )
+}
+
+biped_c2r5h2(){ # smaller actor network,similar to biped_c2r5, more bend, feet draging
+    biped_c2r5
+    change_hydra_dir
+
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_c2r5h2/runs/BipedAsymm_30-11-20-36/nn/BipedAsymm.pth
+        # test=export
+        # num_envs=1 # exported policy only works with 1 num of env
+    )
+    BASE_ARGS+=(
+        train.params.network.mlp.units=[256,128,64] # smaller network
+        train.params.config.central_value_config.network.mlp.units=[512,256,128] # same
+    )
+}
+
+
+biped_c2r5h1(){ # stand but not walk, bad. smaller networks does not work well
+    biped_c2r5
+    change_hydra_dir
+
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_c2r5h1/runs/BipedAsymm_30-11-20-22/nn/BipedAsymm.pth
+        # test=export
+        # num_envs=1 # exported policy only works with 1 num of env
+    )
+    BASE_ARGS+=(
+        train.params.network.mlp.units=[256,128,64]
+        train.params.config.central_value_config.network.mlp.units=[256,128,64]
+    )
+}
+
+
+biped_c2r5(){ # can walk in small steps. use this as baseline 👍, asymmetric obs, feetSlip=-0.1
     biped_c2
     change_hydra_dir
     PLAY_ARGS+=(
@@ -407,6 +615,8 @@ biped_a1(){
     biped
 
     PLAY_ARGS+=(
+
+        
         # bad gait, this means defaultJointPositions should be chosen carefully
         checkpoint=outputs/Biped/train/biped_a1/runs/Biped_29-18-58-45/nn/Biped.pth
     )
@@ -445,8 +655,8 @@ biped(){
         
         task.env.dataPublisher.enable=true
 
-        task.sim.dt=0.0025
-        ++task.env.renderFPS=100
+        # task.sim.dt=0.0025
+        # ++task.env.renderFPS=100
 
         # ++task.env.renderFPS=50
 
@@ -589,8 +799,16 @@ a1(){
     base
     task=A1Terrain
     PLAY_ARGS+=(
+        # task.env.randomCommandVelocityRanges.linear_x=[0,0]
+        # task.env.randomCommandVelocityRanges.linear_y=[0,0]
+        # task.env.randomCommandVelocityRanges.yaw=[0,0]
         num_envs=2
-        checkpoint=assets/checkpoints/A1Terrain.pth
+        # checkpoint=assets/checkpoints/A1Terrain.pth
+        # checkpoint=outputs/A1Terrain/train/20240701_003303/runs/A1Terrain_01-00-33-03/nn/A1Terrain.pth
+        # checkpoint=outputs/A1Terrain/train/20240701_004744/runs/A1Terrain_01-00-47-44/nn/A1Terrain.pth
+        # checkpoint=outputs/A1Terrain/train/20240701_005534/runs/A1Terrain_01-00-55-35/nn/A1Terrain.pth
+        # checkpoint=outputs/A1Terrain/train/20240701_010308/runs/A1Terrain_01-01-03-08/nn/A1Terrain.pth
+        checkpoint=outputs/A1Terrain/train/20240701_012708/runs/A1Terrain_01-01-27-08/nn/A1Terrain.pth
         task.env.dataPublisher.enable=true
     )
     BASE_ARGS+=(
@@ -603,7 +821,8 @@ a1Terrain(){
     base
     task=A1Terrain
     PLAY_ARGS+=(
-        checkpoint=assets/checkpoints/A1Terrain.pth
+        # checkpoint=assets/checkpoints/A1Terrain.pth
+        checkpoint=outputs/A1Terrain/train/20240701_012708/runs/A1Terrain_01-01-27-08/nn/A1Terrain.pth
         # task.env.dataPublisher.enable=true
         # ++task.env.urdfAsset.AssetOptions.vhacd_enabled=true
         task.env.enableDebugVis=True

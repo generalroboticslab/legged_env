@@ -161,6 +161,10 @@ env:
     initDofVel: # randomize dof velocity at reset
       enable: true
       range: [-0.1, 0.1]
+    erfi: # extended random force injection
+      enable: false
+      rfi_range: [-3.0, 3.0] # random force injection
+      rao_range: [-3.0, 3.0] # random actuation offset
 
   learn:
     allowKneeContacts: True

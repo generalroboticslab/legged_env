@@ -104,7 +104,7 @@ class DataReceiver:
 
     def __init__(
             self, 
-            target_port: int = 9870, 
+            port: int = 9870, 
             decoding: str = "msgpack",
             broadcast: bool = False,
             ):
@@ -121,7 +121,7 @@ class DataReceiver:
         ip_address = ""
         if broadcast:
             ip_address = '<broadcast>'
-        self.socket.bind((ip_address, target_port))
+        self.socket.bind((ip_address, port))
         self.socket.setblocking(False)
         decodings = {
             "raw": lambda data: data,  # raw/bytes
@@ -134,6 +134,7 @@ class DataReceiver:
         self.decode = decodings[decoding]
         self.data = None
         self.address = None
+        self.data_id = -1 #  received data id
         self._running = True  # Flag to control the receive loop
 
     def receive(self, timeout=0.1, buffer_size=1024*1024*8):
@@ -142,6 +143,7 @@ class DataReceiver:
         if ready[0]:
             data, self.address = self.socket.recvfrom(buffer_size)
             self.data = self.decode(data)
+            self.data_id += 1
             # print(f"Received from {self.address}: {self.data}")
             return self.data, self.address  # Return decoded data and sender address
         else:
@@ -211,7 +213,7 @@ if __name__ == "__main__":
     num_receivers = 2
     receivers = []
     for i in range(num_receivers):
-        receiver = DataReceiver(target_port=9871, decoding="msgpack",broadcast=True)
+        receiver = DataReceiver(port=9871, decoding="msgpack",broadcast=True)
         # Start continuous receiving in a thread
         receiver.receive_continuously()     
         receivers.append(receiver)
@@ -219,9 +221,9 @@ if __name__ == "__main__":
     # Send data multiple times with a delay
     for i in range(10):
         publisher.publish(test_data(i))
+        time.sleep(1e-3)  # add a small delay
         for k,receiver in enumerate(receivers):
-            print(f"receiver [{k}] {receiver.address}: {receiver.data}")
-        time.sleep(1e-5)  # add a small delay
+            print(f"receiver [{k}] {receiver.data_id}, {receiver.address}: {receiver.data}")
 
     # Stop continuous receiving after a while
     receiver.stop()

@@ -6,6 +6,7 @@ import datetime
 from typing import Dict, Any, Tuple
 from operator import itemgetter
 from gym import spaces
+from collections.abc import Iterable
 
 from isaacgym.torch_utils import get_axis_params, torch_rand_float, quat_rotate_inverse, quat_apply, normalize
 from isaacgym import gymtorch
@@ -14,7 +15,7 @@ from isaacgymenvs.tasks.base.vec_task import VecTask
 
 import torch
 from envs.common.utils import bcolors as bc
-from envs.common.publisher import DataPublisher
+from envs.common.publisher import DataPublisher, DataReceiver
 from envs.common.terrain import Terrain
 from isaacgym import gymutil
 
@@ -114,6 +115,12 @@ class LeggedTerrain(VecTask):
         # treat commends below this threshold as zero [m/s]
         self.command_zero_threshold = self.cfg["env"]["commandZeroThreshold"]
 
+        # commands: x vel, y vel, yaw vel, heading
+        self.commands = torch.zeros(self.num_envs, 4, dtype=torch.float, device=self.device)
+        self.commands_scale = torch.tensor(
+            [self.lin_vel_scale, self.lin_vel_scale, self.ang_vel_scale], dtype=torch.float, device=self.device
+        )
+
         # default joint positions [rad]
         self.named_default_dof_pos = self.cfg["env"].get("defaultJointPositions", {n: 0 for n in self.dof_names})
         # desired joint positions [rad]
@@ -153,7 +160,8 @@ class LeggedTerrain(VecTask):
         v_lin = self.cfg["env"]["baseInitState"]["vLinear"]
         v_ang = self.cfg["env"]["baseInitState"]["vAngular"]
         np.testing.assert_almost_equal(np.square(rot).sum(), 1, decimal=6, err_msg="env.baseInitState.rot should be normalized to 1")
-        self.base_init_state = pos + rot + v_lin + v_ang
+        self.base_init_state = torch.tensor(pos + rot + v_lin + v_ang, dtype=torch.float, device=self.device)
+
         # time related
         self.decimation: int = self.cfg["env"]["control"]["decimation"]
         self.dt: float = self.cfg["sim"]["dt"]
@@ -232,6 +240,15 @@ class LeggedTerrain(VecTask):
         # randomize: init_dof_vel
         self.randomize_init_dof_vel = randomize["initDofVel"]["enable"]
         self.randomize_init_dof_vel_range = randomize["initDofVel"]["range"]
+
+        # randomize: erfi
+        self.enable_erfi:bool = randomize["erfi"]["enable"]
+        self.erfi_rfi_range:Iterable[float] = randomize["erfi"]["rfi_range"] # random force injection
+        self.erfi_rao_range:Iterable[float] = randomize["erfi"]["rao_range"] # random actuation offset
+        if self.enable_erfi: 
+            self.erfi_rao = torch.empty(self.num_envs,self.num_dof, dtype=torch.float, device=self.device).uniform_(*self.erfi_rao_range)
+            self.erfi_rfi = torch.empty(self.num_envs,self.num_dof, dtype=torch.float, device=self.device).uniform_(*self.erfi_rfi_range)
+            self.pre_physics_step = self.pre_physics_step_erfi # override pre_physics_step with extended random force injection
 
         # heightmap
         self.init_height_points()  # height_points in cpu
@@ -328,7 +345,7 @@ class LeggedTerrain(VecTask):
         else:
             raise NotImplementedError(f'Unsupported terrain type: {self.terrain_type}')
         
-        self._create_envs(self.num_envs, self.cfg["env"]['envSpacing'], int(np.sqrt(self.num_envs)))
+        self._create_envs()
 
         self.gym.prepare_sim(self.sim)
         self.sim_initialized = True
@@ -374,11 +391,7 @@ class LeggedTerrain(VecTask):
         self.extras = {}
         self.noise_scale_vec = self._get_noise_scale_vec()
         self.noise_vec = torch.zeros_like(self.obs_buf, dtype=torch.float, device=self.device)
-        # commands: x vel, y vel, yaw vel, heading
-        self.commands = torch.zeros(self.num_envs, 4, dtype=torch.float, device=self.device)
-        self.commands_scale = torch.tensor(
-            [self.lin_vel_scale, self.lin_vel_scale, self.ang_vel_scale], dtype=torch.float, device=self.device
-        )
+
         # gravity_vec=[0,0,-1]
         self.gravity_vec = torch.tensor(
             get_axis_params(-1.0, self.up_axis_idx), dtype=torch.float, device=self.device
@@ -417,7 +430,9 @@ class LeggedTerrain(VecTask):
             SCREEN_CAPTURE_RESOLUTION = (1027, 768)
             self.virtual_display = SmartDisplay(size=SCREEN_CAPTURE_RESOLUTION)
             self.virtual_display.start()
-        
+
+        self.enable_keyboard_operator: bool = self.cfg["env"]["viewer"]["keyboardOperator"]
+
         # todo: read from config
         if self.headless:
             self.viewer = None
@@ -439,8 +454,6 @@ class LeggedTerrain(VecTask):
         subscribe_keyboard_event(gymapi.KEY_R, "record_frames")
         subscribe_keyboard_event(gymapi.KEY_9, "reset")
 
-        
-        self.enable_keyboard_operator: bool = self.cfg["env"]["viewer"]["keyboardOperator"]
         if self.enable_keyboard_operator:
             subscribe_keyboard_event(gymapi.KEY_I, "vx+")
             subscribe_keyboard_event(gymapi.KEY_K, "vx-")
@@ -450,6 +463,9 @@ class LeggedTerrain(VecTask):
             subscribe_keyboard_event(gymapi.KEY_O, "heading-")
             subscribe_keyboard_event(gymapi.KEY_0, "v=0")
             self.keyboard_operator_cmd = torch.zeros(3, dtype=torch.float, device=self.device)
+            self.data_receiver = DataReceiver(port=9871,decoding="msgpack",broadcast=True)
+            self.data_receiver_data_id = self.data_receiver.data_id # for check if data is new
+            self.data_receiver.receive_continuously()
         
         subscribe_keyboard_event(gymapi.KEY_F, "toggle_viewer_follow")
         # switch camera follow target
@@ -682,23 +698,19 @@ class LeggedTerrain(VecTask):
         # assert self.dof_hip_ids.tolist() == [0, 3, 6, 9]
         ####################
         
-    def _create_envs(self, num_envs, spacing, num_per_row):
+    def _create_envs(self):
         """Creates multiple environments with randomized properties."""
-
-        self.base_init_state = torch.tensor(self.base_init_state, dtype=torch.float, device=self.device)
-        start_pose = gymapi.Transform()
-        start_pose.p = gymapi.Vec3(*self.base_init_state[:3])
 
         randomize = self.cfg["env"]["randomize"]
         # friction randomization
         randomize_friction:bool = randomize["friction"]["enable"]
         if randomize_friction:
             rigid_shape_prop = self.gym.get_asset_rigid_shape_properties(self.asset)
-            friction_buckets = torch_rand_float(*randomize["friction"]["range"], (self.num_envs, 1), self.device)
+            friction_buckets = torch.empty(self.num_envs, device=self.device,dtype=torch.float).uniform_(*randomize["friction"]["range"])
         # baseMass randomization
         randomize_base_mass:bool = randomize["baseMass"]["enable"]
         if randomize_base_mass:
-            baseMass_buckets = torch_rand_float(*randomize["baseMass"]["range"], (self.num_envs, 1), self.device)
+            baseMass_buckets = torch.empty(self.num_envs, device=self.device,dtype=torch.float).uniform_(*randomize["baseMass"]["range"])
             # added_masses = np.random.uniform(*self.cfg["env"]["learn"]["addedMassRange"], self.num_envs)
 
         # dof properties
@@ -734,9 +746,17 @@ class LeggedTerrain(VecTask):
         self.heights_curriculum_started = False
         self.heights_curriculum_ratio = 0.001
         self.terrain_types = torch.randint(0, cfg_terrain["numTerrains"], (self.num_envs,), device=self.device)
+        
+        spacing = self.cfg["env"]['envSpacing']
+        num_per_row = int(np.sqrt(self.num_envs))
+
+        start_pose = gymapi.Transform()
+        start_pose.p = gymapi.Vec3(*self.base_init_state[:3])
+
         if self.custom_origins:
             spacing = 0.0
             self.base_pos_xy_range = (-1.0, 1.0)  # TODO refactor into config
+            base_pos_xy_offset = torch.empty(self.num_envs, 2, dtype=torch.float,device=self.device).uniform_(*self.base_pos_xy_range)
 
         env_lower = gymapi.Vec3(-spacing, -spacing, 0.0)
         env_upper = gymapi.Vec3(spacing, spacing, spacing)
@@ -748,7 +768,8 @@ class LeggedTerrain(VecTask):
             if self.custom_origins:
                 self.env_origins[i] = self.terrain.env_origins[self.terrain_levels[i], self.terrain_types[i]]
                 pos = self.env_origins[i].clone()
-                pos[:2] += torch_rand_float(*self.base_pos_xy_range, (2, 1), self.device).squeeze(1)
+                # pos[:2] += torch_rand_float(*self.base_pos_xy_range, (2, 1), self.device).squeeze(1)
+                pos[:2] += base_pos_xy_offset[i]
                 start_pose.p = gymapi.Vec3(*pos)
             actor_handle = self.gym.create_actor(
                 env_handle, self.asset, start_pose, "actor", i, self.collision_filter, 0
@@ -1008,33 +1029,39 @@ class LeggedTerrain(VecTask):
             self.update_terrain_level(env_ids)
             self.root_state[env_ids] = self.base_init_state
             self.root_state[env_ids, :3] += self.env_origins[env_ids]
-            self.root_state[env_ids, :2] += torch_rand_float(*self.base_pos_xy_range, (len_ids, 2), self.device)
+            self.root_state[env_ids, :2] += torch.empty(len_ids, 2, device=self.device, dtype=torch.float).uniform_(*self.base_pos_xy_range)
         else:
             self.root_state[env_ids] = self.base_init_state
         self.gym.set_actor_root_state_tensor_indexed(self.sim, self.root_state_raw, env_ids_raw, len_ids)
 
         if self.randomize_init_dof_pos:
-            dof_pos_offset = torch_rand_float(*self.randomize_init_dof_pos_range, (len_ids, self.num_dof), self.device)
+            # dof_pos_offset = torch_rand_float(*self.randomize_init_dof_pos_range, (len_ids, self.num_dof), self.device)
+            dof_pos_offset = torch.empty(len_ids, self.num_dof,dtype=torch.float, device=self.device).uniform_(*self.randomize_init_dof_pos_range)
             self.dof_pos[env_ids] = self.init_dof_pos[env_ids] + dof_pos_offset
         else:
             self.dof_pos[env_ids] = self.init_dof_pos[env_ids]
+        
         if self.randomize_init_dof_vel:
-            self.dof_vel[env_ids] = torch_rand_float(*self.randomize_init_dof_vel_range, (len_ids, self.num_dof), self.device)
+            # self.dof_vel[env_ids] = torch_rand_float(*self.randomize_init_dof_vel_range, (len_ids, self.num_dof), self.device)
+            self.dof_vel[env_ids] = torch.empty(len_ids, self.num_dof,dtype=torch.float, device=self.device).uniform_(*self.randomize_init_dof_vel_range)
         else:
             self.dof_vel[env_ids,:] = 0
         self.gym.set_dof_state_tensor_indexed(self.sim, self.dof_state_raw, env_ids_raw, len_ids)
 
+        temp_vec = torch.empty(len_ids, device=self.device, dtype=torch.float)
         # vx
-        self.commands[env_ids, 0] = torch_rand_float(*self.command_x_range, (len_ids, 1), self.device).squeeze()
+        self.commands[env_ids, 0]= temp_vec.uniform_(*self.command_x_range)
         # vy
-        self.commands[env_ids, 1] = torch_rand_float(*self.command_y_range, (len_ids, 1), self.device).squeeze()
+        self.commands[env_ids, 1]= temp_vec.uniform_(*self.command_y_range)
         # heading
-        self.commands[env_ids, 3] = torch_rand_float(*self.command_yaw_range, (len_ids, 1), self.device).squeeze()
-
+        self.commands[env_ids, 3]= temp_vec.uniform_(*self.command_yaw_range)
         # # set small commands to zero # TODO CHANGE BACK
         # self.commands[env_ids] *= (
         #     torch.norm(self.commands[env_ids, :2], dim=1) > self.command_zero_threshold
         # ).unsqueeze(1)
+
+        if self.enable_erfi: 
+            self.erfi_rao[env_ids] = torch.empty(len_ids, self.num_dof,dtype=torch.float, device=self.device).uniform_(*self.erfi_rao_range)
 
         self.last_actions[env_ids] = 0.0
         # self.actions_filt[env_ids] = 0.0
@@ -1067,8 +1094,10 @@ class LeggedTerrain(VecTask):
         # TODO check level up/down condition
         # self.terrain_levels[env_ids] += 1 * (distance > command_distance*0.5)
         # level up if run over the terrain or move at least 75% of the command distance
+        # self.terrain_levels[env_ids] += 1 * torch.logical_or(
+        #     distance > self.terrain.env_length / 2, distance > command_distance * 0.75)
         self.terrain_levels[env_ids] += 1 * torch.logical_or(
-            distance > self.terrain.env_length / 2, distance > command_distance * 0.75)
+            distance > self.terrain.env_length / 2, distance > command_distance * 0.9)
         
         self.terrain_levels[env_ids] = torch.clip(self.terrain_levels[env_ids], 0) % self.terrain.env_rows
         self.env_origins[env_ids] = self.terrain.env_origins[self.terrain_levels[env_ids], self.terrain_types[env_ids]]
@@ -1129,8 +1158,15 @@ class LeggedTerrain(VecTask):
                     elif evt.action == "v=0" and evt.value > 0:
                         self.keyboard_operator_cmd[:] = 0
                         print(f"{self.keyboard_operator_cmd}")
-                self.commands[:, [0, 1, 3]] = self.keyboard_operator_cmd
                 
+                if self.data_receiver_data_id != self.data_receiver.data_id:
+                    self.data_receiver_data_id = self.data_receiver.data_id
+                    if "cmd" in self.data_receiver.data:
+                        self.keyboard_operator_cmd[:] = torch.tensor(self.data_receiver.data["cmd"],device=self.device)
+                    print(f"keybaord cmd:{self.keyboard_operator_cmd}")
+                # self.commands[:, [0, 1, 3]] = self.keyboard_operator_cmd
+                self.commands[:, :3] = self.keyboard_operator_cmd
+
             # fetch results
             if self.device != 'cpu':
                 self.gym.fetch_results(self.sim, True)
@@ -1196,9 +1232,13 @@ class LeggedTerrain(VecTask):
         # if self.dr_randomizations.get('actions', None):
         #     actions = self.dr_randomizations['actions']['noise_lambda'](actions)
 
-        action_tensor = torch.clamp(actions, -self.clip_actions, self.clip_actions)
+        self.actions = torch.clamp(actions, -self.clip_actions, self.clip_actions).clone().to(self.device)
+        self.dof_pos_target = self.action_scale * self.actions + self.default_dof_pos
+        # self.actions_filt[:] = self.actions_filt * 0.03 + self.actions * 0.97
+        # self.dof_pos_target = self.action_scale * self.actions_filt + self.default_dof_pos
+
         # apply actions
-        self.pre_physics_step(action_tensor)
+        self.pre_physics_step()
 
         # #TODO currently need to completely bypass this
         # # step physics and render each frame
@@ -1236,15 +1276,29 @@ class LeggedTerrain(VecTask):
 
         return self.obs_dict, self.rew_buf.to(self.rl_device), self.reset_buf.to(self.rl_device), self.extras
 
-    def pre_physics_step(self, actions):
-        self.actions = actions.clone().to(self.device)
-        self.dof_pos_target = self.action_scale * self.actions + self.default_dof_pos
+    def pre_physics_step(self):
+        """baseline pre_physics_step, PD position control"""
         for i in range(self.decimation):
             torque = torch.clip(
                 self.kp * (self.dof_pos_target - self.dof_pos) - self.kd * self.dof_vel,
                 -self.dof_force_target_limit,
                 self.dof_force_target_limit,
             )
+            self.gym.set_dof_actuation_force_tensor(self.sim, gymtorch.unwrap_tensor(torque))
+            self.gym.simulate(self.sim)
+            self.gym.refresh_dof_state_tensor(self.sim)
+        self.dof_force_target = torque.view(self.dof_force_target.shape)
+
+    def pre_physics_step_erfi(self):
+        """pre_physics_step with extended random force injection"""
+        self.erfi_rfi.uniform_(*self.erfi_rfi_range).add_(self.erfi_rao)
+        for i in range(self.decimation):
+            torque = torch.clip(
+                # self.kp * (self.dof_pos_target - self.dof_pos) - self.kd * self.dof_vel + self.erfi_rfi[i],
+                self.kp * (self.dof_pos_target - self.dof_pos) - self.kd * self.dof_vel + self.erfi_rfi,
+                -self.dof_force_target_limit,
+                self.dof_force_target_limit,
+            ) # TODO maybe check if action exceeds limit and make it a reward
             self.gym.set_dof_actuation_force_tensor(self.sim, gymtorch.unwrap_tensor(torque))
             self.gym.simulate(self.sim)
             self.gym.refresh_dof_state_tensor(self.sim)
@@ -1270,7 +1324,11 @@ class LeggedTerrain(VecTask):
         self.projected_gravity = quat_rotate_inverse(self.base_quat, self.gravity_vec)
         forward = quat_apply(self.base_quat, self.forward_vec)
         heading = torch.atan2(forward[:, 1], forward[:, 0])
-        self.commands[:, 2] = torch.clip(0.5 * wrap_to_pi(self.commands[:, 3] - heading), -1.0, 1.0)
+
+        if self.viewer and self.enable_keyboard_operator:
+            self.commands[:, 3] = wrap_to_pi(2 * self.commands[:, 2] + heading)
+        else:
+            self.commands[:, 2] = torch.clip(0.5 * wrap_to_pi(self.commands[:, 3] - heading), -1.0, 1.0)
         # feet contact
         # self.contact = torch.norm(contact_forces[:, feet_indices, :], dim=2) > 1.
         self.feet_contact_force = self.contact_force[:, self.feet_ids, :]
