@@ -1,7 +1,7 @@
 # terrain generator
 # from isaacgym.terrain_utils import *
 import numpy as np
-from collections import Mapping
+from collections.abc import Mapping
 from typing import Union
 
 from isaacgym import gymapi
@@ -163,7 +163,7 @@ class Terrain:
                 uniform_height = self.uniform_height * self.difficulty_scale * difficulty
                 uniform_step = max(self.uniform_step * self.difficulty_scale, self.vertical_scale)
                 # uniform_step = self.vertical_scale
-                uniform_downsample = self.horizontal_scale * 2
+                uniform_downsample = self.horizontal_scale
 
                 stair_width = self.stair_width
                 stair_height = self.stair_height * self.difficulty_scale * difficulty
@@ -198,11 +198,11 @@ class Terrain:
                     random_uniform_terrain(terrain, -uniform_height, uniform_height, uniform_step, uniform_downsample)
                 elif choice < proportions[3]:  # [3] stair_up,      \⎽/
                     pyramid_stairs_terrain(
-                        terrain, step_width=stair_width, step_height=stair_height, platform_size=self.platform_size
+                        terrain, step_width=stair_width, step_height=-stair_height, platform_size=self.platform_size
                     )
                 elif choice < proportions[4]:  # [4] stair_down,    /⎺\
                     pyramid_stairs_terrain(
-                        terrain, step_width=stair_width, step_height=-stair_height, platform_size=self.platform_size
+                        terrain, step_width=stair_width, step_height=stair_height, platform_size=self.platform_size
                     )
                 elif choice < proportions[5]:  # [5] smooth_up,     \⎽/
                     pyramid_sloped_terrain(terrain, slope=-slope, platform_size=self.platform_size)

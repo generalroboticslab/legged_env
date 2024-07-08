@@ -15,6 +15,7 @@ from isaacgymenvs.tasks.base.vec_task import VecTask
 
 import torch
 from envs.common.utils import bcolors as bc
+from envs.common.urdf_utils import get_leaf_nodes
 from envs.common.publisher import DataPublisher, DataReceiver
 from envs.common.terrain import Terrain
 from isaacgym import gymutil
@@ -179,6 +180,7 @@ class LeggedTerrain(VecTask):
         if self.enable_udp:  # plotJuggler related
             self.data_publisher = DataPublisher(**self.cfg["env"]["dataPublisher"])
             self.items_to_publish = self.cfg["env"]["dataPublisher"].get("keys", None)
+            # self.sim2real_publisher = DataPublisher(target_url="udp://localhost:9876")
 
         # reward scales
         cfg_reward = self.cfg["env"]["learn"]["reward"]
@@ -660,8 +662,10 @@ class LeggedTerrain(VecTask):
         if foot_name is None:  # infering the feet are leaf links, they do not appear in any joint.parent
             urdf = self.asset_urdf
             # TODO check if this will still wrok when isaacgym.gymapi.AssetOptions.collapse_fixed_joints is True.
-            joint_parents = {joint.parent for joint in urdf.joint_map.values()}  # Set of links with parent joints
-            feet_names = [link_name for link_name, link in urdf.link_map.items() if link_name not in joint_parents]
+            # joint_parents = {joint.parent for joint in urdf.joint_map.values()}  # Set of links with parent joints
+            # feet_names = [link_name for link_name, link in urdf.link_map.items() if link_name not in joint_parents]
+            feet_names = get_leaf_nodes(urdf=urdf, 
+                collapse_fixed_joints=self.cfg["env"]["urdfAsset"]["AssetOptions"]["collapse_fixed_joints"])
         else:
             feet_names = get_matching_str(source=foot_name, destination=self.body_names, comment="foot_name")
         self.num_feet = len(feet_names)
@@ -727,7 +731,7 @@ class LeggedTerrain(VecTask):
         asset_dof_properties = self.cfg["env"].get("assetDofProperties", {})
         if asset_dof_properties is not None:
             for key, value in asset_dof_properties.items():
-                self.dof_props[key][:] = value  # used in set_actor_dof_properties
+                self.dof_props[key][:] = np.asarray(value,dtype=np.float32)  # used in set_actor_dof_properties
                 print(f"overwrite asset dof [{key}]: {value}")
 
         # dof limit
@@ -987,14 +991,15 @@ class LeggedTerrain(VecTask):
                 "action": self.actions,
                 "action_rate": self.action_rate,
                 "dof_vel": self.dof_vel,
+                "dof_acc": self.dof_acc,
                 "dof_pos": self.dof_pos,
                 "dof_pos_target": self.dof_pos_target,
-                "dof_acc": self.dof_acc,
                 "dof_force_target": self.dof_force_target,
                 "dof_force": self.dof_force,
                 "base_lin_vel": self.base_lin_vel,
                 "base_ang_vel": self.base_ang_vel,
                 "base_height": self.heights_relative[:, -1],
+                "projected_gravity": self.projected_gravity,
                 "time_air": self.air_time,
                 "time_stance": self.stance_time,
                 "foot_pos": self.foot_pos,
@@ -1009,7 +1014,10 @@ class LeggedTerrain(VecTask):
               
             if self.items_to_publish is not None:
                 data = {key: data[key] for key in self.items_to_publish}
-            self.data_publisher.publish(data)  
+            self.data_publisher.publish({"sim":data})  
+            # self.sim2real_publisher.publish({
+            #     "dof_pos_target": self.dof_pos_target[0],
+            # })
     
     @property
     def foot_pos(self):

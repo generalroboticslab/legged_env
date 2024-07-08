@@ -149,7 +149,7 @@ env:
       range: [0.5, 1.25]
     baseMass:
       enable: false
-      range: [-0.5, 0.5]
+      range: [0, 0.5]
     push:
       enable: true
       interval_s: 15
@@ -162,7 +162,7 @@ env:
       enable: true
       range: [-0.1, 0.1]
     erfi: # extended random force injection
-      enable: false
+      enable: true
       rfi_range: [-3.0, 3.0] # random force injection
       rao_range: [-3.0, 3.0] # random actuation offset
 
@@ -227,7 +227,7 @@ env:
         scale: -0. #-2.0
         fcn: sum
       feetSlip:
-        scale: -0.01
+        scale: -0.1 #-0.01
         fcn: slip_reward  
       kneeCollision:
         scale: -0.25 
@@ -304,5 +304,5 @@ sim:
     num_subscenes: ${....num_subscenes}
     contact_collection: 1 # 0: CC_NEVER (don't collect contact info), 1: CC_LAST_SUBSTEP (collect only contacts on last substep), 2: CC_ALL_SUBSTEPS (default - all contacts)
 
-task:
-  randomize: False
+# task:
+#   randomize: False
