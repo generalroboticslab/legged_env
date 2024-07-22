@@ -6,13 +6,15 @@ physics_engine: 'physx'
 env:
   numEnvs: ${resolve_default:4096,${...num_envs}}
   numObservations: "infer" #49 #165 #188
-  numActions: 12
-  envSpacing: 3.  # [m]
-  enableDebugVis: False
+  numActions: "infer"
+  envSpacing: 1.  # [m]
+  enableDebugVis: false
 
   dataPublisher:
     enable: false
     target_url: 'udp://localhost:9870'
+    # optionally can add:
+    # keys:[name_of_item_to_publish]
 
   observationNames:
     - linearVelocity
@@ -156,7 +158,7 @@ env:
     erfi: # extended random force injection
       enable: false
       rfi_range: [-3.0, 3.0] # random force injection
-      rao_range: [-3.0, 3.0] # random actuation offset
+      rao_range: [-2.0, 2.0] # random actuation offset
 
   learn:
     allowKneeContacts: True
@@ -165,60 +167,76 @@ env:
       linearVelocityXY:
         scale: 1.0
         fcn: exp_square_sum
-        exp_scale: -4.0
+        expScale: -4.0
       linearVelocityZ:
         scale: -4.0
         fcn: exp_square
-        exp_scale: -4.0
+        expScale: -4.0
       angularVelocityXY:
         scale: -0.05
         fcn: square_sum
       angularVelocityZ:
         scale: 0.5
+        expScale: -4.0
         fcn: square
       orientation:
-        scale: -0.5 #-1.
-        fcn: square_sum
-      torque:
-        scale: -0.00002 # -0.000025
-        fcn: square_sum
-      jointAcc:
+        scale: 0.5 #-1.
+        expScale: -10.0
+        fcn: exp_square_sum #square_sum
+      dofForceTarget:
+        scale: 0.1 # -0.000025
+        expScale: -1.0
+        normalize_by: 60 # [N]
+        fcn: exp_square_sum
+      dofAcc:
         scale: -5.0e-7 # -0.0025
         fcn: square_sum
-      jointVel:
+      dofVel:
         scale: -0.0
         fcn: square_sum
-      jointPos:
+      dofPos:
         scale: -0.0
         fcn: abs_sum
-      jointPow:
+      dofPow:
         scale: -0.0
         fcn: abs_sum
       baseHeight:
         scale: -0.0
         fcn: reverse_bell
-      feetAirTime:
+      footAirTime:
         scale:  0.1
         fcn: duration_since_condition_reward
         offset: -0.5 # [s]
       # feetAirTimeMin_s: 0.3 # [s]
-      feetStanceTime:
+      footStanceTime:
         scale: 0.1
         fcn: duration_since_condition_reward
         offset: -0.5 # [s]
       # feetStanceTimeMin_s: 0.3 # [s]
-      feetContactForce:
+      footSingleContact:
+        scale:  0 # 0.1
+        fcn: duration_within_period_reward
+        max_single_contact: 1 # max num of feet contact that is considered as single contact
+        grace_period: 0.2 # [s] grace period for overlapping contacts
+      footContactForce:
         scale: 0.0
         fcn: contact_force_reward
         offset: -300 # [N]
-      # feetContactForceLimit: 100 #[N]
-      feetImpact:
+      # footContactForceLimit: 100 #[N]
+      footShouldContact:
+        scale: 0.0
+        fcn: sum
+      footHeight:
+        scale: 0.0
+        clamp_max: 0.1
+        fcn: foot_height_reward
+      footImpact:
         scale: -0.0
         fcn: abs_sum
-      feetStumble:
+      footStumble:
         scale: -0. #-2.0
         fcn: sum
-      feetSlip:
+      footSlip:
         scale: -0.0
         fcn: slip_reward  
       kneeCollision:
@@ -238,33 +256,6 @@ env:
         scale: -0
         fcn: out_of_bound_abs_sum
         margin: 0
-    # rewards
-    # terminalReward: 0.0
-    # linearVelocityXYRewardScale: 1.0
-    # linearVelocityZRewardScale: -4.0
-    # angularVelocityXYRewardScale: -0.05
-    # angularVelocityZRewardScale: 0.5
-    # orientationRewardScale: -0.5 #-1.
-    # torqueRewardScale: -0.00002 # -0.000025
-    # jointAccRewardScale: -2.0e-7 # -0.0025
-    # jointVelRewardScale: -0.0
-    # jointPosRewardScale: -0.0
-    # jointPowRewardScale: -0.0
-    # baseHeightRewardScale: -0.0 #5
-    # feetAirTimeRewardScale:  1.0
-    # feetAirTimeMin_s: 0.3 # [s]
-    # feetStanceTimeRewardScale: 1.0
-    # feetStanceTimeMin_s: 0.3 # [s]
-    # feetContactForceRewardScale: 0.0
-    # feetContactForceLimit: 300 #[N]
-    # feetImpactRewardScale: -0.0
-    # feetStumbleRewardScale: -0. #-2.0
-    # feetSlipRewardScale: -0.0
-    # kneeCollisionRewardScale: -0.25 
-    # actionRewardScale: -0.0
-    # actionRateRewardScale: -2.0e-5
-    # # cosmetics
-    # hipRewardScale: -0. #25
 
     # normalization
     linearVelocityScale: 2.0
@@ -323,5 +314,5 @@ sim:
     num_subscenes: ${....num_subscenes}
     contact_collection: 1 # 0: CC_NEVER (don't collect contact info), 1: CC_LAST_SUBSTEP (collect only contacts on last substep), 2: CC_ALL_SUBSTEPS (default - all contacts)
 
-task:
-  randomize: False
+# task:
+#   randomize: False

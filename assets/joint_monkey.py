@@ -33,11 +33,21 @@ class AssetDesc:
         self.file_name = file_name
         self.flip_visual_attachments = flip_visual_attachments
 
-asset_descriptors = [   
-    AssetDesc("urdf/biped/biped_v6.urdf", False),
-    AssetDesc("urdf/RobotDog/RobotDog3kg.urdf", False),
-    AssetDesc("urdf/a1/a1_minimum.urdf", False),
-    AssetDesc("urdf/a1/a1_minimum_anymal_like.urdf", False),
+asset_descriptors = [
+    AssetDesc("urdf/v6_vis_URDF_thin/v6_vis_URDF.urdf"),
+    AssetDesc("urdf/v6_vis_URDF_20mmfillet_foot/v6_vis_URDF.urdf"),
+    AssetDesc("urdf/v6_vis_URDF_wide_feet/v6_vis_URDF.urdf"),
+    # AssetDesc("urdf/v6_vis_URDF_IMU_top/v6_vis_URDF.urdf"),
+    AssetDesc("urdf/v6_vis_URDF/v6_vis_URDF.urdf"),
+    AssetDesc("urdf/biped_long_foot_6_2/biped_v6_terrain.urdf"),
+    AssetDesc("urdf/biped_visual/v6_2.urdf"),
+    AssetDesc("urdf/biped_long_foot/biped_v6_terrain.urdf"),
+    AssetDesc("urdf/biped_long_foot/biped_v6_long.urdf"),
+    AssetDesc("urdf/biped_visual/biped_v6.urdf"),
+    AssetDesc("urdf/biped/biped_v6.urdf"),
+    AssetDesc("urdf/RobotDog/RobotDog3kg.urdf"),
+    AssetDesc("urdf/a1/a1_minimum.urdf"),
+    AssetDesc("urdf/a1/a1_minimum_anymal_like.urdf"),
     AssetDesc("urdf/anymal_c/urdf/anymal.urdf", True),
     AssetDesc("urdf/anymal_c/urdf/anymal_minimal.urdf", True),
     AssetDesc("urdf/anymal_c/urdf/anymal_minimal_a1_like.urdf", True),
@@ -282,7 +292,7 @@ for k in range(50):
                 print("reset pressed")
                 init = True
                 # gym.set_sim_rigid_body_states(sim, initial_state, gymapi.STATE_ALL)
-            elif evt.action=="freeze":
+            elif evt.action=="freeze" and evt.value > 0:
                 freeze = not freeze
         if init:
             break

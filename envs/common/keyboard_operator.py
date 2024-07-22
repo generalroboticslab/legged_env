@@ -13,7 +13,7 @@ data_publisher = DataPublisher(
 
 keyboard_operator_cmd = np.zeros(3) # vel_x, vel_y, yaw_orientation
 
-delta_cmd = np.array([0.1, 0.1, 0.1])
+delta_cmd = np.array([0.05, 0.05, 0.05])
 
 def press(key):
     global keyboard_operator_cmd

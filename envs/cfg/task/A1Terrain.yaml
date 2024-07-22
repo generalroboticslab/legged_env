@@ -6,7 +6,7 @@ physics_engine: 'physx'
 env:
   numEnvs: ${resolve_default:4096,${...num_envs}}
   numObservations: "infer" #49 #165 #188
-  numActions: 12
+  numActions: "infer"
   envSpacing: 3.  # [m]
   enableDebugVis: false
 
@@ -95,26 +95,11 @@ env:
     FR_calf_joint: -1.5    # [rad]
     RR_calf_joint: -1.5    # [rad]
 
-  # desiredJointPositions:
-  #   FL_hip_joint:  0.1     # [rad]
-  #   RL_hip_joint:  0.1     # [rad]
-  #   FR_hip_joint: -0.1     # [rad]
-  #   RR_hip_joint: -0.1     # [rad]
-
-  #   FL_thigh_joint: 0.8    # [rad]
-  #   RL_thigh_joint: 1.0    # [rad]
-  #   FR_thigh_joint: 0.8    # [rad]
-  #   RR_thigh_joint: 1.0    # [rad]
-
-    # FL_calf_joint: -1.5    # [rad]
-    # RL_calf_joint: -1.5    # [rad]
-    # FR_calf_joint: -1.5    # [rad]
-    # RR_calf_joint: -1.5    # [rad]
 
   urdfAsset:
     collision_filter: 0
     AssetOptions:
-      collapse_fixed_joints: true # TODOS, fix base link BUG TO COLLAPSE FIXED JOINT
+      collapse_fixed_joints: true
       fix_base_link: false
       default_dof_drive_mode: 3 # see DofDriveMode (0: DOF_MODE_NONE, 1: DOF_MODE_POS, 2: DOF_MODE_VEL, 3: DOF_MODE_EFFORT)
       flip_visual_attachments: false
@@ -169,62 +154,78 @@ env:
       linearVelocityXY:
         scale: 1.0
         fcn: exp_square_sum
-        exp_scale: -4.0
+        expScale: -4.0
       linearVelocityZ:
         scale: -4.0
         fcn: exp_square
-        exp_scale: -4.0
+        expScale: -4.0
       angularVelocityXY:
         scale: -0.05
         fcn: square_sum
       angularVelocityZ:
         scale: 0.5
+        expScale: -4.0
         fcn: square
       orientation:
-        scale: -0.5 #-1.
-        fcn: square_sum
-      torque:
-        scale: -0.00004 # -0.000025
-        fcn: square_sum
-      jointAcc:
+        scale: 0.5 #-1.
+        expScale: -10.0
+        fcn: exp_square_sum #square_sum
+      dofForceTarget:
+        scale: 0.1 # -0.000025
+        expScale: -1.0
+        normalize_by: 60 # [N]
+        fcn: exp_square_sum
+      dofAcc:
         scale: -5.0e-7 # -0.0025
         fcn: square_sum
-      jointVel:
+      dofVel:
         scale: -0.0
         fcn: square_sum
-      jointPos:
+      dofPos:
         scale: -0.0
         fcn: abs_sum
-      jointPow:
+      dofPow:
         scale: -0.0
         fcn: abs_sum
       baseHeight:
         scale: -0.0
         fcn: reverse_bell
-      feetAirTime:
+      footAirTime:
         scale:  0.1
         fcn: duration_since_condition_reward
         offset: -0.5 # [s]
       # feetAirTimeMin_s: 0.3 # [s]
-      feetStanceTime:
+      footStanceTime:
         scale: 0.1
         fcn: duration_since_condition_reward
         offset: -0.5 # [s]
       # feetStanceTimeMin_s: 0.3 # [s]
-      feetContactForce:
+      footSingleContact:
+        scale:  0 # 0.1
+        fcn: duration_within_period_reward
+        max_single_contact: 1 # max num of feet contact that is considered as single contact
+        grace_period: 0.2 # [s] grace period for overlapping contacts
+      footContactForce:
         scale: 0.0
         fcn: contact_force_reward
         offset: -100 # [N]
-      # feetContactForceLimit: 100 #[N]
-      feetImpact:
+      # footContactForceLimit: 100 #[N]
+      footShouldContact:
+        scale: 0.0
+        fcn: sum
+      footHeight:
+        scale: 0.0
+        clamp_max: 0.1
+        fcn: foot_height_reward
+      footImpact:
         scale: -0.0
         fcn: abs_sum
-      feetStumble:
+      footStumble:
         scale: -0. #-2.0
         fcn: sum
-      feetSlip:
+      footSlip:
         scale: -0.0
-        fcn: slip_reward  
+        fcn: slip_reward
       kneeCollision:
         scale: -0.25 
         fcn: sum
@@ -300,5 +301,5 @@ sim:
     num_subscenes: ${....num_subscenes}
     contact_collection: 1 # 0: CC_NEVER (don't collect contact info), 1: CC_LAST_SUBSTEP (collect only contacts on last substep), 2: CC_ALL_SUBSTEPS (default - all contacts)
 
-task:
-  randomize: False
+# task:
+#   randomize: False

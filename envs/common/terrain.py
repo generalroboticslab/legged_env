@@ -247,4 +247,4 @@ class Terrain:
         heights1 = self.height_samples[px, py]
         heights2 = self.height_samples[px + 1, py + 1]
         heights = torch.min(heights1, heights2) * self.vertical_scale
-        return heights.reshape(points.shape[:-1])
+        return heights
