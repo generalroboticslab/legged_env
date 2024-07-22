@@ -164,18 +164,18 @@ env:
     allowKneeContacts: True
     terminalReward: 0.0
     reward:
-      linearVelocityXY:
+      lin_vel_xy:
         scale: 1.0
         fcn: exp_square_sum
         expScale: -4.0
-      linearVelocityZ:
+      lin_vel_z:
         scale: -4.0
         fcn: exp_square
         expScale: -4.0
-      angularVelocityXY:
+      ang_vel_xy:
         scale: -0.05
         fcn: square_sum
-      angularVelocityZ:
+      ang_vel_z:
         scale: 0.5
         expScale: -4.0
         fcn: square
@@ -183,79 +183,79 @@ env:
         scale: 0.5 #-1.
         expScale: -10.0
         fcn: exp_square_sum #square_sum
-      dofForceTarget:
+      dof_force_target:
         scale: 0.1 # -0.000025
         expScale: -1.0
         normalize_by: 60 # [N]
         fcn: exp_square_sum
-      dofAcc:
+      dof_acc:
         scale: -5.0e-7 # -0.0025
         fcn: square_sum
-      dofVel:
+      dof_vel:
         scale: -0.0
         fcn: square_sum
-      dofPos:
+      dof_pos:
         scale: -0.0
         fcn: abs_sum
-      dofPow:
+      dof_pow:
         scale: -0.0
         fcn: abs_sum
-      baseHeight:
+      dof_limit: # TODO
+        scale: -0
+        fcn: out_of_bound_abs_sum
+        margin: 0
+      base_height:
         scale: -0.0
         fcn: reverse_bell
-      footAirTime:
+      air_time:
         scale:  0.1
         fcn: duration_since_condition_reward
         offset: -0.5 # [s]
       # feetAirTimeMin_s: 0.3 # [s]
-      footStanceTime:
+      stance_time:
         scale: 0.1
         fcn: duration_since_condition_reward
         offset: -0.5 # [s]
       # feetStanceTimeMin_s: 0.3 # [s]
-      footSingleContact:
+      single_contact:
         scale:  0 # 0.1
         fcn: duration_within_period_reward
         max_single_contact: 1 # max num of feet contact that is considered as single contact
         grace_period: 0.2 # [s] grace period for overlapping contacts
-      footContactForce:
+      contact_force:
         scale: 0.0
         fcn: contact_force_reward
         offset: -300 # [N]
       # footContactForceLimit: 100 #[N]
-      footShouldContact:
+      should_contact:
         scale: 0.0
         fcn: sum
-      footHeight:
+      foot_height:
         scale: 0.0
         clamp_max: 0.1
         fcn: foot_height_reward
-      footImpact:
+      impact:
         scale: -0.0
         fcn: abs_sum
-      footStumble:
+      stumble:
         scale: -0. #-2.0
         fcn: sum
-      footSlip:
+      slip:
         scale: -0.0
         fcn: slip_reward  
-      kneeCollision:
+      collision:
         scale: -0.25 
         fcn: sum
       action:
         scale: -0.0
         fcn: abs
-      actionRate:
+      action_rate:
         scale: -5.0e-5
         fcn: square_sum
       # # cosmetics
       # hip:
       #   scale: -0. #25
       #   fcn: hip_reward
-      dofLimit: # TODO
-        scale: -0
-        fcn: out_of_bound_abs_sum
-        margin: 0
 
     # normalization
     linearVelocityScale: 2.0

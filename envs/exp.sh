@@ -1,9 +1,1060 @@
 # #!/bin/bash
 
 
+biped_sim_rew_tune2_guided_contact_asymm_larger_critc_smaller_actor(){ # better than biped_sim_rew_tune2_guided_contact_asymm
+    biped_sim_rew_tune2_guided_contact_asymm
+    change_hydra_dir
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_sim_rew_tune2_guided_contact_asymm_larger_critc_smaller_actor/runs/BipedAsymm_17-13-47-18/nn/BipedAsymm.pth
+
+    )
+    BASE_ARGS+=(
+        train.params.network.mlp.units=[256,128,64]
+        train.params.config.central_value_config.network.mlp.units=[1024,512,256]
+    )
+}
+
+biped_sim_rew_tune2_guided_contact_asymm_larger_critc(){ # better than biped_sim_rew_tune2_guided_contact_asymm
+    biped_sim_rew_tune2_guided_contact_asymm
+    change_hydra_dir
+    PLAY_ARGS+=(
+        test=export
+        num_envs=1 # exported policy only works with 1 num of env
+        checkpoint=outputs/Biped/train/biped_sim_rew_tune2_guided_contact_asymm_larger_critc/runs/BipedAsymm_17-13-07-44/nn/BipedAsymm.pth
+    )
+    BASE_ARGS+=(
+        train.params.network.mlp.units=[512,256,128]
+        train.params.config.central_value_config.network.mlp.units=[1024,512,256]
+    )
+}
+
+biped_sim_rew_tune2_guided_contact_asymm_debug(){
+    biped_sim_rew_tune2_guided_contact_terrain
+    change_hydra_dir
+    PLAY_ARGS+=(
+        # checkpoint=outputs/Biped/train/biped_sim_rew_tune2_guided_contact_asymm_debug/runs/BipedAsymm_18-10-08-58/nn/BipedAsymm.pth
+    
+    )
+    BASE_ARGS+=(
+        train=BipedPPOAsymm
+        task.env.asymmetric_observations=True
+        task.env.observationNames=[angularVelocity,projectedGravity,commands,dofPosition,dofVelocity,actions,contactTarget]
+        task.env.stateNames=[angularVelocity,projectedGravity,commands,dofPosition,dofVelocity,actions,contactTarget]
+        train.params.network.mlp.units=[512,256,128]
+        train.params.config.central_value_config.network.mlp.units=[512,256,128]
+    )
+}
+# find ./outputs -type d -iname "*biped_sim_rew_tune2_guided_contact_asymm_debug*" -exec find {} -type f -name "config.yaml" \;
+
+
+biped_sim_rew_tune2_guided_contact_asymm_urdf_20mmfillet_foot(){
+    biped_sim_rew_tune2_guided_contact_terrain
+    change_hydra_dir
+    PLAY_ARGS+=(
+        # checkpoint=outputs/Biped/train/biped_sim_rew_tune2_guided_contact_asymm_urdf_20mmfillet_foot/runs/Biped_19-11-06-25/nn/Biped.pth
+    
+        # checkpoint=null
+        # ++task.env.baseHeightOffset=1
+        # task.env.urdfAsset.AssetOptions.fix_base_link=true
+        # ++task.env.baseHeightOffset=0.001
+
+    )
+    TRAIN_ARGS+=(
+        headless=false
+    )
+
+    BASE_ARGS+=(
+        task.env.urdfAsset.file=urdf/v6_vis_URDF_20mmfillet_foot/v6_vis_URDF.urdf
+    )
+}
+
+biped_sim_rew_tune2_guided_contact_asymm_urdf_foot_thin(){ # good 👍
+    biped_sim_rew_tune2_guided_contact_terrain
+    change_hydra_dir
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_sim_rew_tune2_guided_contact_asymm_urdf_foot_thin/runs/Biped_19-13-44-02/nn/Biped.pth
+
+        # test=export
+        # num_envs=1 # exported policy only works with 1 num of env
+
+        # task.env.control.stiffness=120.0
+        # task.env.control.actionScale=0.0
+        # checkpoint=null
+        # # ++task.env.baseHeightOffset=1
+        # # task.env.urdfAsset.AssetOptions.fix_base_link=true
+        # ++task.env.baseHeightOffset=0.001
+    )
+    BASE_ARGS+=(
+        task.env.urdfAsset.file=urdf/v6_vis_URDF_thin/v6_vis_URDF.urdf
+    )
+}
+
+biped_sim_rew_tune2_guided_contact_asymm(){
+    biped_sim_rew_tune2_guided_contact_terrain
+    change_hydra_dir
+    PLAY_ARGS+=(
+        # checkpoint=outputs/Biped/train/biped_sim_rew_tune2_guided_contact_asymm/runs/BipedAsymm_11-18-46-57/nn/BipedAsymm.pth
+        # checkpoint=outputs/Biped/train/biped_sim_rew_tune2_guided_contact_asymm/runs/BipedAsymm_16-17-08-21/nn/BipedAsymm.pth
+        # checkpoint=outputs/Biped/train/biped_sim_rew_tune2_guided_contact_asymm/runs/BipedAsymm_17-12-44-56/nn/BipedAsymm.pth
+        # checkpoint=outputs/Biped/train/biped_sim_rew_tune2_guided_contact_asymm/runs/BipedAsymm_17-12-53-58/nn/BipedAsymm.pth
+        checkpoint=outputs/Biped/train/biped_sim_rew_tune2_guided_contact_asymm/runs/BipedAsymm_19-11-17-31/nn/BipedAsymm.pth
+    )
+    BASE_ARGS+=(
+        train=BipedPPOAsymm
+        task.env.asymmetric_observations=True
+        task.env.observationNames=[angularVelocity,projectedGravity,commands,dofPosition,dofVelocity,actions,contactTarget]
+        task.env.stateNames=[linearVelocity,angularVelocity,projectedGravity,commands,dofPosition,dofVelocity,actions,contactTarget,contact,heightMap]
+        train.params.network.mlp.units=[512,256,128]
+        train.params.config.central_value_config.network.mlp.units=[512,256,128]
+    )
+}
+
+biped_sim_rew_tune2_guided_contact_terrain(){
+    biped_sim_rew_tune2_guided_contact
+    change_hydra_dir
+    PLAY_ARGS+=(
+        # task.env.heightmap.x=[0]
+        # task.env.heightmap.y=[0]
+
+        task.env.terrain.numLevels=2
+        task.env.terrain.numTerrains=5
+        task.env.terrain.curriculum=False
+        task.env.terrain.terrainType=trimesh
+        # task.env.terrain.terrainType=heightfield
+        task.env.terrain.terrainType=plane
+
+        
+        # test=export
+        # num_envs=1 # exported policy only works with 1 num of env
+
+        # checkpoint=outputs/Biped/train/biped_sim_rew_tune2_guided_contact_terrain/runs/Biped_12-19-02-41/nn/Biped.pth
+
+        # checkpoint=outputs/Biped/train/biped_sim_rew_tune2_guided_contact_terrain/runs/Biped_12-19-02-41/nn/last_Biped_ep_550_rew_40.0172.pth
+        # checkpoint=outputs/Biped/train/biped_sim_rew_tune2_guided_contact_terrain/runs/Biped_12-19-13-48/nn/Biped.pth
+
+        # checkpoint=outputs/Biped/train/biped_sim_rew_tune2_guided_contact_terrain/runs/Biped_16-13-49-28/nn/Biped.pth
+
+        # checkpoint=outputs/Biped/train/biped_sim_rew_tune2_guided_contact_terrain/runs/Biped_16-14-52-44/nn/Biped.pth # step height reward ONE FOOT HIGH IN THE AIR..
+
+        # checkpoint=outputs/Biped/train/biped_sim_rew_tune2_guided_contact_terrain/runs/Biped_16-15-01-06/nn/Biped.pth
+        # checkpoint=outputs/Biped/train/biped_sim_rew_tune2_guided_contact_terrain/runs/Biped_16-15-33-34/nn/Biped.pth
+        # checkpoint=outputs/Biped/train/biped_sim_rew_tune2_guided_contact_terrain/runs/Biped_16-16-22-47/nn/Biped.pth # OLD URDF
+        # checkpoint=outputs/Biped/train/biped_sim_rew_tune2_guided_contact_terrain/runs/Biped_17-14-49-39/nn/Biped.pth # NEW URDF wide feet
+        checkpoint=outputs/Biped/train/biped_sim_rew_tune2_guided_contact_terrain/runs/Biped_18-11-05-45/nn/Biped.pth
+
+    )
+    BASE_ARGS+=(
+
+        task.env.learn.reward.dof_force_target.scale=0.1
+
+        task.env.terrain.terrainType=trimesh
+        task.env.terrain.difficultySale=0.2
+        task.env.terrain.curriculum=true
+        task.env.terrain.terrainProportions=[0,0,0,0,0,0,0,1,0]
+        task.env.terrain.slopeTreshold=0.1
+
+
+        # task.env.observationNames=[angularVelocity,projectedGravity,commands,dofPosition,dofVelocity,actions,contactTarget,contact]
+
+    )
+}
+
+biped_sim_rew_tune2_guided_contact(){ 
+    biped_sim_rew_tune2
+    change_hydra_dir
+    PLAY_ARGS+=(
+        task.env.enableDebugVis=True
+
+        # checkpoint=outputs/Biped/train/biped_sim_rew_tune2_guided_contact/runs/Biped_11-17-14-10/nn/Biped.pth
+        # checkpoint=outputs/Biped/train/biped_sim_rew_tune2_guided_contact/runs/Biped_11-17-23-24/nn/Biped.pth
+        # checkpoint=outputs/Biped/train/biped_sim_rew_tune2_guided_contact/runs/Biped_11-17-29-06/nn/Biped.pth
+        # checkpoint=outputs/Biped/train/biped_sim_rew_tune2_guided_contact/runs/Biped_11-17-40-42/nn/Biped.pth
+        # checkpoint=outputs/Biped/train/biped_sim_rew_tune2_guided_contact/runs/Biped_11-17-44-11/nn/Biped.pth
+        # checkpoint=outputs/Biped/train/biped_sim_rew_tune2_guided_contact/runs/Biped_11-17-48-51/nn/Biped.pth
+        # checkpoint=outputs/Biped/train/biped_sim_rew_tune2_guided_contact/runs/Biped_11-18-06-39/nn/Biped.pth
+        # checkpoint=outputs/Biped/train/biped_sim_rew_tune2_guided_contact/runs/Biped_11-18-18-49/nn/Biped.pth
+        # checkpoint=outputs/Biped/train/biped_sim_rew_tune2_guided_contact/runs/Biped_11-18-28-09/nn/Biped.pth
+        # checkpoint=outputs/Biped/train/biped_sim_rew_tune2_guided_contact/runs/Biped_11-18-42-20/nn/Biped.pth
+        ### best
+        # checkpoint=outputs/Biped/train/biped_sim_rew_tune2_guided_contact/runs/Biped_11-18-58-59/nn/Biped.pth # best, no dof_force_target reward
+        # checkpoint=outputs/Biped/train/biped_sim_rew_tune2_guided_contact/runs/Biped_11-19-02-02/nn/Biped.pth # with dof_force_target reward, feet dragging
+        # checkpoint=outputs/Biped/train/biped_sim_rew_tune2_guided_contact/runs/Biped_11-19-11-32/nn/Biped.pth # task.env.learn.reward.dof_pos.scale=-0.05
+        # checkpoint=outputs/Biped/train/biped_sim_rew_tune2_guided_contact/runs/Biped_11-19-14-38/nn/Biped.pth # task.env.learn.reward.dof_pos.scale=-0.02
+        
+        # checkpoint=outputs/Biped/train/biped_sim_rew_tune2_guided_contact/runs/Biped_11-19-19-59/nn/Biped.pth # only stand: task.env.learn.reward.dof_pos.scale=-0.1
+        # checkpoint=outputs/Biped/train/biped_sim_rew_tune2_guided_contact/runs/Biped_11-19-29-54/nn/Biped.pth #  task.env.learn.reward.dof_pos.scale=-0.2
+
+        # checkpoint=outputs/Biped/train/biped_sim_rew_tune2_guided_contact/runs/Biped_12-18-52-57/nn/Biped.pth
+        # checkpoint=outputs/Biped/train/biped_sim_rew_tune2_guided_contact_terrain/runs/Biped_16-16-01-09/nn/Biped.pth
+        # checkpoint=outputs/Biped/train/biped_sim_rew_tune2_guided_contact_terrain/runs/Biped_16-16-06-23/nn/Biped.pth
+        # checkpoint=outputs/Biped/train/biped_sim_rew_tune2_guided_contact_terrain/runs/Biped_16-16-10-22/nn/Biped.pth
+
+        # checkpoint=outputs/Biped/train/biped_sim_rew_tune2_guided_contact_terrain/runs/Biped_16-16-19-21/nn/Biped.pth
+    )
+    BASE_ARGS+=(
+        # # tentatively constrain dof force
+        task.env.learn.reward.dof_force_target.scale=0.1
+
+        # task.env.learn.reward.dof_pos.scale=-0.05
+        # task.env.learn.reward.dof_pos.scale=-0.02
+        # task.env.learn.reward.dof_pos.scale=-0.1
+        task.env.learn.reward.dof_pos.scale=-0.2
+
+
+        task.env.randomize.friction.range=[0,1.0]
+
+        # task.env.learn.reward.should_contact.scale=0.5 # orignal
+
+        task.env.learn.reward.should_contact.scale=1
+
+
+        task.env.randomCommandVelocityRanges.linear_x=[-0.2,0.5]
+        task.env.randomCommandVelocityRanges.linear_y=[-0.2,0.2]
+        task.env.randomCommandVelocityRanges.yaw=[-1,1]
+        # task.env.observationNames=[angularVelocity,projectedGravity,commands,dofPosition,dofVelocity,actions,phase,contactTarget]
+        task.env.observationNames=[angularVelocity,projectedGravity,commands,dofPosition,dofVelocity,actions,contactTarget]
+
+    )
+}
+biped_sim_rew_tune2_constant_vel_04_guided_contact(){  # walking with single contact
+    biped_sim_rew_tune2
+    change_hydra_dir
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_sim_rew_tune2_constant_vel_04_guided_contact/runs/Biped_11-16-47-19/nn/Biped.pth
+        # checkpoint=outputs/Biped/train/biped_sim_rew_tune2_constant_vel_04_guided_contact/runs/Biped_11-16-36-00/nn/Biped.pth
+    )
+    BASE_ARGS+=(
+        task.env.learn.reward.should_contact.scale=1
+        task.env.randomCommandVelocityRanges.linear_x=[0.4,0.4]
+        task.env.randomCommandVelocityRanges.linear_y=[0,0]
+        task.env.randomCommandVelocityRanges.yaw=[0,0]
+        task.env.observationNames=[angularVelocity,projectedGravity,commands,dofPosition,dofVelocity,actions,phase]
+
+    )
+}
+
+
+# baseline 2
+biped_sim_rew_tune2(){ # biped_sim_rew_tune_actionRate_angularVelocityZ_exp_orient_10 + no collision
+    biped_sim_rew_tune_baseline
+    change_hydra_dir
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_sim_rew_tune2/runs/Biped_09-23-16-24/nn/Biped.pth
+        # checkpoint=outputs/Biped/train/biped_sim_rew_tune2/runs/Biped_10-00-07-25/nn/Biped.pth
+    )
+    BASE_ARGS+=(
+        task.env.learn.reward.lin_vel_xy.scale=1
+        task.env.learn.reward.lin_vel_xy.expScale=-4
+        task.env.learn.allowKneeContacts=false
+        task.env.learn.reward.action_rate.scale=-1.0e-4
+        task.env.learn.reward.ang_vel_z.scale=0.5
+        task.env.learn.reward.orientation.scale=0.5
+        task.env.learn.reward.orientation.expScale=-10
+
+        # task.env.learn.reward.lin_vel_xy.scale=1
+        # task.env.learn.reward.lin_vel_xy.expScale=-4
+        # task.env.learn.reward.lin_vel_z.scale=0
+        # task.env.learn.reward.ang_vel_xy.scale=0
+        # task.env.learn.reward.ang_vel_z.scale=0
+        # task.env.learn.reward.orientation.scale=0
+        # task.env.learn.reward.dof_force_target.scale=0
+        # task.env.learn.reward.dof_acc.scale=0
+        # task.env.learn.reward.dof_vel.scale=0
+        # task.env.learn.reward.dof_pos.scale=0
+        # task.env.learn.reward.dof_pow.scale=0
+        # task.env.learn.reward.base_height.scale=0
+        # task.env.learn.reward.air_time.scale=0
+        # task.env.learn.reward.stance_time.scale=0
+        # task.env.learn.reward.single_contact.scale=0
+        # task.env.learn.reward.contact_force.scale=0
+        # task.env.learn.reward.impact.scale=0
+        # task.env.learn.reward.stumble.scale=0
+        # task.env.learn.reward.slip.scale=0
+        # task.env.learn.reward.collision.scale=0
+        # task.env.learn.reward.action.scale=0
+        # task.env.learn.reward.action_rate.scale=0
+        # task.env.learn.reward.dof_limit.scale=0
+    )
+}
+
+
+biped_sim_rew_tune2_singleContact_01_g00_airtime_s1_o_04(){ # still jumping
+    biped_sim_rew_tune2
+    change_hydra_dir
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_sim_rew_tune2_singleContact_01_g00_airtime_s1_o_04/runs/Biped_10-02-53-00/nn/Biped.pth
+    )
+    BASE_ARGS+=(
+        task.env.learn.reward.single_contact.scale=0.1
+        task.env.learn.reward.single_contact.grace_period=0.0 # no grace
+        task.env.learn.reward.air_time.scale=1.0
+        task.env.learn.reward.air_time.offset=-0.4
+    )
+}
+
+biped_sim_rew_tune2_singleContact_01_g02_airtime_s1_o_04(){ # also 2 leg jumping
+    biped_sim_rew_tune2
+    change_hydra_dir
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_sim_rew_tune2_singleContact_01_g02_airtime_s1_o_04/runs/Biped_10-01-02-42/nn/Biped.pth
+    )
+    BASE_ARGS+=(
+        task.env.learn.reward.single_contact.scale=0.1
+        task.env.learn.reward.single_contact.grace_period=0.2
+        task.env.learn.reward.air_time.scale=1.0
+        task.env.learn.reward.air_time.offset=-0.4
+    )
+}
+
+biped_sim_rew_tune2_singleContact_05_g02_airtime_s1_o_04(){ # 2 leg jumping
+    biped_sim_rew_tune2
+    change_hydra_dir
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_sim_rew_tune2_singleContact_05_g02_airtime_s1_o_04/runs/Biped_10-01-01-01/nn/Biped.pth
+    )
+    BASE_ARGS+=(
+        task.env.learn.reward.single_contact.scale=0.5
+        task.env.learn.reward.single_contact.grace_period=0.2
+        task.env.learn.reward.air_time.scale=1.0
+        task.env.learn.reward.air_time.offset=-0.4
+    )
+}
+
+biped_sim_rew_tune2_singleContact_05_g02_airtime_s5_o_04_more_push(){
+    biped_sim_rew_tune2_singleContact_05_g02_airtime_s5_o_04
+    change_hydra_dir
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_sim_rew_tune2_singleContact_05_g02_airtime_s5_o_04_more_push/runs/Biped_10-10-59-43/nn/Biped.pth
+    )
+    BASE_ARGS+=(
+        task.env.randomize.push.interval_s=4
+        task.env.randomize.push.velMin=[-0.3,-0.3,0,-0.3,-0.3,-0.3]
+        task.env.randomize.push.velMax=[0.3,0.3,0,0.3,0.3,0.3]
+    )
+}
+
+biped_sim_rew_tune2_singleContact_05_g02_airtime_s5_o_04(){ # single leg hopping !!!!
+    biped_sim_rew_tune2
+    change_hydra_dir
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_sim_rew_tune2_singleContact_05_g02_airtime_s5_o_04/runs/Biped_10-10-35-51/nn/Biped.pth
+    )
+    BASE_ARGS+=(
+        task.env.learn.reward.single_contact.scale=0.5
+        task.env.learn.reward.single_contact.grace_period=0.2
+        task.env.learn.reward.air_time.scale=5.0
+        task.env.learn.reward.air_time.offset=-0.4
+    )
+}
+
+
+
+biped_sim_rew_tune2_singleContact_05_g00(){ # jumping
+    biped_sim_rew_tune2
+    change_hydra_dir
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_sim_rew_tune2_singleContact_05_g00/runs/Biped_09-23-38-57/nn/Biped.pth
+    )
+    BASE_ARGS+=(
+        task.env.learn.reward.single_contact.scale=0.5
+        task.env.learn.reward.single_contact.grace_period=0
+    )
+}
+
+biped_sim_rew_tune2_singleContact_1_g02(){ # jumping as well
+    biped_sim_rew_tune2
+    change_hydra_dir
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_sim_rew_tune2_singleContact_1_g02/runs/Biped_10-01-14-59/nn/Biped.pth
+    )
+    BASE_ARGS+=(
+        task.env.learn.reward.single_contact.scale=1.0
+        task.env.learn.reward.single_contact.grace_period=0.2
+    )
+}
+
+biped_sim_rew_tune2_singleContact_05_g02_strict(){ # stepping, small steps
+    biped_sim_rew_tune2
+    change_hydra_dir
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_sim_rew_tune2_singleContact_05_g02_strict/runs/Biped_10-10-22-04/nn/Biped.pth
+    )
+    BASE_ARGS+=(
+        task.env.learn.reward.single_contact.scale=0.5
+        task.env.learn.reward.single_contact.grace_period=0.2
+    )
+}
+
+biped_sim_rew_tune2_singleContact_05_g02(){ # stepping, small steps
+    biped_sim_rew_tune2
+    change_hydra_dir
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_sim_rew_tune2_singleContact_05_g02/runs/Biped_09-23-37-34/nn/Biped.pth
+    )
+    BASE_ARGS+=(
+        task.env.learn.reward.single_contact.scale=0.5
+        task.env.learn.reward.single_contact.grace_period=0.2
+    )
+}
+
+biped_sim_rew_tune2_airtime_s10_o_04(){ # jumping, air time will cause wider stance
+    biped_sim_rew_tune2
+    change_hydra_dir
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_sim_rew_tune2_airtime_s10_o_04/runs/Biped_09-23-31-18/nn/Biped.pth
+    )
+    BASE_ARGS+=(
+        task.env.learn.reward.air_time.scale=10.0
+        task.env.learn.reward.air_time.offset=-0.4
+    )
+}
+
+biped_sim_rew_tune2_airtime_s5_o_04(){  # jumping, air time will cause wider stance
+    biped_sim_rew_tune2
+    change_hydra_dir
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_sim_rew_tune2_airtime_s5_o_04/runs/Biped_09-23-31-11/nn/Biped.pth
+    )
+    BASE_ARGS+=(
+        task.env.learn.reward.air_time.scale=5.0
+        task.env.learn.reward.air_time.offset=-0.4
+    )
+}
+
+
+biped_sim_rew_tune2_dofForceTarget_01(){  # jumping, with old torque reward
+    biped_sim_rew_tune2
+    change_hydra_dir
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_sim_rew_tune2_dofForceTarget_01/runs/Biped_10-02-22-48/nn/Biped.pth
+    )
+    BASE_ARGS+=(
+        # task.env.learn.reward.dof_force_target.scale=-1e-5
+        task.env.learn.reward.dof_force_target.scale=0.1
+    )
+}
+biped_sim_rew_tune2_dofForceTarget_00(){  # jumping, with old torque reward
+    biped_sim_rew_tune2
+    change_hydra_dir
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_sim_rew_tune2_dofForceTarget_01/runs/Biped_10-02-22-48/nn/Biped.pth
+    )
+    BASE_ARGS+=(
+        # task.env.learn.reward.dof_force_target.scale=-1e-5
+        task.env.learn.reward.dof_force_target.scale=0.0
+    )
+}
+
+biped_sim_rew_tune2_airtime_torque_1(){  # jumping, with old torque reward
+    biped_sim_rew_tune2
+    change_hydra_dir
+    PLAY_ARGS+=(
+
+        # ++task.env.baseHeightOffset=1
+        # task.env.urdfAsset.AssetOptions.fix_base_link=true
+
+        checkpoint=outputs/Biped/train/biped_sim_rew_tune2_airtime_torque_1/runs/Biped_10-01-28-56/nn/Biped.pth
+    )
+    BASE_ARGS+=(
+        # task.env.learn.reward.dof_force_target.scale=-1e-5
+        task.env.learn.reward.dof_force_target.scale=0.1
+    )
+}
+
+biped_sim_rew_tune2_constant_vel_04(){  # jumping, with old torque reward
+    biped_sim_rew_tune2
+    change_hydra_dir
+    PLAY_ARGS+=(
+
+        # ++task.env.baseHeightOffset=1
+        # task.env.urdfAsset.AssetOptions.fix_base_link=true
+
+        checkpoint=outputs/Biped/train/biped_sim_rew_tune2_constant_vel_04/runs/Biped_10-02-58-08/nn/Biped.pth
+    )
+    BASE_ARGS+=(
+        task.env.randomCommandVelocityRanges.linear_x=[0.4,0.4]
+        task.env.randomCommandVelocityRanges.linear_y=[0,0]
+        task.env.randomCommandVelocityRanges.yaw=[0,0]
+    )
+}
+
+biped_sim_backward(){
+    biped_sim_baseline
+    change_hydra_dir
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_sim_baseline/runs/Biped_09-11-15-02/nn/Biped.pth
+    )
+    TRAIN_ARGS+=(
+        headless=false
+    )
+    BASE_ARGS+=(
+
+    )
+}
+
+
+biped_sim_asym_more_push(){ # more push result in small steps
+    biped_sim_asymm
+    change_hydra_dir
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_sim_asym_more_push/runs/BipedAsymm_09-11-54-40/nn/BipedAsymm.pth
+    )
+    BASE_ARGS+=(
+        task.env.randomize.push.interval_s=5
+        task.env.randomize.push.velMin=[-0.3,-0.3,0,-0.3,-0.3,-0.3]
+        task.env.randomize.push.velMax=[0.3,0.3,0,0.3,0.3,0.3]
+    )
+
+}
+
+biped_sim_single_contact_air_time_x4_changed_zero_cmd(){ # constant 1 reward for zero command, this is too noisy.
+    biped_sim_baseline
+    change_hydra_dir
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_sim_single_contact_air_time_x4_changed_zero_cmd/runs/Biped_09-14-22-57/nn/Biped.pth
+    )
+    BASE_ARGS+=(
+        task.env.learn.reward.single_contact.scale=1.0
+        task.env.learn.reward.single_contact.grace_period=0
+        task.env.learn.reward.air_time.scale=4.0
+        task.env.learn.reward.air_time.offset=-0.4
+    )
+}
+
+biped_sim_single_contact_air_time_x4(){ # leg wide apart
+    biped_sim_baseline
+    change_hydra_dir
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_sim_single_contact_air_time_x4/runs/Biped_09-13-08-16/nn/Biped.pth
+    )
+    BASE_ARGS+=(
+        task.env.learn.reward.single_contact.scale=1.0
+        task.env.learn.reward.single_contact.grace_period=0
+        task.env.learn.reward.air_time.scale=4.0
+        task.env.learn.reward.air_time.offset=-0.4
+    )
+}
+
+biped_sim_single_contact_air_time_x2(){ # still walks on toes
+    biped_sim_baseline
+    change_hydra_dir
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_sim_single_contact_air_time_x2/runs/Biped_09-13-07-20/nn/Biped.pth
+    )
+    BASE_ARGS+=(
+        task.env.learn.reward.single_contact.scale=1.0
+        task.env.learn.reward.single_contact.grace_period=0
+        task.env.learn.reward.air_time.scale=2.0
+        task.env.learn.reward.air_time.offset=-0.4
+    )
+}
+
+biped_sim_single_contact_air_time(){ # still walks on toes
+    biped_sim_baseline
+    change_hydra_dir
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_sim_single_contact_air_time/runs/Biped_09-13-05-59/nn/Biped.pth
+    )
+    BASE_ARGS+=(
+        task.env.learn.reward.single_contact.scale=1.0
+        task.env.learn.reward.single_contact.grace_period=0
+        task.env.learn.reward.air_time.scale=1.0
+        task.env.learn.reward.air_time.offset=-0.4
+    )
+}
+
+
+biped_sim_single_contact(){ # walks on toes
+    biped_sim_baseline
+    change_hydra_dir
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_sim_single_contact/runs/Biped_09-13-03-12/nn/Biped.pth
+    )
+    BASE_ARGS+=(
+        task.env.learn.reward.single_contact.scale=1.0
+        task.env.learn.reward.single_contact.grace_period=0
+    )
+}
+
+
+biped_sim_asym_single_contact(){ # more push result in small steps
+    biped_sim_asymm
+    change_hydra_dir
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_sim_asym_single_contact/runs/BipedAsymm_09-12-37-29/nn/BipedAsymm.pth
+    )
+    BASE_ARGS+=(
+        task.env.learn.reward.single_contact.scale=1.0
+        task.env.learn.reward.single_contact.grace_period=0
+    )
+
+}
+
+
+biped_sim_asymm(){
+    biped_sim_baseline
+    change_hydra_dir
+    PLAY_ARGS+=(
+        # checkpoint=outputs/Biped/train/biped_sim_asymm/runs/BipedAsymm_09-11-39-44/nn/BipedAsymm.pth
+        # checkpoint=outputs/Biped/train/biped_sim_asymm/runs/BipedAsymm_09-11-39-44/nn/last_BipedAsymm_ep_1500_rew_24.801708.pth
+        checkpoint=outputs/Biped/train/biped_sim_asymm/runs/BipedAsymm_09-11-39-44/nn/last_BipedAsymm_ep_1000_rew_23.981369.pth
+    )
+    BASE_ARGS+=(
+        train=BipedPPOAsymm
+        task.env.asymmetric_observations=True
+        task.env.observationNames=[angularVelocity,projectedGravity,commands,dofPosition,dofVelocity,actions]
+        task.env.stateNames=[linearVelocity,angularVelocity,projectedGravity,commands,dofPosition,dofVelocity,actions]
+        train.params.network.mlp.units=[512,256,128]
+        train.params.config.central_value_config.network.mlp.units=[512,256,128]
+    )
+}
+
+
+biped_sim_vis(){
+    biped_sim_baseline
+    change_hydra_dir
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_sim_vis/runs/Biped_09-15-22-25/nn/Biped.pth
+    )
+    BASE_ARGS+=(
+        task.env.urdfAsset.file=urdf/v6_vis_URDF_IMU_top/v6_vis_URDF.urdf
+    )
+}
+
+
+biped_sim_vis_IMU_top(){
+    biped_sim_baseline
+    change_hydra_dir
+    PLAY_ARGS+=(
+        checkpoint=
+    )
+    BASE_ARGS+=(
+        task.env.urdfAsset.file=urdf/v6_vis_URDF_IMU_top/v6_vis_URDF.urdf
+    )
+}
+
+
+biped_sim_rew_tune_linearVelocityXY(){
+    biped_sim_rew_tune_baseline
+    change_hydra_dir
+    BASE_ARGS+=(
+        task.env.learn.reward.lin_vel_xy.scale=1
+        task.env.learn.reward.lin_vel_xy.expScale=-5
+    )
+}
+
+
+biped_sim_rew_tune_linearVelocityXY_feetSingleContact_grace0(){
+    biped_sim_rew_tune_baseline
+    change_hydra_dir
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_sim_rew_tune_linearVelocityXY_feetSingleContact_grace0/runs/Biped_09-17-18-38/nn/Biped.pth
+    )
+    BASE_ARGS+=(
+        task.env.learn.reward.lin_vel_xy.scale=1
+        task.env.learn.reward.lin_vel_xy.expScale=-5
+        task.env.learn.reward.single_contact.scale=0.5
+        task.env.learn.reward.single_contact.grace_period=0
+
+    )
+}
+biped_sim_rew_tune_linearVelocityXY_feetSingleContact(){ # jumping or small steps
+    biped_sim_rew_tune_baseline
+    change_hydra_dir
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_sim_rew_tune_linearVelocityXY_feetSingleContact/runs/Biped_09-17-04-26/nn/Biped.pth
+    )
+    BASE_ARGS+=(
+        task.env.learn.reward.lin_vel_xy.scale=1
+        task.env.learn.reward.lin_vel_xy.expScale=-5
+        task.env.learn.reward.single_contact.scale=0.5
+
+    )
+}
+
+biped_sim_rew_tune_actionRate_angularVelocityZ_exp_orient_30_no_collision(){ # legs collision
+    biped_sim_rew_tune_actionRate_angularVelocityZ_exp_orient_30
+    change_hydra_dir
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_sim_rew_tune_actionRate_angularVelocityZ_exp_orient_30_no_collision/runs/Biped_09-21-04-11/nn/Biped.pth
+    )
+    BASE_ARGS+=(
+        task.env.learn.allowKneeContacts=false
+    )
+}
+
+
+biped_sim_rew_tune_actionRate_angularVelocityZ_exp_orient_30(){ # legs collision
+    biped_sim_rew_tune_baseline
+    change_hydra_dir
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_sim_rew_tune_actionRate_angularVelocityZ_exp_orient_30/runs/Biped_09-19-30-21/nn/Biped.pth
+    )
+    BASE_ARGS+=(
+        task.env.learn.reward.action_rate.scale=-1.0e-4
+        task.env.learn.reward.ang_vel_z.scale=0.5
+        task.env.learn.reward.orientation.scale=0.5
+        task.env.learn.reward.orientation.expScale=-30
+    )
+}
+
+biped_sim_rew_tune_actionRate_angularVelocityZ_exp_orient_20(){ # also jumping behavior, leg distance ok
+    biped_sim_rew_tune_baseline
+    change_hydra_dir
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_sim_rew_tune_actionRate_angularVelocityZ_exp_orient_20/runs/Biped_09-19-53-56/nn/Biped.pth
+    )
+    BASE_ARGS+=(
+        task.env.learn.reward.action_rate.scale=-1.0e-4
+        task.env.learn.reward.ang_vel_z.scale=0.5
+        task.env.learn.reward.orientation.scale=0.5
+        task.env.learn.reward.orientation.expScale=-20
+    )
+}
+
+biped_sim_rew_tune_actionRate_angularVelocityZ_exp_orient_10_1(){ # another jumping behavior, leg too close
+    biped_sim_rew_tune_baseline
+    change_hydra_dir
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_sim_rew_tune_actionRate_angularVelocityZ_exp_orient_10_1/runs/Biped_09-19-46-54/nn/Biped.pth
+    )
+    BASE_ARGS+=(
+        task.env.learn.reward.action_rate.scale=-1.0e-4
+        task.env.learn.reward.ang_vel_z.scale=0.5
+        task.env.learn.reward.orientation.scale=1.0
+        task.env.learn.reward.orientation.expScale=-10
+    )
+}
+
+biped_sim_rew_tune_actionRate_angularVelocityZ_exp_orient_10_no_collision(){ # 
+    biped_sim_rew_tune_actionRate_angularVelocityZ_exp_orient_10
+    change_hydra_dir
+    PLAY_ARGS+=(
+        # checkpoint=outputs/Biped/train/biped_sim_rew_tune_actionRate_angularVelocityZ_exp_orient_10_no_collision/runs/Biped_09-20-42-42/nn/Biped.pth
+        checkpoint=outputs/Biped/train/biped_sim_rew_tune_actionRate_angularVelocityZ_exp_orient_10_no_collision/runs/Biped_09-20-42-55/nn/Biped.pth
+    )
+    BASE_ARGS+=(
+        task.env.learn.allowKneeContacts=false
+    )
+}
+
+biped_sim_rew_tune_actionRate_angularVelocityZ_exp_orient_10_seed_1(){ # similar to seed 42
+    biped_sim_rew_tune_actionRate_angularVelocityZ_exp_orient_10
+    change_hydra_dir
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_sim_rew_tune_actionRate_angularVelocityZ_exp_orient_10_seed_1/runs/Biped_09-21-45-49/nn/Biped.pth
+    )
+    BASE_ARGS+=(
+        seed=1
+    )
+}
+
+biped_sim_rew_tune_actionRate_angularVelocityZ_exp_orient_10_seed_0_no_collision(){
+    biped_sim_rew_tune_actionRate_angularVelocityZ_exp_orient_10_seed_0
+    change_hydra_dir
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_sim_rew_tune_actionRate_angularVelocityZ_exp_orient_10_seed_0_no_collision/runs/Biped_09-22-06-38/nn/Biped.pth
+    )
+    BASE_ARGS+=(
+        task.env.learn.allowKneeContacts=false
+    )
+}
+
+
+biped_sim_rew_tune_actionRate_angularVelocityZ_exp_orient_10_seed_0(){ # bad posture
+    biped_sim_rew_tune_actionRate_angularVelocityZ_exp_orient_10
+    change_hydra_dir
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_sim_rew_tune_actionRate_angularVelocityZ_exp_orient_10_seed_0/runs/Biped_09-21-45-44/nn/Biped.pth
+    )
+    BASE_ARGS+=(
+        seed=0
+    )
+}
+
+# TRY THIS NEXT
+biped_sim_rew_tune_actionRate_angularVelocityZ_exp_orient_10(){ # also small quick steps, good, try this next?
+    biped_sim_rew_tune_baseline
+    change_hydra_dir
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_sim_rew_tune_actionRate_angularVelocityZ_exp_orient_10/runs/Biped_09-19-30-13/nn/Biped.pth
+    )
+    BASE_ARGS+=(
+        task.env.learn.reward.action_rate.scale=-1.0e-4
+        task.env.learn.reward.ang_vel_z.scale=0.5
+        task.env.learn.reward.orientation.scale=0.5
+        task.env.learn.reward.orientation.expScale=-10
+    )
+}
+
+biped_sim_rew_tune_actionRate_angularVelocityZ_orient_1_0_no_collision(){ # jumping, allowKneeContacts=false seems to help in symmetry
+    biped_sim_rew_tune_actionRate_angularVelocityZ_orient_1_0
+    change_hydra_dir
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_sim_rew_tune_actionRate_angularVelocityZ_orient_1_0_no_collision/runs/Biped_09-21-23-53/nn/Biped.pth
+    )
+    BASE_ARGS+=(
+        task.env.learn.allowKneeContacts=false
+    )
+}
+
+biped_sim_rew_tune_actionRate_angularVelocityZ_orient_1_0(){ # no jump, small quick steps TODO COMPARE with biped_sim_rew_tune_actionRate_angularVelocityZ
+    biped_sim_rew_tune_baseline
+    change_hydra_dir
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_sim_rew_tune_actionRate_angularVelocityZ_orient_1_0/runs/Biped_09-19-22-24/nn/Biped.pth
+    )
+    BASE_ARGS+=(
+        task.env.learn.reward.action_rate.scale=-1.0e-4
+        task.env.learn.reward.ang_vel_z.scale=0.5
+        task.env.learn.reward.orientation.scale=-1.0
+    )
+}
+
+biped_sim_rew_tune_actionRate_angularVelocityZ_orient_0_5_no_collision(){ # small steps, no jumping
+    biped_sim_rew_tune_actionRate_angularVelocityZ_orient_0_5
+    change_hydra_dir
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_sim_rew_tune_actionRate_angularVelocityZ_orient_0_5_no_collision/runs/Biped_09-21-23-23/nn/Biped.pth
+    )
+    BASE_ARGS+=(
+        task.env.learn.allowKneeContacts=false
+    )
+}
+
+biped_sim_rew_tune_actionRate_angularVelocityZ_orient_0_5(){ # funny jumping behavior resulted from just just 4 rewards (linear velocity xy, angular veloxity z, action rate, and orientation)
+    biped_sim_rew_tune_baseline
+    change_hydra_dir
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_sim_rew_tune_actionRate_angularVelocityZ_orient_0_5/runs/Biped_09-19-21-55/nn/Biped.pth
+    )
+    BASE_ARGS+=(
+        task.env.learn.reward.action_rate.scale=-1.0e-4
+        task.env.learn.reward.ang_vel_z.scale=0.5
+        task.env.learn.reward.orientation.scale=-0.5
+    )
+}
+
+
+biped_sim_rew_tune_actionRate_angularVelocityZ_smalldefaultJointPositions(){ # leg spreading, bad
+    biped_sim_rew_tune_baseline
+    change_hydra_dir
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_sim_rew_tune_actionRate_angularVelocityZ_smalldefaultJointPositions/runs/Biped_09-19-09-12/nn/Biped.pth
+        # pipeline="cpu"
+
+    )
+    BASE_ARGS+=(
+        task.env.learn.reward.action_rate.scale=-1.0e-4
+        task.env.learn.reward.ang_vel_z.scale=0.5
+        ++task.env.defaultJointPositions=[0.000,0.087,0.000,0.197,-0.110,0.000,-0.087,0.000,-0.197,0.110]
+    )
+}
+
+biped_sim_rew_tune_actionRate_angularVelocityZ(){ # adding angular velocity z will regularize the action, i.e. reduce bounds loss
+    biped_sim_rew_tune_baseline
+    change_hydra_dir
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_sim_rew_tune_actionRate_angularVelocityZ/runs/Biped_09-17-40-21/nn/Biped.pth
+        # pipeline="cpu"
+
+    )
+    BASE_ARGS+=(
+        task.env.learn.reward.action_rate.scale=-1.0e-4
+        task.env.learn.reward.ang_vel_z.scale=0.5
+    )
+}
+
+
+biped_sim_rew_tune_actionRate_small(){ # worse pose than action_rate.scale=-1.0e-4
+    biped_sim_rew_tune_baseline
+    change_hydra_dir
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_sim_rew_tune_actionRate_small/runs/Biped_09-17-50-53/nn/Biped.pth
+    )
+    BASE_ARGS+=(
+        task.env.learn.reward.action_rate.scale=-5.0e-5
+    )
+}
+
+
+
+biped_sim_rew_tune_actionRate_smaller_defaultJointPositions(){ # too small, bad pose
+    biped_sim_rew_tune_baseline
+    change_hydra_dir
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_sim_rew_tune_actionRate_smaller_defaultJointPositions/runs/Biped_09-18-34-26/nn/Biped.pth
+    )
+    BASE_ARGS+=(
+        task.env.learn.reward.action_rate.scale=-1.0e-4
+        # even smaller default joint position
+        ++task.env.defaultJointPositions=[0.0000,0.0436,0.0000,0.0897,-0.0460,0.0000,-0.0436,0.0000,-0.0897,0.0460]
+        # smaller default joint positions
+        # ++task.env.defaultJointPositions=[0.000,0.087,0.000,0.197,-0.110,0.000,-0.087,0.000,-0.197,0.110]
+        # original default joint positions
+        # ++task.env.defaultJointPositions=[0.000,0.175,0.000,0.387,-0.213,0.000,-0.175,0.000,-0.387,0.213]
+    )
+}
+
+biped_sim_rew_tune_actionRate_small_defaultJointPositions(){
+    biped_sim_rew_tune_baseline
+    change_hydra_dir
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_sim_rew_tune_actionRate_small_defaultJointPositions/runs/Biped_09-18-13-17/nn/Biped.pth
+    )
+    BASE_ARGS+=(
+        task.env.learn.reward.action_rate.scale=-1.0e-4
+        # smaller default joint positions
+        ++task.env.defaultJointPositions=[0.000,0.087,0.000,0.197,-0.110,0.000,-0.087,0.000,-0.197,0.110]
+        # original default joint positions
+        # ++task.env.defaultJointPositions=[0.000,0.175,0.000,0.387,-0.213,0.000,-0.175,0.000,-0.387,0.213]
+    )
+}
+
+biped_sim_rew_tune_actionRate(){ # adding action rate will make it learn slower
+    biped_sim_rew_tune_baseline
+    change_hydra_dir
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_sim_rew_tune_actionRate/runs/Biped_09-17-29-15/nn/Biped.pth
+    )
+    BASE_ARGS+=(
+        task.env.learn.reward.action_rate.scale=-1.0e-4
+    )
+}
+
+biped_sim_rew_tune_baseline(){
+    biped_sim_baseline
+    change_hydra_dir
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_sim_rew_tune_baseline/runs/Biped_09-16-20-09/nn/Biped.pth
+    )
+    BASE_ARGS+=(
+        task.env.learn.reward.lin_vel_xy.scale=1
+        task.env.learn.reward.lin_vel_xy.expScale=-4
+        task.env.learn.reward.lin_vel_z.scale=0
+        task.env.learn.reward.ang_vel_xy.scale=0
+        task.env.learn.reward.ang_vel_z.scale=0
+        task.env.learn.reward.orientation.scale=0
+        task.env.learn.reward.dof_force_target.scale=0
+        task.env.learn.reward.dof_acc.scale=0
+        task.env.learn.reward.dof_vel.scale=0
+        task.env.learn.reward.dof_pos.scale=0
+        task.env.learn.reward.dof_pow.scale=0
+        task.env.learn.reward.base_height.scale=0
+        task.env.learn.reward.air_time.scale=0
+        task.env.learn.reward.stance_time.scale=0
+        task.env.learn.reward.single_contact.scale=0
+        task.env.learn.reward.contact_force.scale=0
+        task.env.learn.reward.impact.scale=0
+        task.env.learn.reward.stumble.scale=0
+        task.env.learn.reward.slip.scale=0
+        task.env.learn.reward.collision.scale=0
+        task.env.learn.reward.action.scale=0
+        task.env.learn.reward.action_rate.scale=0
+        task.env.learn.reward.dof_limit.scale=0
+    )
+}
+
+biped_sim_slip(){
+    biped_sim_baseline
+    change_hydra_dir
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_sim_slip/runs/Biped_09-16-10-53/nn/Biped.pth
+    )
+    BASE_ARGS+=(
+        task.env.learn.reward.slip.scale=-0.2
+    )
+
+}
+
+biped_sim_baseline(){
+    base
+    task=Biped
+    change_hydra_dir
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_sim_baseline/runs/Biped_09-11-15-02/nn/Biped.pth
+        headless=false
+
+        num_envs=5
+        task.sim.dt=0.0025
+        ++task.env.renderFPS=100
+        # ++task.env.renderFPS=50
+        task.env.dataPublisher.enable=true
+
+        task.env.randomize.push.enable=false
+        task.env.randomize.friction.enable=false
+        task.env.randomize.initDofPos.enable=false
+        task.env.randomize.initDofVel.enable=false
+        task.env.randomize.erfi.enable=false
+        task.env.learn.addNoise=false
+    )
+    TRAIN_ARGS+=(
+        # headless=false
+    )
+    BASE_ARGS+=(
+
+        headless=true
+
+        task.env.terrain.terrainType=plane
+        ++task.env.assetDofProperties.velocity=10
+        ++task.env.assetDofProperties.damping=[0.8500,0.4200,0.6000,0.8500,0.9000,0.8500,0.4200,0.6000,0.8500,0.9000]
+        ++task.env.assetDofProperties.armature=[0.3600,0.4500,0.3600,0.3600,0.1200,0.3600,0.4500,0.3600,0.3600,0.1200]
+        ++task.env.assetDofProperties.friction=[0.0115,0.0050,0.0150,0.1300,0.3500,0.0115,0.0050,0.0150,0.1300,0.3500]
+
+        train.params.config.max_epochs=1500
+
+        task.sim.physx.num_position_iterations=2
+
+        task.env.urdfAsset.file=urdf/v6_vis_URDF_wide_feet/v6_vis_URDF.urdf
+        # task.env.urdfAsset.file=urdf/biped_long_foot/biped_v6_terrain.urdf
+        ++task.env.urdfAsset.AssetOptions.vhacd_enabled=true
+        ++task.env.urdfAsset.AssetOptions.vhacd_params.max_convex_hulls=1
+        ++task.env.urdfAsset.AssetOptions.vhacd_params.max_num_vertices_per_ch=64
+
+        # ++task.env.baseHeightOffset=0.1
+        ++task.env.baseHeightOffset=0.05
+        ++task.env.defaultJointPositions=[0.000,0.175,0.000,0.387,-0.213,0.000,-0.175,0.000,-0.387,0.213]
+
+        task.env.randomCommandVelocityRanges.linear_x=[-0.1,0.5]
+        task.env.randomCommandVelocityRanges.linear_y=[0,0]
+        task.env.randomCommandVelocityRanges.yaw=[0,0]
+
+        task.env.terrain.terrainType=plane
+        # task.env.terrain.terrainType=heightfield
+        # task.env.terrain.difficultySale=0.2
+        # task.env.terrain.curriculum=true
+        # task.env.terrain.terrainProportions=[0,0,1,0,0,0,0,0,0]
+
+        task.env.control.stiffness=60.0
+        task.env.control.actionScale=1.0
+
+        # train=BipedPPOAsymm
+        # task.env.asymmetric_observations=True
+        # task.env.observationNames=[angularVelocity,projectedGravity,commands,dofPosition,dofVelocity,actions]
+        # task.env.stateNames=[linearVelocity,angularVelocity,projectedGravity,commands,dofPosition,dofVelocity,actions]
+        # train.params.network.mlp.units=[512,256,128]
+        # train.params.config.central_value_config.network.mlp.units=[1024,512,256]
+        
+        task.env.learn.reward.slip.scale=-0.1
+
+        # task.env.randomize.push.interval_s=5
+        # task.env.randomize.push.velMin=[-0.3,-0.3,0,-0.3,-0.3,-0.3]
+        # task.env.randomize.push.velMax=[0.3,0.3,0,0.3,0.3,0.3]
+
+        task.env.randomize.erfi.enable=true
+        task.env.randomize.erfi.rfi_range=[-3.0,3.0]
+        task.env.randomize.erfi.rao_range=[-2.0,2.0]
+
+        # task.env.learn.dofPositionNoise=0.02
+    )
+}
+
 biped_urdf_check(){
     biped_baseline
     change_hydra_dir
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_urdf_check/runs/BipedAsymm_08-10-48-41/nn/last_BipedAsymm_ep_5000_rew_24.6043.pth
+    )
     TRAIN_ARGS+=(
         headless=false
     )
@@ -15,6 +1066,101 @@ biped_urdf_check(){
 
 
 
+biped_stepping_stone_slippery_low_torque_reward(){
+    biped_stepping_stone_trimesh_no_push
+    change_hydra_dir
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_stepping_stone_slippery_low_torque_reward/runs/BipedAsymm_08-18-44-44/nn/BipedAsymm.pth
+    )
+    TRAIN_ARGS+=(
+        headless=true
+    )
+
+    BASE_ARGS+=(
+        task.env.randomize.friction.range=[0,1.0]
+        task.env.learn.reward.dof_force_target.scale=-0.00001
+    )
+}
+
+biped_stepping_stone_slippery_single_contact_0_1(){
+    biped_stepping_stone_slippery
+    change_hydra_dir
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_stepping_stone_slippery_single_contact_0_1/runs/BipedAsymm_09-01-25-19/nn/BipedAsymm.pth
+    )
+    TRAIN_ARGS+=(
+        headless=true
+    )
+
+    BASE_ARGS+=(
+        task.env.learn.reward.single_contact.scale=0.1
+    )
+}
+
+biped_stepping_stone_slippery_single_contact_0_5(){
+    biped_stepping_stone_slippery
+    change_hydra_dir
+    PLAY_ARGS+=(
+        checkpoint=outputs/Biped/train/biped_stepping_stone_slippery_single_contact_0_5/runs/BipedAsymm_09-01-25-38/nn/last_BipedAsymm_ep_5000_rew_32.127003.pth
+    )
+    TRAIN_ARGS+=(
+        headless=true
+    )
+
+    BASE_ARGS+=(
+        task.env.learn.reward.single_contact.scale=0.5
+    )
+}
+
+biped_stepping_stone_slippery(){
+    biped_stepping_stone_trimesh_no_push
+    change_hydra_dir
+    PLAY_ARGS+=(
+    )
+    TRAIN_ARGS+=( 
+    )
+
+    BASE_ARGS+=(
+        task.env.randomize.friction.range=[0,1.0]
+    )
+}
+
+
+
+biped_stepping_stone_trimesh_no_push(){
+    biped_baseline
+    change_hydra_dir
+    PLAY_ARGS+=(
+        # checkpoint=outputs/Biped/train/biped_stairs_trimesh_no_push/runs/BipedAsymm_08-13-09-11/nn/last_BipedAsymm_ep_3500_rew_23.80447.pth
+        checkpoint=outputs/Biped/train/biped_stepping_stone_trimesh_no_push/runs/BipedAsymm_08-16-50-10/nn/last_BipedAsymm_ep_4700_rew_24.054665.pth
+        task.env.terrain.numLevels=2
+        task.env.terrain.numTerrains=5
+        task.env.terrain.curriculum=False
+        task.env.terrain.terrainType=trimesh
+        task.env.terrain.terrainType=plane
+
+        task.env.randomize.push.enable=false
+        task.env.randomize.friction.enable=false
+        task.env.randomize.initDofPos.enable=false
+        task.env.randomize.initDofVel.enable=false
+        task.env.randomize.erfi.enable=false
+        task.env.learn.addNoise=false
+
+
+    )
+    TRAIN_ARGS+=(
+        headless=false
+    )
+
+    BASE_ARGS+=(        
+        task.env.randomize.push.enable=false
+
+        task.env.terrain.terrainProportions=[0,0,0,0,0,0,0,1,0]
+        task.env.terrain.terrainType=trimesh
+        task.env.terrain.slopeTreshold=0.1
+    )
+}
+
 
 
 biped_stairs_trimesh_no_push(){
@@ -22,12 +1168,12 @@ biped_stairs_trimesh_no_push(){
     change_hydra_dir
     PLAY_ARGS+=(
         # checkpoint=outputs/Biped/train/biped_stairs_trimesh_no_push/runs/BipedAsymm_08-13-09-11/nn/last_BipedAsymm_ep_850_rew_22.430407.pth # feet apart, bad
-        checkpoint=outputs/Biped/train/biped_stairs_trimesh_no_push/runs/BipedAsymm_08-13-09-11/nn/last_BipedAsymm_ep_1250_rew_23.542065.pth
+        # checkpoint=outputs/Biped/train/biped_stairs_trimesh_no_push/runs/BipedAsymm_08-13-09-11/nn/last_BipedAsymm_ep_1250_rew_23.542065.pth
+        checkpoint=outputs/Biped/train/biped_stairs_trimesh_no_push/runs/BipedAsymm_08-13-09-11/nn/last_BipedAsymm_ep_3500_rew_23.80447.pth
         task.env.terrain.numLevels=2
         task.env.terrain.numTerrains=5
         task.env.terrain.curriculum=False
-        task.env.terrain.terrainType=trimesh
-        
+        # task.env.terrain.terrainType=trimesh
         # task.env.terrain.terrainType=plane
 
     )
@@ -82,7 +1228,6 @@ biped_stairs_trimesh(){
     )
 
     BASE_ARGS+=(
-        task.env.urdfAsset.file=urdf/biped_long_foot_6_2/biped_v6_terrain.urdf
         task.env.terrain.terrainProportions=[0,0,0,1,0,0,0,0,0]
         task.env.terrain.terrainType=trimesh
         task.env.terrain.slopeTreshold=0
@@ -106,12 +1251,9 @@ biped_stairs(){
     )
 
     BASE_ARGS+=(
-        task.env.urdfAsset.file=urdf/biped_long_foot_6_2/biped_v6_terrain.urdf
         task.env.terrain.terrainProportions=[0,0,0,1,0,0,0,0,0]
     )
 }
-
-
 
 biped_baseline(){
     # reproduce outputs/Biped/train/biped_c2r5h3e3p6
@@ -121,22 +1263,30 @@ biped_baseline(){
     PLAY_ARGS+=(
         # checkpoint=outputs/Biped/train/biped_baseline/runs/BipedAsymm_07-19-11-08/nn/BipedAsymm.pth # baseHeightOffset=0.05
         # checkpoint=outputs/Biped/train/biped_baseline/runs/BipedAsymm_07-19-59-54/nn/BipedAsymm.pth # baseHeightOffset=0.1
-        checkpoint=outputs/Biped/train/biped_baseline/runs/BipedAsymm_07-20-21-40/nn/BipedAsymm.pth # terrain horizontal_scale=0.1
-        # task.env.terrain.terrainType=plane
-        task.env.terrain.terrainType=heightfield
-        task.env.terrain.numLevels=2
-        task.env.terrain.numTerrains=5
-        task.env.terrain.curriculum=False
-        task.env.terrain.horizontalScale=0.05
+        # checkpoint=outputs/Biped/train/biped_baseline/runs/BipedAsymm_07-20-21-40/nn/BipedAsymm.pth # terrain horizontal_scale=0.1
+        checkpoint=outputs/Biped/train/biped_baseline/runs/BipedAsymm_07-20-21-40/nn/last_BipedAsymm_ep_1500_rew_23.810951.pth
+        task.env.terrain.terrainType=plane
+
+        # task.env.terrain.terrainType=heightfield
+        # task.env.terrain.numLevels=2
+        # task.env.terrain.numTerrains=5
+        # task.env.terrain.curriculum=False
+        # # task.env.terrain.horizontalScale=0.05
 
         # task.env.terrain.terrainType=trimesh
         # task.env.terrain.terrainProportions=[0,0,0,0,0,0,0,1,0]
 
-        # terrain types: [rough_up, rough_down, rough_flat, stair_up, stair_down, smooth_up, smooth_down, discrete, stepping_stone]
-        task.env.terrain.terrainProportions=[0,0,0,1,0,0,0,0,0]
+        # # terrain types: [rough_up, rough_down, rough_flat, stair_up, stair_down, smooth_up, smooth_down, discrete, stepping_stone]
+        # task.env.terrain.terrainProportions=[0,0,0,1,0,0,0,0,0]
 
         task.env.terrain.difficultySale=0.2
 
+        task.env.dataPublisher.enable=true
+
+        task.sim.dt=0.0025
+        # ++task.env.renderFPS=100
+        # ++task.env.renderFPS=50
+        
         num_envs=20
         headless=false
     )
@@ -148,7 +1298,9 @@ biped_baseline(){
 
         task.sim.physx.num_position_iterations=2
 
-        task.env.urdfAsset.file=urdf/biped_long_foot/biped_v6_terrain.urdf
+        task.env.urdfAsset.file=urdf/v6_vis_URDF_wide_feet/v6_vis_URDF.urdf
+
+        # task.env.urdfAsset.file=urdf/biped_long_foot/biped_v6_terrain.urdf
         ++task.env.urdfAsset.AssetOptions.vhacd_enabled=true
         ++task.env.urdfAsset.AssetOptions.vhacd_params.max_convex_hulls=1
         ++task.env.urdfAsset.AssetOptions.vhacd_params.max_num_vertices_per_ch=64
@@ -180,7 +1332,7 @@ biped_baseline(){
         task.env.observationNames=[angularVelocity,projectedGravity,commands,dofPosition,dofVelocity,actions]
         task.env.stateNames=[linearVelocity,angularVelocity,projectedGravity,commands,dofPosition,dofVelocity,actions]
 
-        task.env.learn.reward.feetSlip.scale=-0.1
+        task.env.learn.reward.slip.scale=-0.1
         train.params.network.mlp.units=[512,256,128]
         train.params.config.central_value_config.network.mlp.units=[1024,512,256]
 
@@ -198,642 +1350,7 @@ biped_baseline(){
     
 }
 
-biped_terrain5(){ # 
-    biped_terrain
-    change_hydra_dir
-    PLAY_ARGS+=(
-        checkpoint=outputs/Biped/train/biped_terrain5/runs/BipedAsymm_02-07-54-47/nn/BipedAsymm.pth
-        # task.env.terrain.terrainType=plane
 
-        # num_envs=20
-        # task.env.terrain.terrainType=heightfield
-        # task.env.terrain.numLevels=2
-        # task.env.terrain.numTerrains=5
-        # task.env.terrain.curriculum=False
-        # task.env.dataPublisher.enable=false
-
-    )
-    BASE_ARGS+=(
-        task.env.randomCommandVelocityRanges.linear_x=[-0.1,0.6]
-        task.env.randomCommandVelocityRanges.linear_y=[-0.1,0.1]
-        task.env.randomCommandVelocityRanges.yaw=[-1,1] # biped_c2r12 add rotation
-    )
-}
-
-
-biped_terrain4(){ # 
-    biped_terrain
-    change_hydra_dir
-    PLAY_ARGS+=(
-        checkpoint=outputs/Biped/train/biped_terrain4/runs/BipedAsymm_02-01-49-42/nn/last_BipedAsymm_ep_5000_rew_23.48193.pth
-        task.env.terrain.terrainType=plane
-        # num_envs=20
-        # task.env.terrain.terrainType=heightfield
-        # task.env.terrain.numLevels=2
-        # task.env.terrain.numTerrains=5
-        # task.env.terrain.curriculum=False
-    )
-    BASE_ARGS+=(
-        task.env.randomCommandVelocityRanges.linear_x=[-0.4,0.6]
-        task.env.randomCommandVelocityRanges.linear_y=[-0.1,0.1]
-        task.env.randomCommandVelocityRanges.yaw=[-1,1] # biped_c2r12 add rotation
-    )
-}
-
-biped_terrain3(){ # 
-    biped_terrain
-    change_hydra_dir
-    PLAY_ARGS+=(
-        checkpoint=outputs/Biped/train/biped_terrain3/runs/BipedAsymm_02-00-21-54/nn/last_BipedAsymm_ep_5000_rew_23.475672.pth
-        task.env.terrain.terrainType=plane
-        # num_envs=20
-        # task.env.terrain.terrainType=heightfield
-        # task.env.terrain.numLevels=2
-        # task.env.terrain.numTerrains=5
-        # task.env.terrain.curriculum=False
-    )
-    BASE_ARGS+=(
-        task.env.randomCommandVelocityRanges.linear_x=[-0.4,0.6]
-        task.env.randomCommandVelocityRanges.linear_y=[0,0]
-        task.env.randomCommandVelocityRanges.yaw=[-1,1] # biped_c2r12 add rotation
-    )
-}
-biped_terrain2(){  # somehow the step hight is low...
-
-    biped_terrain
-    change_hydra_dir
-    PLAY_ARGS+=(
-        # checkpoint=outputs/Biped/train/biped_terrain2/runs/BipedAsymm_02-00-21-37/nn/BipedAsymm.pth
-        checkpoint=outputs/Biped/train/biped_terrain2/runs/BipedAsymm_02-00-21-37/nn/last_BipedAsymm_ep_5000_rew_23.754187.pth
-        task.env.terrain.terrainType=plane
-        # num_envs=20
-        # task.env.terrain.terrainType=heightfield
-        # task.env.terrain.numLevels=2
-        # task.env.terrain.numTerrains=5
-        # task.env.terrain.curriculum=False
-    )
-    BASE_ARGS+=(
-        task.env.randomCommandVelocityRanges.linear_x=[-0.4,0.6]
-        task.env.randomCommandVelocityRanges.linear_y=[0,0]
-        task.env.randomCommandVelocityRanges.yaw=[0,0] # biped_c2r12 add rotation
-    )
-}
-
-biped_terrain(){ # works well, sighltly shaky
-    biped
-    change_hydra_dir
-    PLAY_ARGS+=(
-        checkpoint=outputs/Biped/train/biped_terrain/runs/BipedAsymm_01-23-02-14/nn/BipedAsymm.pth
-        task.env.terrain.terrainType=plane
-        # num_envs=20
-        # task.env.terrain.terrainType=heightfield
-        # task.env.terrain.numLevels=2
-        # task.env.terrain.numTerrains=5
-        # task.env.terrain.curriculum=False
-    )
-    BASE_ARGS+=(
-        task.env.terrain.terrainType=heightfield
-        task.env.terrain.difficultySale=0.2
-        task.env.terrain.curriculum=true
-        task.env.terrain.terrainProportions=[0,0,1,0,0,0,0,0,0]
-    )
-}
-
-biped_m2(){ # add mass, works fine
-    biped
-    change_hydra_dir
-    PLAY_ARGS+=(
-        checkpoint=outputs/Biped/train/biped_m2/runs/BipedAsymm_02-00-05-59/nn/BipedAsymm.pth
-    )
-    BASE_ARGS+=(
-        task.env.randomize.baseMass.enable=True
-        task.env.randomize.baseMass.range=[0,0.5]
-    )
-}
-
-biped_m1(){
-    biped
-    change_hydra_dir
-    PLAY_ARGS+=(
-        checkpoint=outputs/Biped/train/biped_m1/runs/BipedAsymm_01-23-50-24/nn/BipedAsymm.pth
-    )
-    BASE_ARGS+=(
-        task.env.randomize.baseMass.enable=True
-        task.env.randomize.baseMass.range=[0,1]
-    )
-}
-
-
-biped_obs1(){ # orientation x2 , does not move at 0.1 m/s
-    biped
-    change_hydra_dir
-    PLAY_ARGS+=(
-        checkpoint=outputs/Biped/train/biped_obs1/runs/BipedAsymm_01-22-57-57/nn/BipedAsymm.pth
-    )
-    BASE_ARGS+=(
-        task.env.learn.reward.orientation.scale=-1.0
-    )
-}
-
-biped_c80_1(){ # control stiffness=80,scale=1, not as good.
-    biped
-    change_hydra_dir
-    PLAY_ARGS+=(
-        checkpoint=outputs/Biped/train/biped_c80_1/runs/BipedAsymm_01-23-43-39/nn/BipedAsymm.pth
-    )
-    BASE_ARGS+=(
-        task.env.control.stiffness=80.0
-        task.env.control.actionScale=1.0
-    )
-}
-
-biped_c80_2(){ # bad, stiffness may be too high
-    biped
-    change_hydra_dir
-    PLAY_ARGS+=(
-        checkpoint=outputs/Biped/train/biped/runs/BipedAsymm_01-22-54-05/nn/BipedAsymm.pth
-    )
-    BASE_ARGS+=(
-        task.env.control.stiffness=80.0
-        task.env.control.actionScale=2.0
-    )
-}
-
-biped_no_stance(){
-    biped
-    change_hydra_dir
-    PLAY_ARGS+=(
-        checkpoint=outputs/Biped/train/biped_no_stance/runs/BipedAsymm_05-18-53-10/nn/BipedAsymm.pth
-    )
-    BASE_ARGS+=(
-        task.env.learn.reward.feetStanceTime.scale=0
-        task.env.learn.reward.feetAirTime.scale=0.2
-    )
-}
-
-biped_dyn_no_stance(){ # good 👍, BAD In real..
-    biped_dyn
-    change_hydra_dir
-    PLAY_ARGS+=(
-        checkpoint=outputs/Biped/train/biped_dyn_no_stance/runs/BipedAsymm_05-19-10-25/nn/BipedAsymm.pth
-        # test=export
-        # num_envs=1 # exported policy only works with 1 num of env
-    )
-    BASE_ARGS+=(
-        task.env.learn.reward.feetStanceTime.scale=0
-        task.env.learn.reward.feetAirTime.scale=0.2
-    )
-}
-
-biped_dyn(){
-    biped
-    change_hydra_dir
-    PLAY_ARGS+=(
-        # checkpoint=outputs/Biped/train/biped_dyn/runs/BipedAsymm_05-19-01-03/nn/BipedAsymm.pth #bad
-        # checkpoint=outputs/Biped/train/biped_dyn/runs/BipedAsymm_05-19-01-03/nn/last_BipedAsymm_ep_4850_rew_24.831345.pth # BAD
-        checkpoint=outputs/Biped/train/biped_dyn/runs/BipedAsymm_07-18-16-43/nn/BipedAsymm.pth
-
-        test=export
-        num_envs=1 # exported policy only works with 1 num of env
-    )
-    BASE_ARGS+=(
-        ++task.env.assetDofProperties.damping=[0.8500,0.4200,0.6000,0.8500,0.9000,0.8500,0.4200,0.6000,0.8500,0.9000]
-        ++task.env.assetDofProperties.armature=[0.3600,0.4500,0.3600,0.3600,0.1200,0.3600,0.4500,0.3600,0.3600,0.1200]
-        ++task.env.assetDofProperties.friction=[0.0115,0.0050,0.0150,0.1300,0.3500,0.0115,0.0050,0.0150,0.1300,0.3500]
-
-        task.env.urdfAsset.file=urdf/biped/biped_v6.urdf
-
-    )
-}
-
-biped(){
-    base
-    change_hydra_dir
-    task=Biped
-
-    TRAIN_ARGS+=(
-        train.params.config.max_epochs=5000
-        headless=true
-    )
-    PLAY_ARGS+=(
-
-        task.env.learn.addNoise=false
-        task.env.randomize.friction.enable=false
-        task.env.randomize.push.enable=false
-        task.env.randomize.initDofPos.enable=false
-        task.env.randomize.initDofVel.enable=false
-        task.env.randomize.erfi.enable=false
-        task.env.learn.episodeLength_s=999
-
-        # checkpoint=outputs/Biped/train/biped/runs/BipedAsymm_05-17-22-18/nn/BipedAsymm.pth #NUM 5
-
-        # checkpoint=outputs/Biped/train/biped/runs/BipedAsymm_05-17-18-54/nn/BipedAsymm.pth #NUM 4
-
-        # checkpoint=outputs/Biped/train/biped/runs/BipedAsymm_05-17-05-49/nn/BipedAsymm.pth # with indivisual dynamics+ 0.01 damping
-
-        # checkpoint=outputs/Biped/train/biped/runs/BipedAsymm_05-16-53-21/nn/BipedAsymm.pth # old with 1 dynamics
-    
-        # checkpoint=outputs/Biped/train/biped/runs/BipedAsymm_05-16-46-14/nn/BipedAsymm.pth # new with individual dynamics
-
-        num_envs=2
-        test=export
-        num_envs=1 # exported policy only works with 1 num of env
-        
-        # task.env.terrain.terrainType=plane
-        # num_envs=20
-        # task.env.terrain.terrainType=heightfield
-        # task.env.terrain.numLevels=2
-        # task.env.terrain.numTerrains=5
-        # task.env.terrain.curriculum=False
-
-        task.env.dataPublisher.enable=true
-        # task.sim.dt=0.0025
-        # ++task.env.renderFPS=100
-        ++task.env.renderFPS=50
-
-        task.env.learn.episodeLength_s=999
-    )
-    BASE_ARGS+=(
-        
-        train=BipedPPOAsymm
-        task.env.asymmetric_observations=True
-        # observation does not have linearVelocity
-        task.env.observationNames=[angularVelocity,projectedGravity,commands,dofPosition,dofVelocity,actions]
-        task.env.stateNames=[linearVelocity,angularVelocity,projectedGravity,commands,dofPosition,dofVelocity,actions]
-        task.env.learn.reward.feetSlip.scale=-0.1
-        train.params.network.mlp.units=[512,256,128]
-        train.params.config.central_value_config.network.mlp.units=[1024,512,256]
-
-        # todo check if this is really needed
-        task.env.control.stiffness=60.0
-        task.env.control.actionScale=1.0
-
-        task.sim.physx.num_position_iterations=2 # reduced for faster training # works!
-        
-        # # dynamics matching
-        
-        ## num 1
-        ++task.env.assetDofProperties.damping=0.88
-        ++task.env.assetDofProperties.friction=0.00345
-        ++task.env.assetDofProperties.armature=0.25
-
-        ## num 2
-        # ++task.env.assetDofProperties.damping=0
-        # ++task.env.assetDofProperties.armature=[0.1800,0.3600,0.1800,0.1800,0.0330,0.1800,0.3600,0.1800,0.1800,0.0330]
-        # ++task.env.assetDofProperties.friction=[0.0000,0.0056,0.0066,0.0415,0.1000,0.0000,0.0056,0.0066,0.0415,0.1000]
-
-        ## num 3
-        # ++task.env.assetDofProperties.damping=0.01
-        # ++task.env.assetDofProperties.armature=[0.1800,0.3600,0.1800,0.1800,0.0330,0.1800,0.3600,0.1800,0.1800,0.0330]
-        # ++task.env.assetDofProperties.friction=[0.0000,0.0056,0.0066,0.0415,0.1000,0.0000,0.0056,0.0066,0.0415,0.1000]
-
-        # ## num 4
-        # ++task.env.assetDofProperties.damping=0
-        # ++task.env.assetDofProperties.armature=[0.1800,0.3600,0.1800,0.1800,0.0330,0.1800,0.3600,0.1800,0.1800,0.0330]
-        # ++task.env.assetDofProperties.friction=[0.0000,0.0056,0.0066,0.0415,0.0500,0.0000,0.0056,0.0066,0.0415,0.0500]
-
-
-        # ## num 5
-        # ++task.env.assetDofProperties.damping=0
-        # ++task.env.assetDofProperties.armature=[0.1800,0.3600,0.1800,0.1800,0.0330,0.1800,0.3600,0.1800,0.1800,0.0330]
-        # ++task.env.assetDofProperties.friction=[0.0000,0.0056,0.0066,0.0200,0.0500,0.0000,0.0056,0.0066,0.0200,0.0500]
-
-
-        ++task.env.assetDofProperties.velocity=10
-
-        ++task.env.baseHeightOffset=0.05
-        ++task.env.defaultJointPositions=[0.000,0.175,0.000,0.387,-0.213,0.000,-0.175,0.000,-0.387,0.213]
-        
-        task.env.randomize.push.interval_s=3
-        task.env.randomize.push.velMin=[-0.3,-0.3,0,-0.3,-0.3,-0.3]
-        task.env.randomize.push.velMax=[0.3,0.3,0,0.3,0.3,0.3]
-        task.env.learn.dofPositionNoise=0.02
-        
-        task.env.randomCommandVelocityRanges.linear_x=[-0.1,0.5]
-        task.env.randomCommandVelocityRanges.linear_y=[0,0]
-        task.env.randomCommandVelocityRanges.yaw=[0,0]
-
-        task.env.terrain.terrainType=plane
-        # task.env.terrain.terrainType=heightfield
-        # task.env.terrain.difficultySale=0.2
-        # task.env.terrain.curriculum=true
-        # task.env.terrain.terrainProportions=[0,0,1,0,0,0,0,0,0]
-
-        task.env.urdfAsset.file=urdf/biped_long_foot/biped_v6_terrain.urdf
-        ++task.env.urdfAsset.AssetOptions.vhacd_enabled=true
-        ++task.env.urdfAsset.AssetOptions.vhacd_params.max_convex_hulls=1
-        ++task.env.urdfAsset.AssetOptions.vhacd_params.max_num_vertices_per_ch=64
-    )
-}
-
-
-biped_c2r16(){ # bad gait, same as biped_c2r15 but changed level up to be 90% complete of commanded value
-    biped_c2r15 
-    change_hydra_dir
-    PLAY_ARGS+=(
-        checkpoint=outputs/Biped/train/biped_c2r16/runs/BipedAsymm_30-01-25-01/nn/BipedAsymm.pth
-        # checkpoint=outputs/Biped/train/biped_c2r16/runs/BipedAsymm_30-01-25-01/nn/last_BipedAsymm_ep_3550_rew_26.177423.pth
-    
-    )
-}
-
-biped_c2r15(){ # bad gait, terrain curriculum 0.8
-    biped_c2r13
-    change_hydra_dir
-    PLAY_ARGS+=(
-        checkpoint=outputs/Biped/train/biped_c2r15/runs/BipedAsymm_30-01-20-53/nn/BipedAsymm.pth
-
-        # test=export
-        # num_envs=1 # exported policy only works with 1 num of env
-    )
-    TRAIN_ARGS+=(
-        train.params.config.max_epochs=5000
-        checkpoint=null
-    )
-    BASE_ARGS+=(
-    task.env.randomCommandVelocityRanges.linear_x=[-0.1,0.5]
-    task.env.randomCommandVelocityRanges.linear_y=[0,0]
-    task.env.randomCommandVelocityRanges.yaw=[0,0] # no yaw
-    )
-}
-
-biped_c2r14(){ # bad gait, terrain curriculum 0.8, max_epoch=10000
-    biped_c2r13
-    change_hydra_dir
-    PLAY_ARGS+=(
-        checkpoint=outputs/Biped/train/biped_c2r14/runs/BipedAsymm_30-01-16-46/nn/BipedAsymm.pth
-    )
-    TRAIN_ARGS+=(
-        train.params.config.max_epochs=10000
-        checkpoint=null
-    )
-}
-
-biped_c2r13(){ # straight leg gait, warm start, terrain curriculum 0.8,bad
-    biped_c2
-    change_hydra_dir
-    PLAY_ARGS+=(
-        checkpoint=outputs/Biped/train/biped_c2r13/runs/BipedAsymm_30-01-14-36/nn/BipedAsymm.pth
-        # test=export
-        # num_envs=1 # exported policy only works with 1 num of env
-        task.env.terrain.numTerrains=5
-        task.env.terrain.curriculum=false
-        num_envs=20
-    )
-    TRAIN_ARGS+=(
-        # train.params.config.max_epochs=10000
-        checkpoint=outputs/Biped/train/biped_c2r10/runs/BipedAsymm_30-00-50-11/nn/BipedAsymm.pth
-    )
-    BASE_ARGS+=(
-        train=BipedPPOAsymm
-        task.env.asymmetric_observations=True
-        # observation removes linearVelocity, states add contact (same as biped_c2r10)
-        task.env.observationNames=[angularVelocity,projectedGravity,commands,dofPosition,dofVelocity,actions]
-        task.env.stateNames=[linearVelocity,angularVelocity,projectedGravity,commands,dofPosition,dofVelocity,actions,contact]
-
-        # same as biped_c2r3
-        task.env.learn.reward.feetSlip.scale=-0.1
-
-        task.env.randomCommandVelocityRanges.linear_x=[-0.1,0.5]
-        task.env.randomCommandVelocityRanges.linear_y=[0,0]
-        task.env.randomCommandVelocityRanges.yaw=[-3.142,3.142] # biped_c2r12 add rotation
-
-        task.env.terrain.difficultySale=0.2
-        task.env.terrain.terrainType=heightfield
-         # terrain types: [rough_up✔️, rough_down✔️, rough_flat✔️, stair_up, stair_down, smooth_up✔️, smooth_down✔️, discrete, stepping_stone]
-        task.env.terrain.terrainProportions=[1,1,1,0,0,0,1,1,0,0]
-
-        # # for logging names
-        # "hydra.run.dir=..//outputs//\$\{task_name\}//\$\{test\}//${FUNCNAME[0]}"
-    )
-}
-
-
-biped_c2r12(){ # small steps, observation removes linearVelocity, states add contact (same as biped_c2r10)
-    biped_c2
-    change_hydra_dir
-    PLAY_ARGS+=(
-        checkpoint=outputs/Biped/train/biped_c2r12/runs/BipedAsymm_30-01-08-49/nn/BipedAsymm.pth
-        # test=export
-        # num_envs=1 # exported policy only works with 1 num of env
-    )
-    BASE_ARGS+=(
-        train=BipedPPOAsymm
-        task.env.asymmetric_observations=True
-        
-        task.env.observationNames=[angularVelocity,projectedGravity,commands,dofPosition,dofVelocity,actions]
-        task.env.stateNames=[linearVelocity,angularVelocity,projectedGravity,commands,dofPosition,dofVelocity,actions,contact]
-
-        # same as biped_c2r3
-        task.env.learn.reward.feetSlip.scale=-0.1
-
-        task.env.randomCommandVelocityRanges.linear_x=[-0.1,0.5]
-        task.env.randomCommandVelocityRanges.linear_y=[0,0]
-        task.env.randomCommandVelocityRanges.yaw=[-3.142,3.142] # biped_c2r12 add rotation
-
-        # train.params.config.max_epochs=5000
-
-        # # for logging names
-        # "hydra.run.dir=..//outputs//\$\{task_name\}//\$\{test\}//${FUNCNAME[0]}"
-    )
-}
-
-
-biped_c2r11(){ # add contact to observation result in very small steps! 
-    biped_c2
-    change_hydra_dir
-    PLAY_ARGS+=(
-        checkpoint=outputs/Biped/train/biped_c2r11/runs/BipedAsymm_30-00-57-46/nn/BipedAsymm.pth
-        # test=export
-        # num_envs=1 # exported policy only works with 1 num of env
-    )
-    BASE_ARGS+=(
-        train=BipedPPOAsymm
-        task.env.asymmetric_observations=True
-        # observation removes linearVelocity, states and observation add contact
-        task.env.observationNames=[angularVelocity,projectedGravity,commands,dofPosition,dofVelocity,actions,contact]
-        task.env.stateNames=[linearVelocity,angularVelocity,projectedGravity,commands,dofPosition,dofVelocity,actions,contact]
-
-        # same as biped_c2r3
-        task.env.learn.reward.feetSlip.scale=-0.1
-
-        # # for logging names
-        # "hydra.run.dir=..//outputs//\$\{task_name\}//\$\{test\}//${FUNCNAME[0]}"
-    )
-}
-
-
-biped_c2r10(){ # add contact to states helps
-    biped_c2
-    change_hydra_dir
-    PLAY_ARGS+=(
-        checkpoint=outputs/Biped/train/biped_c2r10/runs/BipedAsymm_30-00-50-11/nn/BipedAsymm.pth
-        test=export
-        num_envs=1 # exported policy only works with 1 num of env
-    )
-    BASE_ARGS+=(
-        train=BipedPPOAsymm
-        task.env.asymmetric_observations=True
-        # observation does not have linearVelocity, states add contact
-        task.env.observationNames=[angularVelocity,projectedGravity,commands,dofPosition,dofVelocity,actions]
-        task.env.stateNames=[linearVelocity,angularVelocity,projectedGravity,commands,dofPosition,dofVelocity,actions,contact]
-
-        # same as biped_c2r3
-        task.env.learn.reward.feetSlip.scale=-0.1
-
-        # # for logging names
-        # "hydra.run.dir=..//outputs//\$\{task_name\}//\$\{test\}//${FUNCNAME[0]}"
-    )
-}
-
-biped_c2r9(){ # baseHeight in state result in very small steps
-    biped_c2
-    change_hydra_dir
-    PLAY_ARGS+=(
-        checkpoint=outputs/Biped/train/biped_c2r9/runs/BipedAsymm_30-00-43-57/nn/BipedAsymm.pth
-        # test=export
-        # num_envs=1 # exported policy only works with 1 num of env
-    )
-    BASE_ARGS+=(
-        train=BipedPPOAsymm
-        task.env.asymmetric_observations=True
-        # observation does not have linearVelocity, states add baseHeight
-        task.env.observationNames=[angularVelocity,projectedGravity,commands,dofPosition,dofVelocity,actions]
-        task.env.stateNames=[linearVelocity,angularVelocity,projectedGravity,commands,dofPosition,dofVelocity,actions,baseHeight]
-
-        # same as biped_c2r3
-        task.env.learn.reward.feetSlip.scale=-0.1
-
-        # # for logging names
-        # "hydra.run.dir=..//outputs//\$\{task_name\}//\$\{test\}//${FUNCNAME[0]}"
-    )
-}
-
-
-
-biped_c2r8(){
-    biped_c2
-    change_hydra_dir
-    PLAY_ARGS+=(
-        # bad gait, worse than biped_c2r5
-        checkpoint=outputs/Biped/train/biped_c2r8/runs/BipedAsymm_29-20-27-06/nn/BipedAsymm.pth
-        # test=export
-        # num_envs=1 # exported policy only works with 1 num of env
-
-    )
-    BASE_ARGS+=(
-        train=BipedPPOAsymm
-        task.env.asymmetric_observations=True
-        # observation does not have linearVelocity
-        task.env.observationNames=[angularVelocity,projectedGravity,commands,dofPosition,dofVelocity,actions]
-        task.env.stateNames=[linearVelocity,angularVelocity,projectedGravity,commands,dofPosition,dofVelocity,dofForce,dofForceTarget,actions]
-
-        # same as biped_c2r3
-        task.env.learn.reward.feetSlip.scale=-0.1
-
-        # # for logging names
-        # "hydra.run.dir=..//outputs//\$\{task_name\}//\$\{test\}//${FUNCNAME[0]}"
-    )
-}
-
-
-biped_c2r7(){
-    biped_c2
-    change_hydra_dir
-    PLAY_ARGS+=(
-        # small steps, worse than biped_c2r5
-        checkpoint=outputs/Biped/train/biped_c2r7/runs/BipedAsymm_29-20-26-55/nn/BipedAsymm.pth
-        # test=export
-        # num_envs=1 # exported policy only works with 1 num of env
-
-    )
-    BASE_ARGS+=(
-        train=BipedPPOAsymm
-        task.env.asymmetric_observations=True
-        # observation does not have linearVelocity
-        task.env.observationNames=[angularVelocity,projectedGravity,commands,dofPosition,dofVelocity,actions]
-        task.env.stateNames=[linearVelocity,angularVelocity,projectedGravity,commands,dofPosition,dofVelocity,dofForceTarget,actions]
-
-        # same as biped_c2r3
-        task.env.learn.reward.feetSlip.scale=-0.1
-
-        # # for logging names
-        # "hydra.run.dir=..//outputs//\$\{task_name\}//\$\{test\}//${FUNCNAME[0]}"
-    )
-}
-
-
-biped_c2r6(){
-    biped_c2
-    change_hydra_dir
-    PLAY_ARGS+=(
-        # similar to biped_c2r5
-        checkpoint=outputs/Biped/train/biped_c2r6/runs/BipedAsymm_29-20-26-48/nn/BipedAsymm.pth
-        # test=export
-        # num_envs=1 # exported policy only works with 1 num of env
-
-    )
-    BASE_ARGS+=(
-        train=BipedPPOAsymm
-        task.env.asymmetric_observations=True
-        # observation does not have linearVelocity
-        task.env.observationNames=[angularVelocity,projectedGravity,commands,dofPosition,dofVelocity,actions]
-        task.env.stateNames=[linearVelocity,angularVelocity,projectedGravity,commands,dofPosition,dofVelocity,dofForce,actions]
-
-        # same as biped_c2r3
-        task.env.learn.reward.feetSlip.scale=-0.1
-        # # for logging names
-        # "hydra.run.dir=..//outputs//\$\{task_name\}//\$\{test\}//${FUNCNAME[0]}"
-    )
-}
-
-biped_c2r5h3e6(){ #  ERFI=6, larger critic network, very similar to biped_c2r5h3, too large, bounds loss exploded
-    biped_c2r5h3
-    change_hydra_dir
-
-    PLAY_ARGS+=(
-        checkpoint=outputs/Biped/train/biped_c2r5h3e6/runs/BipedAsymm_01-03-27-45/nn/BipedAsymm.pth
-        # test=export
-        # num_envs=1 # exported policy only works with 1 num of env
-    )
-    TRAIN_ARGS+=(
-        task.env.randomize.erfi.enable=true
-        task.env.randomize.erfi.rfi_range=[-6.0,6.0]
-        task.env.randomize.erfi.rao_range=[-6.0,6.0]
-    )
-}
-
-biped_c2r5h3e5(){ # ERFI, larger critic network, bounds loss exploded
-    biped_c2r5h3
-    change_hydra_dir
-
-    PLAY_ARGS+=(
-        checkpoint=outputs/Biped/train/biped_c2r5h3e5/runs/BipedAsymm_01-02-56-50/nn/BipedAsymm.pth
-        # test=export
-        # num_envs=1 # exported policy only works with 1 num of env
-    )
-    TRAIN_ARGS+=(
-        task.env.randomize.erfi.enable=true
-        task.env.randomize.erfi.rfi_range=[-5.0,5.0]
-        task.env.randomize.erfi.rao_range=[-5.0,5.0]
-    )
-}
-
-biped_c2r5h3e4(){ # ERFI, larger critic network
-    biped_c2r5h3
-    change_hydra_dir
-
-    PLAY_ARGS+=(
-        checkpoint=outputs/Biped/train/biped_c2r5h3e4/runs/BipedAsymm_01-02-24-44/nn/BipedAsymm.pth
-        # test=export
-        # num_envs=1 # exported policy only works with 1 num of env
-    )
-    TRAIN_ARGS+=(
-        task.env.randomize.erfi.enable=true
-        task.env.randomize.erfi.rfi_range=[-4.0,4.0]
-        task.env.randomize.erfi.rao_range=[-4.0,4.0]
-    )
-}
 
 biped_c2r5h3e3p6(){ # good 👍, higher step, baseline sim2real
     biped_c2r5h3e3
@@ -875,136 +1392,6 @@ biped_c2r5h3e3p6(){ # good 👍, higher step, baseline sim2real
 }
 
 
-biped_c2r5h3e3p5(){ # ERFI, larger critic, add baseHeight, 0 torque. 
-    biped_c2r5h3e3
-    change_hydra_dir
-
-    PLAY_ARGS+=(
-        # checkpoint=outputs/Biped/train/biped_c2r5h3e3p5/runs/BipedAsymm_01-17-24-17/nn/BipedAsymm.pth
-        checkpoint=outputs/Biped/train/biped_c2r5h3e3p4/runs/BipedAsymm_01-15-22-03/nn/BipedAsymm.pth
-        # checkpoint=outputs/Biped/train/biped_c2r5h3e3p5/runs/BipedAsymm_01-18-04-07/nn/BipedAsymm.pth
-        # checkpoint=outputs/Biped/train/biped_c2r5h3e3p5/runs/BipedAsymm_01-18-18-03/nn/BipedAsymm.pth
-        # checkpoint=outputs/Biped/train/biped_c2r5h3e3p5/runs/BipedAsymm_01-18-18-03/nn/last_BipedAsymm_ep_2100_rew_22.919159.pth
-
-        # test=export
-        # num_envs=1 # exported policy only works with 1 num of env
-        
-        task.env.terrain.terrainType=plane
-
-        # num_envs=20
-        # task.env.terrain.terrainType=heightfield
-        # task.env.terrain.numLevels=2
-        # task.env.terrain.numTerrains=5
-        # task.env.terrain.curriculum=False
-    )
-    TRAIN_ARGS+=(
-        # checkpoint=outputs/Biped/train/biped_c2r5h3e3/runs/BipedAsymm_01-10-59-50/nn/BipedAsymm.pth
-    )
-    BASE_ARGS+=(
-        task.env.randomize.push.interval_s=3
-        task.env.randomize.push.velMin=[-0.3,-0.3,0,-0.3,-0.3,-0.3]
-        task.env.randomize.push.velMax=[0.3,0.3,0,0.3,0.3,0.3]
-        task.env.learn.dofPositionNoise=0.02
-
-        # terrain types: [rough_up, rough_down, rough_flat, stair_up, stair_down, smooth_up, smooth_down, discrete, stepping_stone]
-        task.env.terrain.terrainType=heightfield
-        # task.sim.physx.num_position_iterations=2 # reduced for faster training # works!
-
-        task.env.terrain.difficultySale=0.2
-        # task.env.terrain.difficultySale=0
-
-        task.env.terrain.curriculum=true
-        task.env.terrain.terrainProportions=[0,0,1,0,0,0,0,0,0]
-
-        task.env.urdfAsset.file=urdf/biped/biped_v6_terrain.urdf
-
-    )
-}
-
-
-biped_c2r5h3e3p4(){ # ERFI, larger critic, ok
-    biped_c2r5h3e3
-    change_hydra_dir
-
-    PLAY_ARGS+=(
-        checkpoint=outputs/Biped/train/biped_c2r5h3e3p4/runs/BipedAsymm_01-15-22-03/nn/BipedAsymm.pth
-        # test=export
-        # num_envs=1 # exported policy only works with 1 num of env
-    )
-    TRAIN_ARGS+=(
-        # checkpoint=outputs/Biped/train/biped_c2r5h3e3/runs/BipedAsymm_01-10-59-50/nn/BipedAsymm.pth
-    )
-    BASE_ARGS+=(
-        task.env.randomize.push.interval_s=3
-        task.env.randomize.push.velMin=[-0.3,-0.3,0,-0.3,-0.3,-0.3]
-        task.env.randomize.push.velMax=[0.3,0.3,0,0.3,0.3,0.3]
-        task.env.learn.dofPositionNoise=0.02
-    )
-}
-
-
-biped_c2r5h3e3p3(){ # ERFI, larger critic, add baseHeight, 0 torque. bad! rotates during standing
-    biped_c2r5h3e3
-    change_hydra_dir
-
-    PLAY_ARGS+=(
-        checkpoint=outputs/Biped/train/biped_c2r5h3e3p3/runs/BipedAsymm_01-13-16-51/nn/BipedAsymm.pth
-        # test=export
-        # num_envs=1 # exported policy only works with 1 num of env
-    )
-    TRAIN_ARGS+=(
-        # checkpoint=outputs/Biped/train/biped_c2r5h3e3/runs/BipedAsymm_01-10-59-50/nn/BipedAsymm.pth
-    )
-    BASE_ARGS+=(
-        task.env.randomize.push.interval_s=3
-        task.env.randomize.push.velMin=[-0.3,-0.3,0,-0.3,-0.3,-0.3]
-        task.env.randomize.push.velMax=[0.3,0.3,0,0.3,0.3,0.3]
-        task.env.learn.reward.torque.scale=-0
-        task.env.learn.reward.baseHeight.scale=-0.05
-    )
-}
-
-
-biped_c2r5h3e3p2(){ # ERFI, larger critic, 0 torque reward, bad! lots of feet slip
-    biped_c2r5h3e3
-    change_hydra_dir
-
-    PLAY_ARGS+=(
-        checkpoint=outputs/Biped/train/biped_c2r5h3e3p2/runs/BipedAsymm_01-12-45-04/nn/BipedAsymm.pth
-        # test=export
-        # num_envs=1 # exported policy only works with 1 num of env
-    )
-    TRAIN_ARGS+=(
-        # checkpoint=outputs/Biped/train/biped_c2r5h3e3/runs/BipedAsymm_01-10-59-50/nn/BipedAsymm.pth
-    )
-    BASE_ARGS+=(
-        task.env.randomize.push.interval_s=3
-        task.env.randomize.push.velMin=[-0.3,-0.3,-0.3,-0.3,-0.3,-0.3]
-        task.env.randomize.push.velMax=[0.3,0.3,0.3,0.3,0.3,0.3]
-        task.env.learn.reward.torque.scale=-0
-    )
-}
-
-biped_c2r5h3e3p1(){ # ERFI, larger critic network, feet sliping.
-    biped_c2r5h3e3
-    change_hydra_dir
-
-    PLAY_ARGS+=(
-        # checkpoint=outputs/Biped/train/biped_c2r5h3e3p1/runs/BipedAsymm_01-12-03-48/nn/BipedAsymm.pth
-        checkpoint=outputs/Biped/train/biped_c2r5h3e3p1/runs/BipedAsymm_01-12-38-59/nn/BipedAsymm.pth
-        # test=export
-        # num_envs=1 # exported policy only works with 1 num of env
-    )
-    TRAIN_ARGS+=(
-        # checkpoint=outputs/Biped/train/biped_c2r5h3e3/runs/BipedAsymm_01-10-59-50/nn/BipedAsymm.pth
-    )
-    BASE_ARGS+=(
-        task.env.randomize.push.interval_s=3
-        task.env.randomize.push.velMin=[-0.3,-0.3,0,-0.3,-0.3,-0.3]
-        task.env.randomize.push.velMax=[0.3,0.3,0,0.3,0.3,0.3]
-    )
-}
-
 biped_c2r5h3e3(){ # ERFI, larger critic network, good!
     biped_c2r5h3
     change_hydra_dir
@@ -1037,37 +1424,6 @@ biped_c2r5h3e3(){ # ERFI, larger critic network, good!
     )
 }
 
-biped_c2r5h3e2(){ # ERFI, larger critic network
-    biped_c2r5h3
-    change_hydra_dir
-
-    PLAY_ARGS+=(
-        checkpoint=outputs/Biped/train/biped_c2r5h3e2/runs/BipedAsymm_01-03-20-57/nn/BipedAsymm.pth
-        # test=export
-        # num_envs=1 # exported policy only works with 1 num of env
-    )
-    TRAIN_ARGS+=(
-        task.env.randomize.erfi.enable=true
-        task.env.randomize.erfi.rfi_range=[-2.0,2.0]
-        task.env.randomize.erfi.rao_range=[-2.0,2.0]
-    )
-}
-
-biped_c2r5h3e1(){ # ERFI, larger critic network
-    biped_c2r5h3
-    change_hydra_dir
-
-    PLAY_ARGS+=(
-        checkpoint=outputs/Biped/train/biped_c2r5h3e1/runs/BipedAsymm_01-02-23-22/nn/BipedAsymm.pth
-        # test=export
-        # num_envs=1 # exported policy only works with 1 num of env
-    )
-    TRAIN_ARGS+=(
-        task.env.randomize.erfi.enable=true
-        task.env.randomize.erfi.rfi_range=[-1.0,1.0]
-        task.env.randomize.erfi.rao_range=[-1.0,1.0]
-    )
-}
 
 biped_c2r5h3(){ # larger critic network, straight knee walking 👍
     biped_c2r5
@@ -1085,40 +1441,9 @@ biped_c2r5h3(){ # larger critic network, straight knee walking 👍
     )
 }
 
-biped_c2r5h2(){ # smaller actor network,similar to biped_c2r5, more bend, feet draging
-    biped_c2r5
-    change_hydra_dir
 
-    PLAY_ARGS+=(
-        checkpoint=outputs/Biped/train/biped_c2r5h2/runs/BipedAsymm_30-11-20-36/nn/BipedAsymm.pth
-        # test=export
-        # num_envs=1 # exported policy only works with 1 num of env
-    )
-    BASE_ARGS+=(
-        train.params.network.mlp.units=[256,128,64] # smaller network
-        train.params.config.central_value_config.network.mlp.units=[512,256,128] # same
-    )
-}
-
-
-biped_c2r5h1(){ # stand but not walk, bad. smaller networks does not work well
-    biped_c2r5
-    change_hydra_dir
-
-    PLAY_ARGS+=(
-        checkpoint=outputs/Biped/train/biped_c2r5h1/runs/BipedAsymm_30-11-20-22/nn/BipedAsymm.pth
-        # test=export
-        # num_envs=1 # exported policy only works with 1 num of env
-    )
-    BASE_ARGS+=(
-        train.params.network.mlp.units=[256,128,64]
-        train.params.config.central_value_config.network.mlp.units=[256,128,64]
-    )
-}
-
-
-biped_c2r5(){ # can walk in small steps. use this as baseline 👍, asymmetric obs, feetSlip=-0.1
-    biped_c2
+biped_c2r5(){ # can walk in small steps. use this as baseline 👍, asymmetric obs, slip=-0.1
+    biped
     change_hydra_dir
     PLAY_ARGS+=(
 
@@ -1135,214 +1460,109 @@ biped_c2r5(){ # can walk in small steps. use this as baseline 👍, asymmetric o
         task.env.stateNames=[linearVelocity,angularVelocity,projectedGravity,commands,dofPosition,dofVelocity,actions]
 
         # same as biped_c2r3
-        task.env.learn.reward.feetSlip.scale=-0.1
+        task.env.learn.reward.slip.scale=-0.1
+
+        task.env.control.stiffness=60.0
+        task.env.control.actionScale=1.0
 
         # # for logging names
         # "hydra.run.dir=..//outputs//\$\{task_name\}//\$\{test\}//${FUNCNAME[0]}"
     )
 }
 
-biped_c2r4(){
-    biped_c2
-    change_hydra_dir
-    PLAY_ARGS+=(
-
-        # checkpoint=outputs/Biped/train/biped_c2r4/runs/BipedAsymm_29-17-59-32/nn/BipedAsymm.pth # mixed_precision: True
-        checkpoint=outputs/Biped/train/biped_c2r4/runs/BipedAsymm_29-17-59-56/nn/BipedAsymm.pth # mixed_precision: False  slightly better
-    )
-    BASE_ARGS+=(
-        train=BipedPPOAsymm
-        task.env.asymmetric_observations=True
-
-        task.env.learn.reward.feetSlip.scale=-0.1
-    )
-}
-
-
-
-biped_c2r3(){
-    biped_c2
-    change_hydra_dir
-    PLAY_ARGS+=(
-        checkpoint=outputs/Biped/train/biped_c2r3/runs/Biped_29-17-14-05/nn/Biped.pth
-    )
-    BASE_ARGS+=(
-        task.env.learn.reward.feetSlip.scale=-0.1
-    )
-}
-
-biped_c2r2(){
-    biped_c2
-    change_hydra_dir
-    PLAY_ARGS+=(
-        # ok
-        checkpoint=outputs/Biped/train/biped_c2r2_20240629_163756/runs/Biped_29-16-37-56/nn/Biped.pth
-    )
-    BASE_ARGS+=(
-        task.env.learn.reward.feetSlip.scale=-0.1
-    )
-}
-
-biped_c2r1(){
-    biped_c2
-    PLAY_ARGS+=(
-        checkpoint=outputs/Biped/train/20240629_161503/runs/Biped_29-16-15-03/nn/Biped.pth
-    )
-    BASE_ARGS+=(
-        task.env.learn.reward.feetSlip.scale=-0.05
-        # change_hydra_dir
-        "hydra.run.dir=..//outputs//\$\{task_name\}//\$\{test\}//${FUNCNAME[0]}"
-    )
-}
-
-
-biped_c2(){
-    biped
-
-    PLAY_ARGS+=( # control variation
-        # bad orientation, robot leaning sideways
-        checkpoint=outputs/Biped/train/20240629_161016/runs/Biped_29-16-10-16/nn/Biped.pth
-    )
-    TRAIN_ARGS+=(
-        headless=true
-    )
-
-    BASE_ARGS+=(
-        task.env.control.stiffness=60.0
-        task.env.control.actionScale=1.0
-    )
-}
-
-
-# biped_c1(){ # command/control variation
-#     biped
-#     PLAY_ARGS+=(
-#         checkpoint=outputs/Biped/train/20240629_132037/runs/Biped_29-13-20-37/nn/Biped.pth
-#     )
-#     TRAIN_ARGS+=(
-#         checkpoint=outputs/Biped/train/20240629_023908/runs/Biped_29-02-39-08/nn/Biped.pth
-#     )
-#     BASE_ARGS+=(
-#         task.env.randomCommandVelocityRanges.linear_x=[0,0.5]
-#         task.env.randomCommandVelocityRanges.linear_y=[0,0]
-#         task.env.randomCommandVelocityRanges.yaw=[0,0]
-#     )
-# }
-
-
-biped_o1(){
-    biped
-    PLAY_ARGS+=( # observation variation experiment
-        checkpoint=outputs/Biped/train/20240629_022324/runs/Biped_29-02-23-25/nn/Biped.pth
-    )
-    BASE_ARGS+=(
-        "task.env.observationNames=[linearVelocity,angularVelocity,projectedGravity,commands,dofPosition,dofVelocity,dofForce,actions]"
-    )
-}
-
-biped_v(){
-    biped
-    BASE_ARGS+=(
-    task.env.urdfAsset.file=urdf/biped_visual/biped_v6.urdf
-    )
-}
-
-biped_a2(){
-    biped
-
-    PLAY_ARGS+=(
-        checkpoint=outputs/Biped/train/biped_a1/runs/Biped_29-18-58-45/nn/Biped.pth
-    )
-    BASE_ARGS+=(
-        ++task.env.defaultJointPositions=[0,0,0,0,0,0,0,0,0,0]
-        ++task.env.initialJointPositions=[0,0,0,0,0,0,0,0,0,0]
-
-        "hydra.run.dir=..//outputs//\$\{task_name\}//\$\{test\}//${FUNCNAME[0]}"
-    )
-}
-
-
-biped_a1(){
-    biped
-
-    PLAY_ARGS+=(
-
-        
-        # bad gait, this means defaultJointPositions should be chosen carefully
-        checkpoint=outputs/Biped/train/biped_a1/runs/Biped_29-18-58-45/nn/Biped.pth
-    )
-    BASE_ARGS+=(
-        ++task.env.defaultJointPositions=[0,0,0,0,0,0,0,0,0,0]
-        ++task.env.initialJointPositions=[0.000,0.175,0.000,0.387,-0.213,0.000,-0.175,0.000,-0.387,0.213]
-
-        "hydra.run.dir=..//outputs//\$\{task_name\}//\$\{test\}//${FUNCNAME[0]}"
-    )
-}
 
 biped_hang(){
     biped
+    change_hydra_dir
+    PLAY_ARGS+=(
+        checkpoint=null
+    )
     BASE_ARGS+=(
         ++task.env.baseHeightOffset=1
         task.env.urdfAsset.AssetOptions.fix_base_link=true
+        ++task.env.baseHeightOffset=0.001
+
+        # offset=0
+        # ++task.env.defaultJointPositions=[0.0000,0.0436,0.0000,0.0956,-0.0520,0.0000,-0.0436,0.0000,-0.0956,0.0520]
+        # offset=0.3
+        # ++task.env.defaultJointPositions=[0.0000,0.0436,0.0000,0.4323,-0.3886,0.0000,-0.0436,0.0000,-0.4323,0.3886]
+        # offset=-0.005
+        ++task.env.defaultJointPositions=[0.0000,0.0436,0.0000,0.0897,-0.0460,0.0000,-0.0436,0.0000,-0.0897,0.0460]
+
+
+
+
+
+
+
+        task.env.control.stiffness=60.0
+        task.env.control.actionScale=1.0
+
+        task.env.randomize.push.enable=false
+        task.env.randomize.friction.enable=false
+        task.env.randomize.initDofPos.enable=false
+        task.env.randomize.initDofVel.enable=false
+        task.env.randomize.erfi.enable=false
+        task.env.learn.addNoise=false
     )
 }
 
-# biped(){
-#     # remove heightmap
-#     base
-#     task=Biped
-#     TRAIN_ARGS+=(
-#         train.params.config.max_epochs=5000
-#         headless=true
-#     )
-#     PLAY_ARGS+=(
+biped(){
+    # remove heightmap
+    base
+    task=Biped
+    TRAIN_ARGS+=(
+        train.params.config.max_epochs=5000
+        headless=true
+    )
+    PLAY_ARGS+=(
 
-#         num_envs=2
+        num_envs=2
 
-#         # test=export
-#         # num_envs=1 # exported policy only works with 1 num of env
+        # test=export
+        # num_envs=1 # exported policy only works with 1 num of env
 
-#         checkpoint=outputs/Biped/train/biped/runs/Biped_29-18-50-06/nn/Biped.pth # new enlarged cmd x
+        checkpoint=outputs/Biped/train/biped/runs/Biped_29-18-50-06/nn/Biped.pth # new enlarged cmd x
         
-#         task.env.dataPublisher.enable=true
+        task.env.dataPublisher.enable=true
 
-#         task.sim.dt=0.0025
-#         ++task.env.renderFPS=100
+        task.sim.dt=0.0025
+        ++task.env.renderFPS=100
 
-#         # ++task.env.renderFPS=50
+        # ++task.env.renderFPS=50
 
-#         task.env.learn.episodeLength_s=999
-#         # task.env.terrain.terrainType=plane
-#     )
-#     BASE_ARGS+=(
-#         task.sim.physx.num_position_iterations=2 # reduced for faster training # works!
-#         # # dynamics matching
-#         # ++task.env.assetDofProperties.friction=0.008
-#         # ++task.env.assetDofProperties.armature=0.2
+        task.env.learn.episodeLength_s=999
+        # task.env.terrain.terrainType=plane
+    )
+    BASE_ARGS+=(
+        task.sim.physx.num_position_iterations=2 # reduced for faster training # works!
+        # # dynamics matching
+        # ++task.env.assetDofProperties.friction=0.008
+        # ++task.env.assetDofProperties.armature=0.2
 
-#         ++task.env.assetDofProperties.damping=0.88
-#         ++task.env.assetDofProperties.friction=0.00345
-#         ++task.env.assetDofProperties.armature=0.25
-#         ++task.env.assetDofProperties.velocity=10
+        ++task.env.assetDofProperties.damping=0.88
+        ++task.env.assetDofProperties.friction=0.00345
+        ++task.env.assetDofProperties.armature=0.25
+        ++task.env.assetDofProperties.velocity=10
 
-#         ++task.env.baseHeightOffset=0.05
-#         ++task.env.defaultJointPositions=[0.000,0.175,0.000,0.387,-0.213,0.000,-0.175,0.000,-0.387,0.213]
+        ++task.env.baseHeightOffset=0.05
+        ++task.env.defaultJointPositions=[0.000,0.175,0.000,0.387,-0.213,0.000,-0.175,0.000,-0.387,0.213]
         
         
-#         # task.env.randomCommandVelocityRanges.linear_x=[0.5,0.5]
-#         task.env.randomCommandVelocityRanges.linear_x=[-0.1,0.5]
-#         task.env.randomCommandVelocityRanges.linear_y=[0,0]
-#         task.env.randomCommandVelocityRanges.yaw=[0,0]
+        # task.env.randomCommandVelocityRanges.linear_x=[0.5,0.5]
+        task.env.randomCommandVelocityRanges.linear_x=[-0.1,0.5]
+        task.env.randomCommandVelocityRanges.linear_y=[0,0]
+        task.env.randomCommandVelocityRanges.yaw=[0,0]
 
-#         task.env.terrain.terrainType=plane
-#         # task.env.terrain.terrainType=heightfield
-#         # task.env.terrain.difficultySale=0.2
-#         # task.env.terrain.curriculum=true
-#         # task.env.terrain.terrainProportions=[1,1,1,0,0,0,1,1,0,0]
+        task.env.terrain.terrainType=plane
+        # task.env.terrain.terrainType=heightfield
+        # task.env.terrain.difficultySale=0.2
+        # task.env.terrain.curriculum=true
+        # task.env.terrain.terrainProportions=[1,1,1,0,0,0,1,1,0,0]
 
-#         "hydra.run.dir=..//outputs//\$\{task_name\}//\$\{test\}//${FUNCNAME[0]}"
-#     )
-# }
+        "hydra.run.dir=..//outputs//\$\{task_name\}//\$\{test\}//${FUNCNAME[0]}"
+    )
+}
 
 
 shoe(){
@@ -1401,10 +1621,10 @@ robogram(){
     task=RobotDog
     PLAY_ARGS+=(
         
-        checkpoint=outputs/RobotDog/False/2024-05-23_10-20-38/runs/RobotDog_23-10-20-39/nn/RobotDog.pth
+        checkpoint=outputs/RobotDog/train/20240710_012200/runs/RobotDog_10-01-22-00/nn/RobotDog.pth
         num_envs=2
         task.env.dataPublisher.enable=true
-        task.env.learn.episodeLength_s=5
+        task.env.learn.episodeLength_s=999
     )
 
     BASE_ARGS+=(
@@ -1459,7 +1679,7 @@ a1(){
         # checkpoint=outputs/A1Terrain/train/20240701_004744/runs/A1Terrain_01-00-47-44/nn/A1Terrain.pth
         # checkpoint=outputs/A1Terrain/train/20240701_005534/runs/A1Terrain_01-00-55-35/nn/A1Terrain.pth
         # checkpoint=outputs/A1Terrain/train/20240701_010308/runs/A1Terrain_01-01-03-08/nn/A1Terrain.pth
-        checkpoint=outputs/A1Terrain/train/20240701_012708/runs/A1Terrain_01-01-27-08/nn/A1Terrain.pth
+        checkpoint=outputs/A1Terrain/train/20240706_220324/runs/A1Terrain_06-22-03-24/nn/A1Terrain.pth
         task.env.dataPublisher.enable=true
     )
     BASE_ARGS+=(
@@ -1472,8 +1692,8 @@ a1Terrain(){
     base
     task=A1Terrain
     PLAY_ARGS+=(
-        # checkpoint=assets/checkpoints/A1Terrain.pth
-        checkpoint=outputs/A1Terrain/train/20240701_012708/runs/A1Terrain_01-01-27-08/nn/A1Terrain.pth
+        checkpoint=assets/checkpoints/A1Terrain.pth
+        # checkpoint=outputs/A1Terrain/train/20240706_220324/runs/A1Terrain_06-22-03-24/nn/A1Terrain.pth
         # task.env.dataPublisher.enable=true
         # ++task.env.urdfAsset.AssetOptions.vhacd_enabled=true
         task.env.enableDebugVis=True
@@ -1483,6 +1703,8 @@ a1Terrain(){
         task.env.terrain.numLevels=2
         task.env.terrain.numTerrains=5
         task.env.terrain.curriculum=False
+        task.env.terrain.difficultySale=0.5
+
     )
 }
 

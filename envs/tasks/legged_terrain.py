@@ -192,50 +192,25 @@ class LeggedTerrain(VecTask):
             # self.sim2real_publisher = DataPublisher(target_url="udp://localhost:9876")
 
         # reward scales
-        cfg_reward = self.cfg["env"]["learn"]["reward"]
+        cfg_reward: Dict[str, Any] = self.cfg["env"]["learn"]["reward"]
 
-        self.rew_scales = {
-            "termination": self.cfg["env"]["learn"]["terminalReward"],  # TODO. CHANGE THIS
-            "lin_vel_xy": cfg_reward["linearVelocityXY"]["scale"],
-            "lin_vel_z": cfg_reward["linearVelocityZ"]["scale"],
-            "ang_vel_z": cfg_reward["angularVelocityZ"]["scale"],
-            "ang_vel_xy": cfg_reward["angularVelocityXY"]["scale"],
-            "orient": cfg_reward["orientation"]["scale"],
-            "dof_force_target": cfg_reward["dofForceTarget"]["scale"],
-            "dof_acc": cfg_reward["dofAcc"]["scale"],
-            "dof_vel": cfg_reward["dofVel"]["scale"],
-            "dof_pos": cfg_reward["dofPos"]["scale"],
-            "dof_pow": cfg_reward["dofPow"]["scale"],
-            "base_height": cfg_reward["baseHeight"]["scale"],
-            "air_time": cfg_reward["footAirTime"]["scale"],
-            "stance_time": cfg_reward["footStanceTime"]["scale"],
-            "single_contact": cfg_reward["footSingleContact"]["scale"],
-            # "contact": cfg_reward["feetContact"]["scale"],
-            "should_contact": cfg_reward["footShouldContact"]["scale"],
-            "collision": cfg_reward["kneeCollision"]["scale"],
-            "impact": cfg_reward["footImpact"]["scale"],
-            "stumble": cfg_reward["footStumble"]["scale"],
-            "slip": cfg_reward["footSlip"]["scale"],
-            "action": cfg_reward["action"]["scale"],
-            "action_rate": cfg_reward["actionRate"]["scale"],
-            # "hip": cfg_reward["hip"]["scale"],
-            "dof_limit": cfg_reward["dofLimit"]["scale"], # TODO CHANGE THIS
-            "contact_force": cfg_reward["footContactForce"]["scale"],
-            "foot_height": cfg_reward["footHeight"]["scale"],
-        }
 
+        self.rew_scales = {key: rew_item["scale"] for key,rew_item in cfg_reward.items()}
         for key in self.rew_scales:
             self.rew_scales[key] = float(self.rew_scales[key]) * self.rl_dt
+        # do not scale termination reward
+        self.rew_scales["termination"] = self.cfg["env"]["learn"]["terminalReward"]
+
         self.torque_penalty_bound = self.cfg["env"]["learn"].get("torquePenaltyBound", 0.0)
         print(f"torque penalty bound = {self.torque_penalty_bound}")
 
-        self.rew_lin_vel_xy_exp_scale: float = cfg_reward["linearVelocityXY"]["expScale"]
-        self.rew_lin_vel_z_exp_scale: float = cfg_reward["linearVelocityZ"]["expScale"]
-        self.rew_ang_vel_z_exp_scale: float = cfg_reward["angularVelocityZ"]["expScale"]
+        self.rew_lin_vel_xy_exp_scale: float = cfg_reward["lin_vel_xy"]["expScale"]
+        self.rew_lin_vel_z_exp_scale: float = cfg_reward["lin_vel_z"]["expScale"]
+        self.rew_ang_vel_z_exp_scale: float = cfg_reward["ang_vel_z"]["expScale"]
         self.rew_orient_exp_scale: float = cfg_reward["orientation"]["expScale"]
 
-        self.rew_dof_force_target_exp_scale: float = cfg_reward["dofForceTarget"]["expScale"]
-        self.rew_dof_force_target_exp_scale/= (cfg_reward["dofForceTarget"]["normalize_by"]*self.num_dof)
+        self.rew_dof_force_target_exp_scale: float = cfg_reward["dof_force_target"]["expScale"]
+        self.rew_dof_force_target_exp_scale/= (cfg_reward["dof_force_target"]["normalize_by"]*self.num_dof)
 
         self.max_foot_contact_force = 100  # [N] # todo refactor
 
@@ -245,8 +220,8 @@ class LeggedTerrain(VecTask):
         self.base_height_rew_a, self.base_height_rew_b = float(a), float(b)
 
         # min air time and stance time in seconds
-        self.air_time_offset = float(cfg_reward["footAirTime"]["offset"])
-        self.stance_time_offset = float(cfg_reward["footStanceTime"]["offset"])
+        self.air_time_offset = float(cfg_reward["air_time"]["offset"])
+        self.stance_time_offset = float(cfg_reward["stance_time"]["offset"])
 
         # ramdomize:push robot
         randomize = self.cfg["env"]["randomize"]
@@ -283,10 +258,10 @@ class LeggedTerrain(VecTask):
             "commands": 3,  # vel_x,vel_y, vel_yaw, (excluding heading)
             "dofPosition": self.num_dof,
             "dofVelocity": self.num_dof,
-            "dofForceTarget": self.num_dof,
+            "dof_force_target": self.num_dof,
             "dofForce": self.num_dof,
             "heightMap": self.num_height_points,  # excluding the base origin measuring point
-            "baseHeight": 1,
+            "base_height": 1,
             "actions": self.num_dof,
             "contact": self.num_foot,  # foot contact indicator
             "phase": self.num_foot*2, # phase of each foot (contact sequece)
@@ -440,8 +415,8 @@ class LeggedTerrain(VecTask):
                                                    dtype=torch.float, device=self.device)
         
         # single contact reward parameters
-        self.max_single_contact: int = cfg_reward["footSingleContact"]["max_single_contact"]
-        self.foot_multi_contact_grace_period: float = cfg_reward["footSingleContact"]["grace_period"]
+        self.max_single_contact: int = cfg_reward["single_contact"]["max_single_contact"]
+        self.foot_multi_contact_grace_period: float = cfg_reward["single_contact"]["grace_period"]
         self.foot_multi_contact_time = torch.zeros(self.num_envs, dtype=torch.float, device=self.device)
 
         self.last_dof_vel = torch.zeros_like(self.dof_vel)
@@ -614,10 +589,10 @@ class LeggedTerrain(VecTask):
             "commands": 0,
             "dofPosition": cfg_learn["dofPositionNoise"] * noise_level * self.dof_pos_scale,
             "dofVelocity": cfg_learn["dofVelocityNoise"] * noise_level * self.dof_vel_scale,
-            "dofForceTarget": 0,
+            "dof_force_target": 0,
             "dofForce": 0, # TODO, MAYBE ADD NOISE FOR DOF FORCE
             "heightMap": cfg_learn["heightMapNoise"] * noise_level * self.heightmap_scale,
-            "baseHeight": 0,
+            "base_height": 0,
             "actions": 0,  # previous actions
             "contact": 0,  # foot contact
             "contactTarget":0,
@@ -876,9 +851,9 @@ class LeggedTerrain(VecTask):
             "commands": self.commands[:, :3] * self.commands_scale,
             "dofPosition": self.dof_pos * self.dof_pos_scale,
             "dofVelocity": self.dof_vel * self.dof_vel_scale,
-            "dofForceTarget": self.dof_force_target * self.dof_force_target_scale,
+            "dof_force_target": self.dof_force_target * self.dof_force_target_scale,
             "dofForce": self.dof_force * self.dof_force_scale,
-            "baseHeight": heights[:, self.num_height_points+self.base_id],
+            "base_height": heights[:, self.num_height_points+self.base_id],
             "heightMap": heights[:, :self.num_height_points],
             "actions": self.actions,
             "contact": self.foot_contact,
@@ -909,9 +884,9 @@ class LeggedTerrain(VecTask):
         rew["ang_vel_xy"] = square_sum(self.base_ang_vel[:, :2])
 
         # orientation penalty
-        # rew["orient"] = square_sum(self.projected_gravity[:, :2])
+        # rew["orientation"] = square_sum(self.projected_gravity[:, :2])
         projected_gravity_xy = square_sum(self.projected_gravity[:, :2])
-        rew["orient"]=torch.exp(self.rew_orient_exp_scale*projected_gravity_xy)
+        rew["orientation"]=torch.exp(self.rew_orient_exp_scale*projected_gravity_xy)
 
         # base height penalty
         # rew["base_height"] = torch.square(self.heights_relative[:, self.num_height_points] - self.target_base_height)
