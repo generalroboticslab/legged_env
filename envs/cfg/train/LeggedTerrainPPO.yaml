@@ -68,7 +68,7 @@ params:
     grad_norm: 1.
     horizon_length: 24
     minibatch_size: 16384
-    mini_epochs: 5
+    mini_epochs: 6
     critic_coef: 2
     clip_value: True
     seq_length: 4 # only for rnn

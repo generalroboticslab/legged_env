@@ -1,4 +1,8 @@
 params:
+  network:
+    name: actor_critic
+    separate: False
+    # rest of the network config is the same as in BipedPPO
   config:
     central_value_config:
       minibatch_size: 16384

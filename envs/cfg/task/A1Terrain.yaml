@@ -7,12 +7,14 @@ env:
   numEnvs: ${resolve_default:4096,${...num_envs}}
   numObservations: "infer" #49 #165 #188
   numActions: "infer"
-  envSpacing: 3.  # [m]
+  envSpacing: 1.  # [m]
   enableDebugVis: false
 
   dataPublisher:
     enable: false
     target_url: 'udp://localhost:9870'
+    # optionally can add:
+    # keys:[name_of_item_to_publish]
 
   observationNames:
     - linearVelocity
@@ -41,12 +43,13 @@ env:
     terrainProportions: [0.2, 0.2, 0.2, 0.2, 0.2, 0]
     stair: # stairs up/down terrain
       width: 0.31
-      height: 0.18
+      height: 0.15
     uniform: # uniform terrain
       height: 0.15
       step: 0.005
+      downsampled_scale: 0.2
     platformSize: 2.0 # [m]
-    horizontalScale: 0.05
+    horizontalScale: 0.1
     verticalScale: 0.001
     borderSize: 25
     slope: 0.4 # corresponds to 20deg slope (tan(20deg) = 0.4)
@@ -58,7 +61,7 @@ env:
     rot: [0.0, 0.0, 0.0, 1.0] # x,y,z,w [quat]
     vLinear: [0.0, 0.0, 0.0]  # x,y,z [m/s]
     vAngular: [0.0, 0.0, 0.0]  # x,y,z [rad/s]
-  
+  baseHeightOffset: 0.1 # [m] offset added to the base pos z
   baseHeightTarget: # 0.3 # target base height [m]
 
   randomCommandVelocityRanges:
@@ -151,28 +154,38 @@ env:
     allowKneeContacts: True
     terminalReward: 0.0
     reward:
-      lin_vel_xy:
+      lin_vel:
         scale: 1.0
         fcn: exp_square_sum
-        expScale: -4.0
-      lin_vel_z:
-        scale: -4.0
-        fcn: exp_square
-        expScale: -4.0
-      ang_vel_xy:
-        scale: -0.05
-        fcn: square_sum
-      ang_vel_z:
+        exp_scale: -4.0
+        normalize_by: [1, 1, 0.2]
+      ang_vel:
         scale: 0.5
-        expScale: -4.0
-        fcn: square
+        fcn: exp_square_sum
+        exp_scale: -4.0
+        normalize_by: [0.1, 0.1, 1] # [0.2, 0.2, 1]
+      # lin_vel_xy:
+      #   scale: 1.0
+      #   fcn: exp_square_sum
+      #   exp_scale: -4.0
+      # lin_vel_z:
+      #   scale: -4.0
+      #   fcn: exp_square
+      #   exp_scale: -4.0
+      # ang_vel_xy:
+      #   scale: -0.05
+      #   fcn: square_sum
+      # ang_vel_z:
+      #   scale: 0.5
+      #   exp_scale: -4.0
+      #   fcn: square
       orientation:
         scale: 0.5 #-1.
-        expScale: -10.0
+        exp_scale: -10.0
         fcn: exp_square_sum #square_sum
       dof_force_target:
         scale: 0.1 # -0.000025
-        expScale: -1.0
+        exp_scale: -1.0
         normalize_by: 60 # [N]
         fcn: exp_square_sum
       dof_acc:
@@ -221,6 +234,10 @@ env:
         scale: 0.0
         clamp_max: 0.1
         fcn: foot_height_reward
+      foot_orientation:
+        scale: 0
+        exp_scale: -5.0
+        fcn: exp_square_sum_mean
       impact:
         scale: -0.0
         fcn: abs_sum
@@ -290,7 +307,7 @@ sim:
     num_threads: ${....num_threads}
     solver_type: ${....solver_type}
     use_gpu: ${contains:"cuda",${....sim_device}} # set to False to run on CPU
-    num_position_iterations: 4
+    num_position_iterations: 2 #4
     num_velocity_iterations: 1
     contact_offset: 0.02
     rest_offset: 0.0

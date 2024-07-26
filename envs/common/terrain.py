@@ -51,6 +51,7 @@ class Terrain:
 
         self.uniform_height: float = cfg["uniform"]["height"]
         self.uniform_step: float = cfg["uniform"]["step"]
+        self.uniform_downsample: float = cfg["uniform"]["downsampled_scale"]
 
         self.slope = cfg["slope"]
 
@@ -163,7 +164,6 @@ class Terrain:
                 uniform_height = self.uniform_height * self.difficulty_scale * difficulty
                 uniform_step = max(self.uniform_step * self.difficulty_scale, self.vertical_scale)
                 # uniform_step = self.vertical_scale
-                uniform_downsample = self.horizontal_scale
 
                 stair_width = self.stair_width
                 stair_height = self.stair_height * self.difficulty_scale * difficulty
@@ -190,12 +190,12 @@ class Terrain:
                 # stair_down, smooth_up, smooth_down, discrete, stepping_stone]
                 if choice < proportions[0]:  # [0] rough_up,      \⎽/
                     pyramid_sloped_terrain(terrain, slope=slope, platform_size=self.platform_size)
-                    random_uniform_terrain(terrain, -uniform_height, uniform_height, uniform_step, uniform_downsample)
+                    random_uniform_terrain(terrain, -uniform_height, uniform_height, uniform_step, self.uniform_downsample)
                 elif choice < proportions[1]:  # [1] rough_down,    /⎺\
                     pyramid_sloped_terrain(terrain, slope=-slope, platform_size=self.platform_size)
-                    random_uniform_terrain(terrain, -uniform_height, uniform_height, uniform_step, uniform_downsample)
+                    random_uniform_terrain(terrain, -uniform_height, uniform_height, uniform_step, self.uniform_downsample)
                 elif choice < proportions[2]:  # [2] rough_flat      ⎽
-                    random_uniform_terrain(terrain, -uniform_height, uniform_height, uniform_step, uniform_downsample)
+                    random_uniform_terrain(terrain, -uniform_height, uniform_height, uniform_step, self.uniform_downsample)
                 elif choice < proportions[3]:  # [3] stair_up,      \⎽/
                     pyramid_stairs_terrain(
                         terrain, step_width=stair_width, step_height=-stair_height, platform_size=self.platform_size
