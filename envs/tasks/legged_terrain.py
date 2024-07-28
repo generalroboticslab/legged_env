@@ -450,15 +450,17 @@ class LeggedTerrain(VecTask):
         self.phase=None
         self.phase_sin_cos=None
         self.contact_target=None
+        self.last_contact_target=None
         if self.guided_contact:
             # normalized phase [0,1]
             self.phase_offset = torch.tensor(cfg_guided_contact["phase_offset"],dtype=torch.float, device=self.device).repeat((self.num_envs, 1))
             self.phase_freq: float = cfg_guided_contact["phase_freq"] # [Hz]
             self.phase_stance_ratio: float = cfg_guided_contact["phase_stance_ratio"] # [1]
             self.phase_swing_ratio = 1 - self.phase_stance_ratio
+            self.last_contact_target = torch.ones(self.num_envs,self.num_foot, dtype=torch.bool, device=self.device)
             self.update_phase()
 
-        self.reset_idx(torch.arange(self.num_envs, device=self.device))
+        self.reset_idx(torch.arange(self.num_envs, device=self.device, dtype=torch.int32))
         self.init_done = True
         
         # rendering
@@ -472,7 +474,8 @@ class LeggedTerrain(VecTask):
         self.phase = (self.phase_freq * self.rl_dt * self.progress_buf.unsqueeze(1) +self.phase_offset) % 1
         self.phase_sin_cos = torch.column_stack((torch.sin(2*torch.pi*self.phase), torch.cos(2*torch.pi*self.phase))) # HACK TODO ADD 2PI
         self.contact_target = self.phase < self.phase_stance_ratio # 1 = stance, 0 = swing
-        self.contact_target[self.is_zero_command] = 1 # set contact_target to 1 if zero command
+        self.contact_target[torch.logical_and(self.is_zero_command,self.last_contact_target.sum(dim=-1)==self.num_foot)] = 1 # set contact_target to 1 if zero command
+        self.last_contact_target[:] = self.contact_target
 
     def set_viewer(self):
         """set viewers and camera events"""
@@ -1050,18 +1053,19 @@ class LeggedTerrain(VecTask):
             self.foot_multi_contact_time <self.foot_multi_contact_grace_period, 
             self.is_zero_command).type(torch.float)
 
+        foot_height_rew = torch.clamp_max(torch.sum(self.foot_height + self.foot_height_offset,dim=-1),0.1)
+        # foot_height_rew[self.is_zero_command] = - foot_height_rew[self.is_zero_command]
+        foot_height_rew[self.is_zero_command] = 0
+        rew["foot_height"] = foot_height_rew
+        foot_projected_gravity_xy = square_sum(self.foot_projected_gravity[...,:2]).mean(dim=-1)
+        rew["foot_orientation"]=torch.exp(self.rew_foot_orient_exp_scale*foot_projected_gravity_xy)
+        
         if self.guided_contact:
-            foot_height_rew = torch.clamp_max(torch.sum(self.foot_height + self.foot_height_offset,dim=-1),0.1)
-            # foot_height_rew[self.is_zero_command] = - foot_height_rew[self.is_zero_command]
-            foot_height_rew[self.is_zero_command] = 0
-            rew["foot_height"] = foot_height_rew
-            
             rew["should_contact"] = torch.eq(self.foot_contact,self.contact_target).mean(dim=1,dtype=torch.float)
-
-            foot_projected_gravity_xy = square_sum(self.foot_projected_gravity[...,:2]).mean(dim=-1)
-            rew["foot_orientation"]=torch.exp(self.rew_foot_orient_exp_scale*foot_projected_gravity_xy)
-
             # rew["should_contact"][zero_command] = 1 # set contstant for zero command
+        
+        if self.enable_passive_dynamics:
+            rew["passive_action"] = torch.sum(~self.action_is_on, dim=-1,dtype=torch.float)
 
         # rew["num_contacts"] = self.air_time<=self.foot_multi_contact_grace_period
 
@@ -1128,13 +1132,12 @@ class LeggedTerrain(VecTask):
         return quat_rotate_inverse(self.base_quat.repeat_interleave(self.num_foot, dim=0), 
                                    foot_pos_rel.view(-1, 3)).view(self.num_envs, self.num_foot, 3)
 
-    def reset_idx(self, env_ids):
+    def reset_idx(self, env_ids: torch.Tensor):
         """Resets the specified environments."""
-        len_ids = len(env_ids)
+        len_ids = env_ids.numel()
         if len_ids == 0:
             return
-        env_ids_int32 = env_ids.to(dtype=torch.int32)
-        env_ids_raw = gymtorch.unwrap_tensor(env_ids_int32)
+        env_ids_raw = gymtorch.unwrap_tensor(env_ids.type_as(torch.int32))
         if self.custom_origins:
             self.update_terrain_level(env_ids)
             self.root_state[env_ids] = self.base_init_state
@@ -1226,10 +1229,19 @@ class LeggedTerrain(VecTask):
 
     def push_robots(self):
         """Applies random pushes to the robots."""
-        self.root_state[:, 7:13] = torch_rand_tensor(
+        self.root_state[:, 7:13]+= torch_rand_tensor(
             self.push_vel_min, self.push_vel_max, (self.num_envs, 6), device=self.device
         )  # lin vel x/y/z
         self.gym.set_actor_root_state_tensor(self.sim, self.root_state_raw)
+
+    def push_robot_ids(self, env_ids: torch.Tensor):
+        """Applies random pushes to the robots."""
+        # env_ids_int32 = env_ids.to(dtype=torch.int32)
+        self.root_state[env_ids, 7:13]+=torch_rand_tensor(
+            self.push_vel_min, self.push_vel_max, (len(env_ids), 6), device=self.device
+        )  # lin vel x/y/z
+        self.gym.set_actor_root_state_tensor_indexed(
+            self.sim, self.root_state_raw, gymtorch.unwrap_tensor(env_ids.type_as(torch.int32)), env_ids.numel())
 
     def render(self, mode="rgb_array"):
         """Draw the frame to the viewer, and check for keyboard events."""
@@ -1487,9 +1499,14 @@ class LeggedTerrain(VecTask):
         self.progress_buf += 1
         self.randomize_buf += 1
         self.common_step_counter += 1
-        if self.common_step_counter % self.push_interval == 0 and self.should_push_robots:
-            self.push_robots()
+        # if self.common_step_counter % self.push_interval == 0 and self.should_push_robots:
+        #     self.push_robots()
 
+        if self.should_push_robots:
+            env_ids = torch.nonzero(self.progress_buf%self.push_interval == 0, as_tuple=False).squeeze_(1)
+            if env_ids.numel()>0:
+                self.push_robot_ids(env_ids)
+    
         # prepare quantities
         # self.base_quat = self.root_state[:, 3:7]
         self.base_lin_vel = quat_rotate_inverse(self.base_quat, self.root_state[:, 7:10])
@@ -1531,7 +1548,7 @@ class LeggedTerrain(VecTask):
         self.last_foot_contact_force[:] = self.foot_contact_force[:]
 
         # resets
-        env_ids = self.reset_buf.nonzero(as_tuple=False).flatten()
+        env_ids = self.reset_buf.nonzero(as_tuple=False).squeeze_(1)
         self.reset_idx(env_ids)
 
 

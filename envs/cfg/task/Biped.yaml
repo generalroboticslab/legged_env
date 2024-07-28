@@ -39,7 +39,7 @@ env:
     curriculum: True
     mapLength: 8.
     mapWidth: 8.
-    numLevels: 5
+    numLevels: 10
     maxInitMapLevel: 0
     difficultySale: 1.0 # multiplier for terrain height
     numTerrains: 20
@@ -149,9 +149,9 @@ env:
       range: [-0.5, 0.5]
     push:
       enable: true
-      interval_s: 15
-      velMin: [-1,-1, 0, 0, 0, 0]
-      velMax: [ 1, 1, 0, 0, 0, 0]
+      interval_s: 10
+      velMin: [-0.5,-0.5, 0, 0, 0, 0] # [-1,-1, 0, 0, 0, 0]
+      velMax: [ 0.5, 0.5, 0, 0, 0, 0]
     initDofPos: # randomize dof position at reset
       enable: true
       range: [-0.1, 0.1]
@@ -255,7 +255,7 @@ env:
         fcn: foot_height_reward
       foot_orientation:
         scale: 0.1
-        exp_scale: -5.0
+        exp_scale: -10
         fcn: exp_square_sum_mean
       impact:
         scale: -0.0
