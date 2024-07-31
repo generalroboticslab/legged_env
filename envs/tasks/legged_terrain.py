@@ -366,14 +366,14 @@ class LeggedTerrain(VecTask):
         else:
             raise NotImplementedError(f'Unsupported terrain type: {self.terrain_type}')
         
-        # asset force sensors
-        sensor_pose = gymapi.Transform()
-        sensor_options = gymapi.ForceSensorProperties()
-        sensor_options.enable_forward_dynamics_forces = False # for example gravity
-        sensor_options.enable_constraint_solver_forces = True # for example contacts
-        sensor_options.use_world_frame = True # report forces in world frame (easier to get vertical components)
-        for index in self.foot_ids:
-            self.gym.create_asset_force_sensor(self.asset, index, sensor_pose, sensor_options)
+        # # asset force sensors
+        # sensor_pose = gymapi.Transform()
+        # sensor_options = gymapi.ForceSensorProperties()
+        # sensor_options.enable_forward_dynamics_forces = False # for example gravity
+        # sensor_options.enable_constraint_solver_forces = True # for example contacts
+        # sensor_options.use_world_frame = True # report forces in world frame (easier to get vertical components)
+        # for index in self.foot_ids:
+        #     self.gym.create_asset_force_sensor(self.asset, index, sensor_pose, sensor_options)
             
         self._create_envs()
 
@@ -418,11 +418,11 @@ class LeggedTerrain(VecTask):
         # dof force tensor
         self.dof_force: torch.Tensor = gymtorch.wrap_tensor(self.dof_force_tensor_raw).view(self.num_envs, self.num_dof)
 
-        # force sensors
-        sensor_tensor = self.gym.acquire_force_sensor_tensor(self.sim)
-        self.gym.refresh_force_sensor_tensor(self.sim)
-        force_sensor_readings = gymtorch.wrap_tensor(sensor_tensor)
-        self.sensor_forces = force_sensor_readings.view(self.num_envs, self.num_foot, 6)[..., :3]
+        # # force sensors
+        # sensor_tensor = self.gym.acquire_force_sensor_tensor(self.sim)
+        # self.gym.refresh_force_sensor_tensor(self.sim)
+        # force_sensor_readings = gymtorch.wrap_tensor(sensor_tensor)
+        # self.sensor_forces = force_sensor_readings.view(self.num_envs, self.num_foot, 6)[..., :3]
 
         # reward episode sums (unscaled)
         def torch_zeros(): return torch.zeros(self.num_envs, dtype=torch.float, device=self.device)
@@ -1551,7 +1551,7 @@ class LeggedTerrain(VecTask):
         self.gym.refresh_net_contact_force_tensor(self.sim)
         self.gym.refresh_rigid_body_state_tensor(self.sim)
         self.gym.refresh_dof_force_tensor(self.sim)
-        self.gym.refresh_force_sensor_tensor(self.sim)
+        # self.gym.refresh_force_sensor_tensor(self.sim)
 
         self.progress_buf += 1
         self.randomize_buf += 1
@@ -1587,8 +1587,8 @@ class LeggedTerrain(VecTask):
         # foot contact
         # self.contact = torch.norm(contact_forces[:, foot_indices, :], dim=2) > 1.
         self.foot_contact_force = self.contact_force[:, self.foot_ids, :]
-        # self.foot_contact = self.foot_contact_force[:, :, 2] > 1.0  # todo check with norm
-        self.foot_contact = self.sensor_forces[:, :, 2] > 1.0
+        self.foot_contact = self.foot_contact_force[:, :, 2] > 1.0  # todo check with norm
+        # self.foot_contact = self.sensor_forces[:, :, 2] > 1.0
         self.foot_lin_vel = self.rb_state[:, self.foot_ids, 7:10]
 
         if self.guided_contact: # update phase for the contact sequence
