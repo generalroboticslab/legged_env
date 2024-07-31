@@ -1,5 +1,11 @@
 from rl_games.torch_runner import Runner as _Runner
 import torch
+from rl_games.algos_torch import torch_ext
+
+# bug fix to load multi-gpu checkpoint
+def safe_load(filename):
+    return torch_ext.safe_filesystem_op(torch.load, filename, map_location='cuda:0')
+torch_ext.safe_load = safe_load
 
 class Runner(_Runner):
 

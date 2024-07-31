@@ -209,7 +209,8 @@ class Terrain:
                 elif choice < proportions[6]:  # [6] smooth_down,   /⎺\
                     pyramid_sloped_terrain(terrain, slope=slope, platform_size=self.platform_size)
                 elif choice < proportions[7]:  # [7] discrete,      ☵☷
-                    discrete_obstacles_terrain(terrain, obstacle_height, 1.0, 2.0, 40, platform_size=self.platform_size)
+                    # random_uniform_terrain(terrain, -uniform_height, uniform_height, uniform_step, self.uniform_downsample)
+                    discrete_obstacles_terrain(terrain, obstacle_height, 0.5, 1.0, 40, platform_size=self.platform_size)
                 else:  # [8] stepping_stone  ▦▦
                     stepping_stones_terrain(
                         terrain,

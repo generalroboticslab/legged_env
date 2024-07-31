@@ -11,8 +11,9 @@ import copy
 import networkx as nx
 import matplotlib.pyplot as plt
 from typing import List
-
-
+import textwrap
+import re
+import glob
 
 
 def simplify_meshes(save_dir):
@@ -175,18 +176,20 @@ def plot_graph(graph: nx.DiGraph, figsize=(6, 10)):
         plot_graph(G)
     """
     fig, ax = plt.subplots(figsize=figsize)
-    pos = nx.nx_agraph.graphviz_layout(graph, prog='dot')
+    pos = nx.nx_agraph.graphviz_layout(graph, prog='dot',args='-Grankdir=LR')
     nx.draw_networkx_nodes(
-        graph, pos, ax=ax, node_color='lightblue', node_size=500)
-    nx.draw_networkx_edges(graph, pos, ax=ax, arrows=True,
-                           arrowstyle='->', arrowsize=20)
+        graph, pos, ax=ax, node_color='lightblue', node_size=2000,node_shape='o')
+    nx.draw_networkx_edges(
+        graph, pos, ax=ax, arrows=True,
+        arrowstyle='->', arrowsize=20,min_target_margin=30,min_source_margin=30)
+    # wrap labels to fit in graph
+    labels = {n: '\n'.join(textwrap.wrap(n, width=12)) for n in graph.nodes}
     nx.draw_networkx_labels(
-        graph, pos, ax=ax, font_size=12, font_family='sans-serif')
-    edge_labels = {(u, v): graph[u][v]['type'] for u, v in graph.edges()}
-    nx.draw_networkx_edge_labels(graph, pos, ax=ax,  edge_labels=edge_labels)
-
+        graph, pos,labels=labels, ax=ax, font_size=10, font_family='sans-serif')
+    edge_labels = {(u, v): f"{graph[u][v]['name']}\n\n[{graph[u][v]['type']}]" for u, v in graph.edges()}
+    nx.draw_networkx_edge_labels(graph, pos, ax=ax, edge_labels=edge_labels, font_size=10,bbox=dict(alpha=0.0))
     plt.axis('off')  # Turn off axis labels
-    plt.title("Tree Graph")
+    # plt.title("urdf")
     return fig, ax
 
 
@@ -256,6 +259,20 @@ def get_leaf_nodes(urdf: yourdfpy.URDF, collapse_fixed_joints: bool = False) -> 
     else:
         return get_leaf_nodes_helper(graph)
 
+def trace_edges(graph: nx.DiGraph, start_node):
+    """trace the edges from a start node back to the root"""
+    edge_names = []
+    current_node = start_node
+    while True:
+        predecessors = tuple(graph.predecessors(current_node))
+        if not predecessors:  # No more parents, we've reached the root
+            break
+        parent_node = predecessors[0]
+        edge_data = graph.get_edge_data(parent_node, current_node)
+        if edge_data['type'] != 'fixed':
+            edge_names.append(edge_data['name'])
+        current_node = parent_node
+    return list(reversed(edge_names))
 
 def get_urdf_bounding_box(urdf: yourdfpy.URDF):
     """return urdf bounding box
