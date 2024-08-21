@@ -16,9 +16,15 @@ class _BaseRingBuffer:
         if not isinstance(shape, Iterable):
             shape = (shape,)
         # self.storage acts as a circular buffer, the element at self._step is the newest element
-        self.storage = torch.zeros( (buffer_len,*shape), dtype=dtype,device=device)
+        self.storage = torch.zeros((buffer_len,*shape), dtype=dtype,device=device)
         self.step = -1 # current step
         self.max_step = self.buffer_len-1
+
+        self.index_mapping = torch.stack([
+            torch.arange(step,step-self.buffer_len,-1,device=self.storage.device)
+            for step in range(self.buffer_len)
+        ])%self.buffer_len
+        # print(self.index_mapping)
 
     def add(self, tensor: torch.Tensor):
         """
@@ -32,12 +38,12 @@ class _BaseRingBuffer:
         
     def __getitem__(self, index: Union[int, slice, Iterable]) -> torch.Tensor:
         """
-        Retrieves a tensor from the buffer by index, newest to oldest.
+        Retrieves a tensor (reference) from the buffer by index, newest to oldest.
+        NOTE: the tensor is a reference, and could change in the buffer, use torch.clone() to get a copy.
         For example:
           index=0 returns the latest tensor added to the buffer.
           index=-1 returns the oldest tensor added to the buffer.
           index=slice(3) returns the last three tensors added to the buffer, newest to oldest.
-
         Args:
             index: The index of the tensor to retrieve.
 
@@ -60,14 +66,28 @@ class _BaseRingBuffer:
         else:
             return self.storage[(current_step-index) % self.buffer_len]
         
-    def get_last(self):
-        """Returns the last tensor in the buffer"""
+    def get_latest(self):
+        """
+        Returns the last tensor in the buffer
+        NOTE: the tensor is a reference, and could change in the buffer, use torch.clone() to get a copy.
+        """
         return self.storage[self.step%self.buffer_len]
     
-    def get_last_n(self, n:int) -> torch.Tensor:
-        """Returns the last n tensors in the buffer, newest to oldest"""
+    def get_latest_n(self, n:int) -> torch.Tensor:
+        """
+        Returns the last n tensors in the buffer, newest to oldest
+        NOTE: the tensor is a reference, and could change in the buffer, use torch.clone() to get a copy.
+        """
         assert n <= self.buffer_len and n>0
-        return self.storage[torch.arange(self.step,self.step-n,-1)%self.buffer_len]
+        # return self.storage[torch.arange(self.step,self.step-n,-1,device=self.storage.device)%self.buffer_len]
+        return self.storage[self.index_mapping[self.step%self.buffer_len,:n]]
+    
+    def get_all(self) -> torch.Tensor:
+        """
+        Returns all tensors in the buffer
+        """
+        
+        return self.storage[self.index_mapping[self.step%self.buffer_len]]
     
 
 class RingTensorBuffer(_BaseRingBuffer):    
@@ -92,12 +112,7 @@ class RingTensorBuffer(_BaseRingBuffer):
     def reset(self):
         """Resets the buffer current step to -1"""
         self.step = -1
-    
-    def clear(self):
-        """Clears the contents of the buffer by filling it with zeros."""
         self.storage.zero_()
-        self.step = -1  # Reset the step to indicate an empty buffer
-
 
 class BatchedRingTensorBuffer(_BaseRingBuffer):
     def __init__(self, buffer_len: int, batch_size: int, shape: Union[Iterable,int], dtype=torch.float32, device='cpu'):
@@ -149,14 +164,12 @@ class BatchedRingTensorBuffer(_BaseRingBuffer):
     def reset_batch(self, batch_idx: Union[int,torch.Tensor]):
         """Resets the batch step for a given batch index"""
         self.batch_step[batch_idx] = -1
+        self.storage[:,batch_idx].fill_(0)
     
     def reset(self):
         self.step = -1
         self.batch_step.fill_(-1)
-
-
-
-
+        self.storage.zero_()
 
 class RingBufferCounter:
     def __init__(self, buffer_len: int, batch_size: int,device='cpu'):
@@ -184,7 +197,6 @@ class RingBufferCounter:
     def reset(self):
         self.step = -1
         self.batch_step.fill_(-1)
-  
 
 class BatchedRingBufferWithSharedCounter(_BaseRingBuffer):
     

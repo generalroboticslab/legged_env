@@ -24,7 +24,7 @@ from hydra.utils import to_absolute_path
 
 class LeggedTerrain(VecTask):
     """
-    issaac gym envs for task "A1Terrain" and "AnymalTerrain"
+    issaac gym envs any legged robot locomotion task
     """
 
     def __init__(
@@ -80,6 +80,9 @@ class LeggedTerrain(VecTask):
         if (not enable_camera_sensors) and self.headless:
             self.graphics_device_id = -1
 
+        self.num_environments = self.cfg["env"]["numEnvs"]  # self.num_envs
+        self.num_agents = self.cfg["env"].get("numAgents", 1)  # used for multi-agent environments
+
         # self.sim_params = self._VecTask__parse_sim_params(self.cfg["physics_engine"], self.cfg["sim"])
         self.sim_params = self._parse_sim_params()
 
@@ -89,9 +92,6 @@ class LeggedTerrain(VecTask):
         self.up_axis_idx = {"x": 0, "y": 1, "z": 2}[self.cfg["sim"]["up_axis"]]  # index of up axis: x=0, y=1, z=2
         self.sim = super().create_sim(self.device_id, self.graphics_device_id, self.physics_engine, self.sim_params)
         self.load_asset()
-
-        self.num_environments = self.cfg["env"]["numEnvs"]  # self.num_envs
-        self.num_agents = self.cfg["env"].get("numAgents", 1)  # used for multi-agent environments
 
         # control
         self.kp: float = self.cfg["env"]["control"]["stiffness"]
@@ -114,7 +114,10 @@ class LeggedTerrain(VecTask):
         self.command_y_range = self.cfg["env"]["randomCommandVelocityRanges"]["linear_y"]
         self.command_yaw_range = self.cfg["env"]["randomCommandVelocityRanges"]["yaw"]
         # treat commends below this threshold as zero [m/s]
-        self.command_zero_threshold = self.cfg["env"]["commandZeroThreshold"]
+        # square it to compare the square sum instead of the norm (slightly more efficient)
+        self.command_zero_threshold: float = np.square(self.cfg["env"]["commandZeroThreshold"])
+        self.command_zero_probability: float = self.cfg["env"]["commandZeroProbability"]
+        # TODO group them together in config
 
         # commands: x vel, y vel, yaw vel, heading
         self.commands = torch.zeros(self.num_envs, 4, dtype=torch.float, device=self.device)
@@ -128,7 +131,7 @@ class LeggedTerrain(VecTask):
         # desired joint positions [rad]
         self.named_desired_dof_pos = self.cfg["env"].get("desiredJointPositions", self.named_default_dof_pos)
         # initial joint positions [rad]
-        self.named_init_dof_pos = self.cfg["env"].get("initialJointPositions", self.named_default_dof_pos)
+        self.named_init_dof_pos = self.cfg["env"].get("initialJointPositions", self.named_desired_dof_pos)
 
         def get_dof_pos(value):
             if isinstance(value, dict):
@@ -160,8 +163,13 @@ class LeggedTerrain(VecTask):
 
 
         # needed for foot height reward
-        z_pos_foot = np.mean([self.asset_urdf.get_transform(foot_name,collision_geometry=True)[2,3] for foot_name in self.foot_names]) # z position of foot
-        self.foot_height_offset: float = lower_bound_z - z_pos_foot
+
+        base_pos = self.asset_urdf.get_transform(self.base_name,collision_geometry=True)[:3,3]
+        base_pos = torch.tensor(base_pos, dtype=torch.float, device=self.device)
+        foot_pos_rel = np.stack([self.asset_urdf.get_transform(foot_name,collision_geometry=True)[:3,3] for foot_name in self.foot_names])
+        self.default_foot_pos_rel = torch.tensor(foot_pos_rel, dtype=torch.float, device=self.device).unsqueeze(0) #(1,num_foot,3)
+        foot_z_pos = np.mean(foot_pos_rel[:,2]) # z position of foot
+        self.foot_height_offset: float = lower_bound_z - foot_z_pos
         print(f"{bc.WARNING}[infer from URDF] foot_height_offset = {self.foot_height_offset:.4f} {bc.ENDC}")
 
         # base init state
@@ -189,10 +197,17 @@ class LeggedTerrain(VecTask):
         if self.enable_udp:  # plotJuggler related
             self.data_publisher = DataPublisher(**self.cfg["env"]["dataPublisher"])
             self.items_to_publish = self.cfg["env"]["dataPublisher"].get("keys", None)
-            # self.sim2real_publisher = DataPublisher(target_url="udp://localhost:9876")
+            self.data_root_label = self.cfg["env"].get("data_root_label", "sim")
+            self.sim2real_publisher = DataPublisher(target_url="udp://localhost:9876")
 
         # reward scales
         cfg_rew: Dict[str, Any] = self.cfg["env"]["learn"]["reward"]
+
+        # self.rew_group: list = self.cfg["env"]["learn"].get("reward_group",[])
+        # rew_names = set(cfg_rew.keys())
+        # for group in self.rew_group:
+        #     rew_names-=set(group)
+        # self.rew_group.append(list(rew_names))
 
 
         self.rew_scales = {key: rew_item["scale"] for key,rew_item in cfg_rew.items()}
@@ -211,29 +226,42 @@ class LeggedTerrain(VecTask):
         self.rew_orient_exp_scale: float = cfg_rew["orientation"]["exp_scale"]
         self.rew_foot_orient_exp_scale: float = cfg_rew["foot_orientation"]["exp_scale"]
 
+        self.rew_action_rate_exp_scale: float = cfg_rew["action_rate"]["exp_scale"]
         
+        self.rew_dof_acc_exp_scale: float = cfg_rew["dof_acc"]["exp_scale"]
+
+        self.rew_impact_exp_scale: float = cfg_rew["impact"]["exp_scale"]
+
         self.rew_lin_vel_exp_scale: torch.Tensor =cfg_rew["lin_vel"]["exp_scale"] * \
             torch.tensor(cfg_rew["lin_vel"]["normalize_by"],dtype=torch.float, device=self.device)
         self.rew_ang_vel_exp_scale: torch.Tensor =cfg_rew["ang_vel"]["exp_scale"] * \
             torch.tensor(cfg_rew["ang_vel"]["normalize_by"],dtype=torch.float, device=self.device)
         
+        self.rew_foot_forward_exp_scale: float = cfg_rew["foot_forward"]["exp_scale"]
 
-        self.rew_dof_force_target_exp_scale: float = cfg_rew["dof_force_target"]["exp_scale"]
-        # rew_dof_force_target_exp_scale_normalize_by = cfg_reward["dof_force_target"]["normalize_by"]
-        self.dof_force_limit = torch.tensor(self.dof_props["effort"],dtype=torch.float, device=self.device)
-        self.dof_force_max = self.dof_force_limit
-        self.dof_force_min = -self.dof_force_limit
-        self.rew_dof_force_target_exp_scale= (self.rew_dof_force_target_exp_scale/ (self.dof_force_limit*self.num_dof))
-
+        self.rew_foot_pos_exp_scale: torch.Tensor = cfg_rew["foot_pos"]["exp_scale"] * \
+            torch.tensor(cfg_rew["foot_pos"]["normalize_by"],dtype=torch.float, device=self.device)
+        
         self.max_foot_contact_force = 100  # [N] # todo refactor
 
         # foot_height reward
         self.foot_height_clamp_max = cfg_rew["foot_height"]["clamp_max"]
 
-        # base height reward: reverse bell shaped curve
-        # https://researchhubs.com/post/maths/fundamentals/bell-shaped-function.html
-        a, b = self.cfg["env"]["learn"].get("baseHeightRewardParams", [0.04, 3])
-        self.base_height_rew_a, self.base_height_rew_b = float(a), float(b)
+        self.rew_dof_force_target_exp_scale: float = cfg_rew["dof_force_target"]["exp_scale"]
+        dof_force_limit = torch.tensor(self.dof_props["effort"],dtype=torch.float, device=self.device)[self.actuated_dof_mask]
+        assert torch.all(dof_force_limit < 10000), f"dof_force_limit={dof_force_limit} double check this value is correct"
+
+        self.actuated_dof_force_max = dof_force_limit
+        self.actuated_dof_force_min = -dof_force_limit
+        self.rew_dof_force_target_exp_scale= (self.rew_dof_force_target_exp_scale/ (dof_force_limit*self.num_actuated_dof))
+
+
+        # # base height reward: reverse bell shaped curve
+        # # https://researchhubs.com/post/maths/fundamentals/bell-shaped-function.html
+        # a, b = self.cfg["env"]["learn"].get("baseHeightRewardParams", [0.04, 3])
+        # self.base_height_rew_a, self.base_height_rew_b = float(a), float(b)
+
+        self.rew_base_height_exp_scale = cfg_rew["base_height"]["exp_scale"]
 
         # min air time and stance time in seconds
         self.air_time_offset = float(cfg_rew["air_time"]["offset"])
@@ -259,36 +287,55 @@ class LeggedTerrain(VecTask):
         self.erfi_rfi_range:Iterable[float] = randomize["erfi"]["rfi_range"] # random force injection
         self.erfi_rao_range:Iterable[float] = randomize["erfi"]["rao_range"] # random actuation offset
         if self.enable_erfi: 
-            self.erfi_rao = torch.empty(self.num_envs,self.num_dof, dtype=torch.float, device=self.device).uniform_(*self.erfi_rao_range)
-            self.erfi_rfi = torch.empty(self.num_envs,self.num_dof, dtype=torch.float, device=self.device).uniform_(*self.erfi_rfi_range)
+            self.erfi_rao = torch.empty(self.num_envs,self.num_actuated_dof, dtype=torch.float, device=self.device).uniform_(*self.erfi_rao_range)
+            self.erfi_rfi = torch.empty(self.num_envs,self.num_actuated_dof, dtype=torch.float, device=self.device).uniform_(*self.erfi_rfi_range)
         else:
             self.erfi_rfi = 0
+
+        # randomize: dof_strength
+        self.randomize_dof_strength = randomize["dof_strength"]["enable"]
+        if self.randomize_dof_strength:
+            self.dof_strength_range:Iterable[float] = randomize["dof_strength"]["range"]
+            self.dof_strength = torch.empty(self.num_envs,self.num_actuated_dof, dtype=torch.float, device=self.device).uniform_(*self.dof_strength_range)
+        else:
+            self.dof_strength = torch.ones(self.num_envs,self.num_actuated_dof, dtype=torch.float, device=self.device)
+
 
         # heightmap
         self.init_height_points()
 
+        self.is_train = False
+        if  self.cfg["test"] in ["train", False]:
+            self.is_train = True
+
         # passive dynamics
-        self.enable_passive_dynamics = self.cfg["env"].get("enablePassiveDynamics", False)
+        self.enable_passive_dynamics = self.cfg["env"]["learn"].get("enablePassiveDynamics", False)
+        self.passive_curriculum = self.cfg["env"]["learn"].get("passiveCurriculum", False)
+        self.passive_curriculum = self.passive_curriculum and self.is_train # only train with curriculum
+
 
         infer_action = self.cfg["env"]["numActions"] == "infer"
         if infer_action:
-            self.cfg["env"]["numActions"] = len(self.dof_names)
+            self.cfg["env"]["numActions"] = len(self.actuated_dof_names)
             if self.enable_passive_dynamics:
-                self.cfg["env"]["numActions"] = len(self.dof_names)*2
-        
+                self.cfg["env"]["numActions"] = len(self.actuated_dof_names)*2
+                self.duration_since_action_switch = torch.zeros(self.num_envs, self.num_actuated_dof, dtype=torch.float, device=self.device)
+            
         # observation dimensions of specific items
         self.obs_dim_dict = {
             "linearVelocity": 3,
             "angularVelocity": 3,
             "projectedGravity": 3,
             "commands": 3,  # vel_x,vel_y, vel_yaw, (excluding heading)
-            "dofPosition": self.num_dof,
-            "dofVelocity": self.num_dof,
-            "dof_force_target": self.num_dof,
-            "dofForce": self.num_dof,
+            "dofPosition": self.num_actuated_dof,
+            "dofVelocity": self.num_actuated_dof,
+            "dof_force_target": self.num_actuated_dof,
+            "dof_strength": self.num_actuated_dof,
+            "dofForce": self.num_actuated_dof,
             "heightMap": self.num_height_points,  # excluding the base origin measuring point
             "base_height": 1,
             "actions": self.cfg["env"]["numActions"],
+            "last_actions": self.cfg["env"]["numActions"],
             "contact": self.num_foot,  # foot contact indicator
             "phase": self.num_foot*2, # phase of each foot (contact sequece)
             "contactTarget": self.num_foot,  # foot contact indicator
@@ -408,6 +455,8 @@ class LeggedTerrain(VecTask):
         self.dof_pos = self.dof_state.view(self.num_envs, self.num_dof, 2)[..., 0]
         self.dof_vel = self.dof_state.view(self.num_envs, self.num_dof, 2)[..., 1]
 
+        self.last_dof_vel = torch.zeros_like(self.dof_vel)
+
         # contact_force: (num_envs, num_bodies, xyz axis)
         self.contact_force: torch.Tensor = gymtorch.wrap_tensor(self.net_contact_force_raw).view(self.num_envs, -1, 3)
 
@@ -417,6 +466,11 @@ class LeggedTerrain(VecTask):
 
         # dof force tensor
         self.dof_force: torch.Tensor = gymtorch.wrap_tensor(self.dof_force_tensor_raw).view(self.num_envs, self.num_dof)
+
+        # user-specified actuation forces (including passive joint, although we do not use it) [num_envs, num_dof]
+        self.dof_actuation_force = torch.zeros(self.num_envs, self.num_dof, device=self.device, dtype=torch.float)
+        self.dof_actuation_force_tensor = gymtorch.unwrap_tensor(self.dof_actuation_force)
+
 
         # # force sensors
         # sensor_tensor = self.gym.acquire_force_sensor_tensor(self.sim)
@@ -429,27 +483,39 @@ class LeggedTerrain(VecTask):
         self.episode_sums = {key: torch_zeros() for key in self.rew_scales.keys()}
 
         # initialize some data used later on
-        self.common_step_counter = 0
+        self.common_step_counter: int = 0
         self.extras = {}
         self.noise_scale_vec = self._get_noise_scale_vec()
         self.noise_vec = torch.zeros_like(self.obs_buf, dtype=torch.float, device=self.device)
 
-        # # delayed observations
-        # from envs.common.buffer import BatchedRingTensorBuffer
-        # self.max_obs_delay = 1
-        # self.delayed_obs_buf = BatchedRingTensorBuffer(buffer_len=self.max_obs_delay,batch_size=self.num_envs, shape=self.num_obs,dtype=torch.float, device=self.device)
+        # delayed observations
+        from envs.common.buffer import BatchedRingTensorBuffer
+        self.max_observation_delay_steps = cfg["env"].get("max_observation_delay_steps",0 )
+        
+        self.batched_obs_buf = BatchedRingTensorBuffer(buffer_len=self.max_observation_delay_steps+1,batch_size=self.num_envs, shape=self.num_obs,dtype=torch.float, device=self.device)
 
+        # self.max_action_steps = cfg["env"].get("max_action_steps",4)
+        # self.batched_action_buf = BatchedRingTensorBuffer(buffer_len=self.max_action_steps, batch_size=self.num_envs, shape=self.num_actions, dtype=torch.float, device=self.device)
 
-        # gravity_vec=[0,0,-1]
+        # gravity_vec = [0,0,-1]
         gravity_vec = torch.tensor(get_axis_params(-1.0, self.up_axis_idx), dtype=torch.float, device=self.device)
-        self.gravity_vec = gravity_vec.repeat((self.num_envs, 1))
+        self.base_gravity_vec = gravity_vec.repeat((self.num_envs, 1))
         self.foot_gravity_vec = gravity_vec.repeat((self.num_foot*self.num_envs, 1))
 
-        self.forward_vec = torch.tensor([1, 0, 0], dtype=torch.float, device=self.device).repeat((self.num_envs, 1))
-        self.dof_force_target = torch.zeros(self.num_envs, self.num_dof, dtype=torch.float, device=self.device)
+        # forward_vec = [1,0,0]
+        forward_vec = torch.tensor([1, 0, 0], dtype=torch.float, device=self.device)
+        self.base_forward_vec_local = forward_vec.repeat((self.num_envs, 1))
+        self.foot_forward_vec_local = forward_vec.repeat((self.num_foot*self.num_envs, 1))
+
+        # idealized actuated dof force target
+        self.actuated_dof_force_target = torch.zeros(self.num_envs, self.num_actuated_dof, dtype=torch.float, device=self.device)
+        # after applying randomization and noise
+        self.actuated_dof_force_target_actual = torch.zeros(self.num_envs, self.num_actuated_dof, dtype=torch.float, device=self.device)
+
         self.actions = torch.zeros(self.num_envs, self.num_actions, dtype=torch.float, device=self.device)
         self.last_actions = torch.zeros(self.num_envs, self.num_actions, dtype=torch.float, device=self.device)
-        # self.actions_filt = torch.zeros(self.num_envs, self.num_actions, dtype=torch.float, device=self.device)
+        self.actions_filt = torch.zeros(self.num_envs, self.num_actions, dtype=torch.float, device=self.device)
+
         # self.dof_pos_filt = torch.zeros(self.num_envs, self.num_actions, dtype=torch.float, device=self.device)
 
         # foot air time and stance time
@@ -457,13 +523,21 @@ class LeggedTerrain(VecTask):
         self.stance_time = torch.zeros(self.num_envs, self.num_foot, dtype=torch.float, device=self.device)
         self.last_foot_contact_force = torch.zeros(self.num_envs, self.num_foot, 3,
                                                    dtype=torch.float, device=self.device)
-        
+        # compute cost of transport metrics
+        if self.enable_udp:
+            from envs.common.buffer import BatchedRingTensorBuffer
+            buffer_len=160
+            self.buffer_com_pos = BatchedRingTensorBuffer(buffer_len=buffer_len, batch_size=self.num_envs, shape=3, dtype=torch.float, device=self.device)
+            self.buffer_dof_pow = BatchedRingTensorBuffer(buffer_len=buffer_len, batch_size=self.num_envs, shape=1, dtype=torch.float, device=self.device)
+            # total mass of the actors [num_envs]
+            total_mass = torch.tensor([np.sum([p.mass for p in body_props]) for body_props in self.actor_rigid_body_properties],dtype=torch.float, device=self.device)
+            gravity_norm = np.linalg.norm(self.cfg["sim"]["gravity"])
+            self.total_gravity = total_mass*gravity_norm
+
         # single contact reward parameters
         self.max_single_contact: int = cfg_rew["single_contact"]["max_single_contact"]
         self.foot_multi_contact_grace_period: float = cfg_rew["single_contact"]["grace_period"]
         self.foot_multi_contact_time = torch.zeros(self.num_envs, dtype=torch.float, device=self.device)
-
-        self.last_dof_vel = torch.zeros_like(self.dof_vel)
 
         cfg_guided_contact = self.cfg["env"]["learn"].get("guided_contact", {})
         self.guided_contact = cfg_guided_contact.get("enable", False)
@@ -473,12 +547,14 @@ class LeggedTerrain(VecTask):
         self.last_contact_target=None
         if self.guided_contact:
             # normalized phase [0,1]
-            # self.episodic_phase_offset = torch.rand(self.num_envs,1, dtype=torch.float, device=self.device)
+            self.episodic_phase_offset = torch.zeros(self.num_envs,1, dtype=torch.float, device=self.device)
+            self.episodic_phase_offset[:self.num_envs//2]= 0.5 # half of the episode is 0.5 phase offset
             self.phase_offset = torch.tensor(cfg_guided_contact["phase_offset"],dtype=torch.float, device=self.device).repeat((self.num_envs, 1))
             self.phase_freq: float = cfg_guided_contact["phase_freq"] # [Hz]
             self.phase_stance_ratio: float = cfg_guided_contact["phase_stance_ratio"] # [1]
             self.phase_swing_ratio = 1 - self.phase_stance_ratio
             self.last_contact_target = torch.ones(self.num_envs,self.num_foot, dtype=torch.bool, device=self.device)
+            self.projected_gravity = self.base_gravity_vec.clone()
             self.update_phase()
 
             # # get leg joint ids with respect to the each foot
@@ -489,16 +565,16 @@ class LeggedTerrain(VecTask):
             # self.leg_joint_ids = [[self.dof_dict[edge] for edge in edges] for edges in leg_joint_names]
 
             graph = urdf_to_graph(self.asset_urdf)
-            # get mapping from a foot to the all the joints traced from that foot shaped [num_foot, num_dof]
-            self.leg_to_joint_mask = torch.zeros(self.num_foot,self.num_dof, dtype=torch.bool, device=self.device)
+            # get mapping from a foot to the all the joints traced from that foot shaped [num_foot, num_dof] (including all passive and actuated joints)
+            self.leg_to_dof_mask = torch.zeros(self.num_foot,self.num_dof, dtype=torch.bool, device=self.device)
             for k, foot_name in enumerate(self.foot_names):
                 joint_traced_from_foot = trace_edges(graph, start_node=foot_name)
                 joint_ids_traced_from_foot = [self.dof_dict[edge] for edge in joint_traced_from_foot]
-                self.leg_to_joint_mask[k,joint_ids_traced_from_foot]=True
-            self.leg_to_joint_mask = self.leg_to_joint_mask.repeat(self.num_envs,1,1) # expanded to [num_envs, num_foot, num_dof]
+                self.leg_to_dof_mask[k,joint_ids_traced_from_foot]=True
+            self.leg_to_dof_mask = self.leg_to_dof_mask.repeat(self.num_envs,1,1) # expanded to [num_envs, num_foot, num_dof]
 
-        if self.enable_passive_dynamics:
-            self.duration_since_action_switch = torch.zeros(self.num_envs, self.num_dof, dtype=torch.float, device=self.device)
+        if self.num_actuated_dof != self.num_dof: # has passive DOF
+            self.pre_physics_step = self.pre_physics_step_with_passive_dof
 
         self.reset_idx(torch.arange(self.num_envs, device=self.device))
         self.init_done = True
@@ -515,12 +591,20 @@ class LeggedTerrain(VecTask):
            stance phase: 0<phase<stance_ratio
            swing phase:  stance_ratio<phase<1
         """
-        # self.phase = (self.phase_freq * self.rl_dt * self.progress_buf.unsqueeze(1) + self.episodic_phase_offset +self.phase_offset) % 1
-        self.phase = (self.phase_freq * self.rl_dt * self.progress_buf.unsqueeze(1) +self.phase_offset) % 1
-        self.phase_sin_cos = torch.column_stack((torch.sin(2*torch.pi*self.phase), torch.cos(2*torch.pi*self.phase))) # HACK TODO ADD 2PI
+        self.phase = (self.phase_freq * self.rl_dt * self.progress_buf.unsqueeze(1) +self.phase_offset + self.episodic_phase_offset) % 1
+        self.phase_sin_cos = torch.column_stack((torch.sin(2*torch.pi*self.phase), torch.cos(2*torch.pi*self.phase)))
         self.contact_target = self.phase <= self.phase_stance_ratio # 1 = stance, 0 = swing
-        self.contact_target[torch.logical_and(self.is_zero_command,self.last_contact_target.sum(dim=-1)==self.num_foot)] = 1 # set contact_target to 1 if zero command
+        # todo fix 0.5 bug
+        should_stop = self.is_zero_command & (self.last_contact_target.sum(dim=-1)==self.num_foot) # & (self.projected_gravity[:,2]<-0.99) # 10 deg tilt        
+        self.contact_target[should_stop] = 1 # set contact_target to 1 if zero command
         self.last_contact_target[:] = self.contact_target
+
+        # # HACK changeback 
+        # self.phase = (self.phase_freq * self.rl_dt * self.progress_buf.unsqueeze(1) +self.phase_offset + self.episodic_phase_offset) % 1
+        # self.contact_target = self.phase <= self.phase_stance_ratio # 1 = stance, 0 = swing
+        # # all_should_contact = self.contact_target.sum(dim=-1)==self.num_foot
+        # # self.commands[all_should_contact,:] = 0
+        # # self.commands[~all_should_contact,0] = 0.4
 
     def set_viewer(self):
         """set viewers and camera events"""
@@ -564,6 +648,10 @@ class LeggedTerrain(VecTask):
             subscribe_keyboard_event(gymapi.KEY_U, "heading+")
             subscribe_keyboard_event(gymapi.KEY_O, "heading-")
             subscribe_keyboard_event(gymapi.KEY_0, "v=0")
+            subscribe_keyboard_event(gymapi.KEY_Y, "m+")
+            subscribe_keyboard_event(gymapi.KEY_H, "m-")
+            subscribe_keyboard_event(gymapi.KEY_P, "push")
+
             self.keyboard_operator_cmd = torch.zeros(3, dtype=torch.float, device=self.device)
             self.data_receiver = DataReceiver(port=9871,decoding="msgpack",broadcast=True)
             self.data_receiver_data_id = self.data_receiver.data_id # for check if data is new
@@ -661,10 +749,12 @@ class LeggedTerrain(VecTask):
             "dofPosition": cfg_learn["dofPositionNoise"] * noise_level * self.dof_pos_scale,
             "dofVelocity": cfg_learn["dofVelocityNoise"] * noise_level * self.dof_vel_scale,
             "dof_force_target": 0,
+            "dof_strength": 0,
             "dofForce": 0, # TODO, MAYBE ADD NOISE FOR DOF FORCE
             "heightMap": cfg_learn["heightMapNoise"] * noise_level * self.heightmap_scale,
             "base_height": 0,
             "actions": 0,  # previous actions
+            "last_actions": 0,
             "contact": 0,  # foot contact
             "contactTarget":0,
             "phase": 0,
@@ -715,6 +805,7 @@ class LeggedTerrain(VecTask):
         asset_options.armature = 0.0
         asset_options.thickness = 0.01
         asset_options.disable_gravity = False
+        # asset_options.override_inertia = True
         for attribute in cfg_asset["AssetOptions"]:
             if attribute == "vhacd_params":
                 vhacd_params = cfg_asset["AssetOptions"]["vhacd_params"]
@@ -726,10 +817,22 @@ class LeggedTerrain(VecTask):
                 print(f"{bc.WARNING}{attribute} not in AssetOptions!{bc.ENDC}")
 
         self.asset = self.gym.load_asset(self.sim, cfg_asset["root"], cfg_asset["file"], asset_options)
-
-        self.num_dof = self.gym.get_asset_dof_count(self.asset)
         self.dof_names = self.gym.get_asset_dof_names(self.asset)
+        # name to index mapping
         self.dof_dict = self.gym.get_asset_dof_dict(self.asset)
+        # number of DOF
+        self.num_dof = self.gym.get_asset_dof_count(self.asset)
+
+        try:
+            self.passive_dof_names = get_matching_str(source="PASSIVE", destination=self.dof_names, case_sensitive=True, comment="passive DOF")
+        except KeyError:
+            self.passive_dof_names = []
+        self.actuated_dof_names = list(sorted([d for d in self.dof_names if d not in self.passive_dof_names]))
+        self.num_actuated_dof = len(self.actuated_dof_names)
+        actuated_dof_ids = torch.tensor([self.dof_dict[n] for n in self.actuated_dof_names], device=self.device, dtype=torch.long)
+        self.actuated_dof_mask = torch.zeros(self.num_dof, dtype=torch.bool, device=self.device)
+        self.actuated_dof_mask[actuated_dof_ids] = True
+
 
         # dof properties
         # lower: lower limit of DOF. in [radians] or [meters]
@@ -754,23 +857,6 @@ class LeggedTerrain(VecTask):
         self.dof_lower = torch.tensor(self.dof_props['lower'], dtype=torch.float, device=self.device) + dof_margin
         self.dof_upper = torch.tensor(self.dof_props['upper'], dtype=torch.float, device=self.device) - dof_margin
 
-        def get_matching_str(source, destination, comment=""):
-            """Finds case-insensitive partial matches between source and destination lists."""
-            def find_matches(src_item):
-                matches = [item for item in destination if src_item.lower() in item.lower()]
-                if not matches:
-                    raise KeyError(f"cannot locate {src_item}. [{comment}]")
-                elif len(matches) > 1:
-                    raise KeyError(f"find multiple instances for {src_item}. [{comment}]")
-                return matches[0]  # Return just the first match
-            if isinstance(source, str):  # one to many
-                matches = [item for item in destination if source.lower() in item.lower()]  
-                if not matches:
-                    raise KeyError(f"cannot locate {source} [{comment}\navailables are {destination}")
-                return matches
-            else:  # one to one     
-                return [find_matches(item) for item in source]
-
         # body
         self.num_bodies = self.gym.get_asset_rigid_body_count(self.asset)
         self.body_names = self.gym.get_asset_rigid_body_names(self.asset)
@@ -779,12 +865,12 @@ class LeggedTerrain(VecTask):
         asset_rigid_body_id_dict = {value: key for key, value in asset_rigid_body_dict.items()}
 
         # body: base
-        base_name = cfg_asset.get("baseName", None)
-        if base_name is None:  # infer base_name
-            base_name = self.asset_urdf.base_link
+        self.base_name = cfg_asset.get("baseName", None)
+        if self.base_name is None:  # infer base_name
+            self.base_name = self.asset_urdf.base_link
         else:
-            base_name = get_matching_str(source=base_name, destination=self.body_names, comment="base_name")[0]
-        self.base_id = asset_rigid_body_dict[base_name]
+            self.base_name = get_matching_str(source=self.base_name, destination=self.body_names, comment="base_name")[0]
+        self.base_id = asset_rigid_body_dict[self.base_name]
         
         # hip_name = cfg_asset.get("hipName",None)
         # hip_names = get_matching_str(source=hip_name, destination=self.body_names, comment="hip_name")
@@ -807,7 +893,7 @@ class LeggedTerrain(VecTask):
         if knee_name is None:
             # HACK: exclude base link and feet, include all other links
             exclude_link_names = set(self.foot_names)
-            exclude_link_names.add(base_name)
+            exclude_link_names.add(self.base_name)
             knee_names = set(asset_rigid_body_dict.keys()) - exclude_link_names
         else:
             knee_names = get_matching_str(source=knee_name, destination=self.body_names, comment="knee_name")
@@ -821,7 +907,7 @@ class LeggedTerrain(VecTask):
         # dof_hip_names = get_matching_str(source=hip_joint_name,destination=self.dof_names, comment="hip_joint_name")
         # self.dof_hip_ids = torch.tensor([asset_dof_dict[n] for n in dof_hip_names], dtype=torch.long, device=self.device)   
 
-        print(f"base = {base_name}: {self.base_id}")
+        print(f"base = {self.base_name}: {self.base_id}")
         # print(f"hip = {dict(zip(hip_names,self.hip_ids.tolist()))}")
         print(f"knee = {dict(zip(knee_names,self.knee_ids.tolist()))}")
         print(f"foot = {dict(zip(self.foot_names,self.foot_ids.tolist()))}")
@@ -830,6 +916,21 @@ class LeggedTerrain(VecTask):
         # assert len(self.dof_hip_ids)==4
         # assert self.dof_hip_ids.tolist() == [0, 3, 6, 9]
         ####################
+
+        marker_pair_names = cfg_asset.get("marker_pair_names",[])
+        self.num_marker_pairs = len(marker_pair_names)
+        if len(marker_pair_names) > 0:
+            self.marker_pair_l0 = torch.tensor(cfg_asset["marker_pair_length"], dtype=torch.float, device=self.device)
+            self.last_marker_pair_length = self.marker_pair_l0.repeat(self.num_envs,1)
+
+            self.marker_pair_names = [get_matching_str(
+                source=marker_pair_name, destination=self.body_names, case_sensitive=True,comment="marker_pairs") 
+                for marker_pair_name in marker_pair_names]
+            print("marker pair names:", self.marker_pair_names)
+            self.marker_pair_ids = torch.tensor(
+                [[asset_rigid_body_dict[n] for n in marker_pair] for marker_pair in self.marker_pair_names],
+                dtype=torch.long, device=self.device)
+             
         
     def _create_envs(self):
         """Creates multiple environments with randomized properties."""
@@ -874,6 +975,7 @@ class LeggedTerrain(VecTask):
         env_upper = gymapi.Vec3(spacing, spacing, spacing)
         self.actor_handles = []
         self.envs = []
+        self.actor_rigid_body_properties = []
         for i in range(self.num_envs):
             # create env instance
             env_handle = self.gym.create_env(self.sim, env_lower, env_upper, num_per_row)
@@ -895,18 +997,20 @@ class LeggedTerrain(VecTask):
                 self.gym.set_actor_rigid_shape_properties(env_handle, actor_handle, rigid_shape_prop)
             self.gym.set_actor_dof_properties(env_handle, actor_handle, self.dof_props)
             
+            body_props = self.gym.get_actor_rigid_body_properties(env_handle, actor_handle)
             if randomize_base_mass:
-                body_props = self.gym.get_actor_rigid_body_properties(env_handle, actor_handle)
                 body_props[self.base_id].mass += baseMass_buckets[i]
-                self.gym.set_actor_rigid_body_properties(env_handle, actor_handle, body_props, recomputeInertia=True)
-
+                self.gym.set_actor_rigid_body_properties(env_handle, actor_handle, body_props, recomputeInertia=False)
             self.envs.append(env_handle)
             self.actor_handles.append(actor_handle)
+            self.actor_rigid_body_properties.append(body_props)
 
     def check_termination(self):
         """Checks if the episode should terminate."""
         # base tilt 45 degree or base contact with ground
         self.reset_buf = torch.logical_or(self.projected_gravity[:,2]>-0.7, square_sum(self.contact_force[:, self.base_id, :]) > 1.0)
+        # self.reset_buf = square_sum(self.contact_force[:, self.base_id, :]) > 1.0
+
         if not self.allow_knee_contacts:
             knee_contact = square_sum(self.contact_force[:, self.knee_ids, :]) > 1.0
             self.reset_buf |= torch.any(knee_contact, dim=1)
@@ -926,12 +1030,15 @@ class LeggedTerrain(VecTask):
             "angularVelocity": self.base_ang_vel * self.ang_vel_scale,
             "projectedGravity": self.projected_gravity,
             "commands": self.commands[:, :3] * self.commands_scale,
-            "dofPosition": self.dof_pos * self.dof_pos_scale,
-            "dofVelocity": self.dof_vel * self.dof_vel_scale,
-            "dof_force_target": self.dof_force_target * self.dof_force_target_scale,
-            "dofForce": self.dof_force * self.dof_force_scale,
+            "dofPosition": self.dof_pos[:,self.actuated_dof_mask] * self.dof_pos_scale,
+            "dofVelocity": self.dof_vel[:,self.actuated_dof_mask] * self.dof_vel_scale,
+            "dof_force_target": self.actuated_dof_force_target * self.dof_force_target_scale,
+            "actuated_dof_force_target_actual": self.actuated_dof_force_target_actual * self.dof_force_target_scale,
+            # "dofForce": self.dof_force[:,self.actuated_dof_mask] * self.dof_force_scale,
+            "dof_strength": self.dof_strength,
             "base_height": heights[:, self.num_height_points+self.base_id],
             "heightMap": heights[:, :self.num_height_points],
+            "last_actions": self.last_actions,
             "actions": self.actions,
             "contact": self.foot_contact,
             "contactTarget": self.contact_target,
@@ -947,8 +1054,9 @@ class LeggedTerrain(VecTask):
             self.noise_vec.uniform_(-1.0, 1.0).mul_(self.noise_scale_vec)  # scaled noise vector
             self.obs_buf += self.noise_vec
 
-        # self.delayed_obs_buf.add_and_fill_batch(self.obs_buf)
-        # self.obs_buf = self.delayed_obs_buf[-1]
+        # delayed observations
+        self.batched_obs_buf.add_and_fill_batch(self.obs_buf)
+        self.obs_buf = self.batched_obs_buf[self.max_observation_delay_steps].clone()
 
     def compute_reward(self):
         """Computes the reward for the current state and action."""
@@ -961,8 +1069,8 @@ class LeggedTerrain(VecTask):
         lin_vel_error: torch.Tensor = desired_vel[:, :3] - self.base_lin_vel
         ang_vel_error: torch.Tensor = desired_vel[:, 3:] - self.base_ang_vel
 
-        rew["lin_vel"] = torch.exp(torch.sum(self.rew_lin_vel_exp_scale*lin_vel_error.square(), dim=-1))
-        rew["ang_vel"] = torch.exp(torch.sum(self.rew_ang_vel_exp_scale*ang_vel_error.square(), dim=-1))
+        rew["lin_vel"] = exp_weighted_square_sum(lin_vel_error, self.rew_lin_vel_exp_scale)
+        rew["ang_vel"] = exp_weighted_square_sum(ang_vel_error, self.rew_ang_vel_exp_scale)
 
         # lin_vel_error = square_sum(self.commands[:, :2] - self.base_lin_vel[:, :2])
         # ang_vel_error = torch.square(self.commands[:, 2] - self.base_ang_vel[:, 2])
@@ -975,25 +1083,26 @@ class LeggedTerrain(VecTask):
 
         # orientation penalty
         # rew["orientation"] = square_sum(self.projected_gravity[:, :2])
-        projected_gravity_xy = square_sum(self.projected_gravity[:, :2])
-        rew["orientation"]=torch.exp(self.rew_orient_exp_scale*projected_gravity_xy)
+        # projected_gravity_xy = square_sum(self.projected_gravity[:, :2])
+        # rew["orientation"]=torch.exp(self.rew_orient_exp_scale*projected_gravity_xy)
+        rew["orientation"]=exp_square_sum(self.projected_gravity[:, :2],exp_scale=self.rew_orient_exp_scale)
+        # rew["orientation"]=exp_square(torch.arccos(-self.projected_gravity[:, 2]),exp_scale=self.rew_orient_exp_scale) # changed 8/20 # numerically unstable,dont use it
 
         # base height penalty
         # rew["base_height"] = torch.square(self.heights_relative[:, self.num_height_points] - self.target_base_height)
-        # exponential reward
-        # base_height_error = torch.square(self.heights_relative[:, self.num_height_points] - self.target_base_height)
-        # rew["base_height"] = 1.0 - torch.exp(-base_height_error / 0.001)
-        # bell-shaped reward
 
-        rew["base_height"] = reverse_bell(
-            self.base_height, a=self.base_height_rew_a, b=self.base_height_rew_b, c=self.target_base_height
-        )
+        # exponential reward
+        base_height_error = torch.clamp_max(self.base_height - self.target_base_height,0)
+
+        rew["base_height"] =torch.exp(torch.square(base_height_error)*self.rew_base_height_exp_scale)
+        
+        # # bell-shaped reward
+        # rew["base_height"] = reverse_bell(
+        #     self.base_height, a=self.base_height_rew_a, b=self.base_height_rew_b, c=self.target_base_height
+        # )
 
         # torque penalty
-        rew["dof_force_target"] = torch.exp((self.dof_force_target.abs()*self.rew_dof_force_target_exp_scale).sum(dim=-1))
-
-        # rew["dof_force_target"] = square_sum(self.dof_force_target)
-        
+        rew["dof_force_target"] = torch.exp((self.actuated_dof_force_target.abs()*self.rew_dof_force_target_exp_scale).sum(dim=-1))
         # rew["dof_force_target"] = out_of_float_bound_squared_sum(
         #     self.dof_force_target, -self.torque_penalty_bound, self.torque_penalty_bound
         # )
@@ -1001,8 +1110,9 @@ class LeggedTerrain(VecTask):
 
         # joint acc penalty
         # rew["dof_acc"] = torch.square(self.last_dof_vel - self.dof_vel).sum(dim=1)
-        self.dof_acc = (self.dof_vel - self.last_dof_vel) * self.rl_dt_inv  # TODO check if [:] is needed # TODO
-        rew["dof_acc"] = square_sum(self.dof_acc)  # TODO Check this
+
+        rew["dof_acc"] = exp_square_sum(self.dof_acc, self.rew_dof_acc_exp_scale)
+        
         # rew["dof_acc"] = torch.abs(dof_acc).sum(dim=1)  #TODO Check this
 
         # joint vel penalty
@@ -1012,24 +1122,29 @@ class LeggedTerrain(VecTask):
         # rew["dof_pos"] = (self.dof_pos - self.default_dof_pos).abs().sum(dim=1)
         # rew["dof_pos"] = (self.dof_pos - self.desired_dof_pos).abs().sum(dim=1)
         # rew["dof_pos"] = (self.dof_pos - self.desired_dof_pos)[:,[0,5]].abs().sum(dim=1)
-        rew["dof_pos"] = (self.dof_pos - self.desired_dof_pos).abs().sum(dim=1)
-        rew["dof_pos"][self.is_zero_command] = 0
+        rew["dof_pos"] = (self.dof_pos - self.desired_dof_pos)[:,self.actuated_dof_mask].abs().sum(dim=1)
+        rew["dof_pos"][~self.is_zero_command] = 0 # do not count if it is not zero command
         # rew["dof_pos"] = (self.dof_pos_filt - self.desired_dof_pos).abs().sum(dim=1)
         
         # joint power penalty
-        rew["dof_pow"] = (self.dof_vel * self.dof_force_target).abs().sum(dim=1)
+        rew["dof_pow"] = (self.dof_vel[:,self.actuated_dof_mask] * self.actuated_dof_force_target).abs().sum(dim=1)
 
         # penalty for position exceeding dof limit
         # rew["dof_limit"] = out_of_bound_norm(self.dof_pos, self.dof_lower, self.dof_upper)
-        rew["dof_limit"] = out_of_bound_abs_sum(self.dof_pos, self.dof_lower, self.dof_upper)
+        # rew["dof_limit"] = out_of_bound_abs_sum(self.dof_pos, self.dof_lower, self.dof_upper)
+        rew["dof_limit"] = out_of_bound_square_sum(self.dof_pos, self.dof_lower, self.dof_upper)
 
+        
         # collision penalty
-        knee_collision = torch.norm(self.contact_force[:, self.knee_ids, :], dim=2) > 1.0
+        knee_collision = square_sum(self.contact_force[:, self.knee_ids, :], dim=2) > 1.0
         rew["collision"] = torch.sum(knee_collision, dim=1, dtype=torch.float)  # sum vs any ?
 
         # foot impact penalty (num_envs,4,3)
         foot_contact_diff = self.foot_contact_force[:, :, 2] - self.last_foot_contact_force[:, :, 2]
-        rew["impact"] = foot_contact_diff.abs().sum(dim=1)
+        # rew["impact"] = foot_contact_diff.abs().sum(dim=1)
+
+        rew["impact"] = exp_square_sum(foot_contact_diff, self.rew_impact_exp_scale)
+
         # rew["impact"] = foot_contact_diff.view(self.num_envs,-1).abs().sum(dim=1)
         # foot_contact_diff = self.foot_contact_force - self.last_foot_contact_force
         # rew["impact"] = torch.norm(foot_contact_diff,dim=2).sum(dim=1)
@@ -1050,7 +1165,8 @@ class LeggedTerrain(VecTask):
 
         # action rate penalty
         self.action_rate = (self.actions - self.last_actions) * self.rl_dt_inv
-        rew["action_rate"] = torch.square(self.action_rate).sum(dim=1)
+        # rew["action_rate"] = torch.square(self.action_rate).sum(dim=1)
+        rew["action_rate"] = exp_square_sum(self.action_rate, self.rew_action_rate_exp_scale)
 
         # self.is_zero_command = torch.norm(self.commands[:, :2], dim=1) < self.command_zero_threshold
         # nonzero_command = torch.norm(self.commands[:, :2], dim=1) >= self.command_zero_threshold
@@ -1101,7 +1217,8 @@ class LeggedTerrain(VecTask):
             self.foot_multi_contact_time <self.foot_multi_contact_grace_period, 
             self.is_zero_command).type(torch.float)
 
-        foot_height_rew = (self.foot_height + self.foot_height_offset).sum(dim=-1).clamp_max_(self.foot_height_clamp_max)
+        step_height = self.foot_height + self.foot_height_offset
+        foot_height_rew = step_height.clamp_max(self.foot_height_clamp_max).sum(dim=-1)
         # foot_height_rew[self.is_zero_command] = - foot_height_rew[self.is_zero_command]
         foot_height_rew[self.is_zero_command] = 0
         rew["foot_height"] = foot_height_rew
@@ -1109,30 +1226,68 @@ class LeggedTerrain(VecTask):
         foot_projected_gravity_xy = square_sum(self.foot_projected_gravity[...,:2]).mean(dim=-1)
         rew["foot_orientation"]=torch.exp(self.rew_foot_orient_exp_scale*foot_projected_gravity_xy)
         
-        if self.guided_contact:
-            rew["should_contact"] = torch.eq(self.foot_contact,self.contact_target).mean(dim=1,dtype=torch.float)
-            # rew["should_contact"][zero_command] = 1 # set contstant for zero command
+        foot_pos_rel_error = torch.abs(self.default_foot_pos_rel - self.foot_pos_rel_yaw).mean(dim=1)
+        rew["foot_pos"] = exp_weighted_square_sum(foot_pos_rel_error, self.rew_foot_pos_exp_scale,dim=-1)
+
+        # self.foot_forward: self.num_envs, self.num_foot, 3
+        base_forward_xy = normalize(self.base_forward[...,:2])
+        foot_forward_xy = normalize(self.foot_forward[...,:2])
         
-        if self.enable_passive_dynamics:
-            last_action_is_on = self.last_actions[:,self.num_dof:]  > 0
-            action_is_on_swiched = torch.ne(last_action_is_on,self.action_is_on)
-            self.duration_since_action_switch.add_(self.rl_dt)
-            self.duration_since_action_switch[action_is_on_swiched]=0
+        rew["foot_forward"] = torch.exp(self.rew_foot_forward_exp_scale*(1-1/self.num_foot*(foot_forward_xy * base_forward_xy.view(self.num_envs, 1, 2)).sum((1,2))))
+        # .sub(foot_forward_xy).square().sum(dim=[1,2])
+        # torch.square(foot_forward_xy.mean(dim=1,keepdim=True)-foot_forward_xy).sum(dim=[1,2])
+        
+        if self.guided_contact:
 
-            # joints that are supposed in the swing phase
-            joint_swing = torch.any((~self.contact_target).unsqueeze(2) & self.leg_to_joint_mask, dim=1)
-            # rew["passive_action"] = torch.sum((~self.action_is_on) & joint_swing,dim=-1,dtype=torch.float)
+            # joints that are supposed in the swing/stance phase bool [num_envs, num_joints]
+            joint_stance = torch.any((self.contact_target).unsqueeze(2) & self.leg_to_dof_mask, dim=1)[:,self.actuated_dof_mask]
+            joint_swing = ~joint_stance
 
-            # rew["passive_action"] = torch.sum(
-            #     ((~self.action_is_on) & joint_swing)*(self.duration_since_action_switch.clamp_max_(0.5)),dim=-1,dtype=torch.float)
-            
-            # rew["passive_action"] = torch.sum(
-            #     ((~self.action_is_on))*(self.duration_since_action_switch.clamp_max_(0.5)),dim=-1,dtype=torch.float)
-            
-            rew["passive_action"] = torch.sum(
-                ((~self.action_is_on) & joint_swing)*(self.duration_since_action_switch.add(0.5).clamp_(0.5, 1.5)),dim=-1,dtype=torch.float)
+            rew["should_contact"] = torch.eq(self.foot_contact,self.contact_target).mean(dim=1,dtype=torch.float)
 
-            # rew["passive_action"] = torch.sum(~self.action_is_on, dim=-1,dtype=torch.float)
+            if self.is_train:
+                self.rew_should_contact_clamp_min = float(min(self.common_step_counter/5e4,0.5))
+                rew["should_contact"] = (1 - self.rew_should_contact_clamp_min)*rew["should_contact"] + self.rew_should_contact_clamp_min
+                if self.common_step_counter % 1000 == 0:
+                    print(f"self.rew_should_contact_clamp_min={self.rew_should_contact_clamp_min}")
+            else: # fixed at 0.5
+                rew["should_contact"] = 0.5+0.5*rew["should_contact"] # original 0.9
+
+            # rew["should_contact"][zero_command] = 1 # set contstant for zero command
+            # rew["should_contact"][self.is_zero_command] = 0 # bad! do not use
+            # rew["should_contact"][self.is_zero_command] =  0.8 + 0.2*rew["should_contact"][self.is_zero_command]
+
+            rew["dof_force_target_swing"] = torch.exp(
+                (joint_swing*self.actuated_dof_force_target.abs()*self.rew_dof_force_target_exp_scale).sum(dim=-1))
+
+            if self.enable_passive_dynamics:
+                # last_action_is_on = self.last_actions[:,self.num_actuated_dof:]  > -0.5
+                # last_action_is_on = sigmoid_k(self.last_actions[:,self.num_actuated_dof:], 10)
+
+                # action_is_on_swiched = torch.ne(last_action_is_on,self.action_is_on)
+                # self.duration_since_action_switch.add_(self.rl_dt)
+                # self.duration_since_action_switch[action_is_on_swiched]=0
+
+                # rew["passive_action"] = torch.sum((self.action_is_on & joint_stance) | (~self.action_is_on) & joint_swing, dim=-1,dtype=torch.float)
+
+                rew["passive_action"] = torch.sum((self.action_is_on * joint_stance) + (1-self.action_is_on) * joint_swing, dim=-1,dtype=torch.float)
+
+                # rew["passive_action"] = torch.sum(((
+                #     (~self.action_is_on) & joint_swing) + (self.action_is_on & joint_stance)),dim=-1,dtype=torch.float)
+
+                # rew["passive_action"] = torch.sum((~self.action_is_on) & joint_swing,dim=-1,dtype=torch.float)
+
+                # rew["passive_action"] = torch.sum(
+                #     ((~self.action_is_on) & joint_swing)*(self.duration_since_action_switch.clamp_max_(0.5)),dim=-1,dtype=torch.float)
+                
+                # rew["passive_action"] = torch.sum(
+                #     ((~self.action_is_on))*(self.duration_since_action_switch.clamp_max_(0.5)),dim=-1,dtype=torch.float)
+                
+                # rew["passive_action"] = torch.sum(
+                #     ((~self.action_is_on) & joint_swing)*(self.duration_since_action_switch.add(0.5).clamp_(0.5, 1.5)),dim=-1,dtype=torch.float)
+                # rew["passive_action"][self.is_zero_command] = 0 
+
+                # rew["passive_action"] = torch.sum(~self.action_is_on, dim=-1,dtype=torch.float)
 
 
         # rew["num_contacts"] = self.air_time<=self.foot_multi_contact_grace_period
@@ -1145,27 +1300,46 @@ class LeggedTerrain(VecTask):
         for key in rew.keys():
             self.episode_sums[key] += rew[key]  # unscaled
             rew[key] *= self.rew_scales[key]
+
         # total reward
         stacked_rewards = torch.stack(list(rew.values()), dim=0)
         self.rew_buf = torch.sum(stacked_rewards, dim=0)
-        self.rew_buf = torch.clip(self.rew_buf, min=0.0, max=None)
+        self.rew_buf = torch.clip(self.rew_buf, min=0.0, max=None) # NOTE THAT WE SCALE IT BY rl_dt
+        # self.rew_buf = torch.clip(self.rew_buf*self.rl_dt, min=0.0, max=None) # NOTE THAT WE SCALE IT BY rl_dt
+        
+        # rew_group_sums =[torch.stack([rew[key] for key in group],dim=0).sum(dim=0) for group in self.rew_group]
+        # rew_buf = rew_group_sums[0].clone()
+        # for sum in rew_group_sums[1:]:
+        #     rew_buf *= sum
+        # self.rew_buf = torch.clip(rew_buf* self.rl_dt, min=0.0, max=None)
 
         # add termination reward
         self.rew_buf += self.rew_scales["termination"] * self.reset_buf * ~self.timeout_buf
 
         if self.enable_udp:  # send UDP info to plotjuggler
+            dof_pow = (self.dof_vel[:,self.actuated_dof_mask] * self.actuated_dof_force_target)
+            dof_pow_sum = dof_pow.abs().sum(dim=1)
+            self.buffer_com_pos.add_and_fill_batch(self.root_state[:, :3])
+            self.buffer_dof_pow.add_and_fill_batch(dof_pow_sum.unsqueeze(1))
+
+            total_energy = torch.sum(self.buffer_dof_pow.storage,dim=0).view(-1) * self.rl_dt
+            distance_traveled = (self.buffer_com_pos[0] - self.buffer_com_pos[-1])[:,:2].norm(dim=-1)
+
+            cost_of_transport = total_energy/(torch.clamp_min(distance_traveled, 0.01)*self.total_gravity)
+
             data = {
                 "t": self.control_steps*self.rl_dt,
+                "cot": cost_of_transport,
                 "action": self.actions,
                 "action_is_on": self.action_is_on,
                 "action_rate": self.action_rate,
-                "dof_vel": self.dof_vel,
-                "dof_acc": self.dof_acc,
-                "dof_pos": self.dof_pos,
+                "dof_vel": self.dof_vel[:,self.actuated_dof_mask],
+                "dof_acc": self.dof_acc[:,self.actuated_dof_mask],
+                "dof_pos": self.dof_pos[:,self.actuated_dof_mask],
                 "dof_pos_target": self.dof_pos_target,
-                "dof_force_target": self.dof_force_target,
-                "dof_force": self.dof_force,
-                "dof_pow": (self.dof_vel * self.dof_force_target).abs().sum(dim=1),
+                "dof_force_target": self.actuated_dof_force_target,
+                "dof_force": self.dof_force[:,self.actuated_dof_mask],
+                "dof_pow": dof_pow,
                 "base_lin_vel": self.base_lin_vel,
                 "base_ang_vel": self.base_ang_vel,
                 "base_height": self.base_height,
@@ -1173,10 +1347,10 @@ class LeggedTerrain(VecTask):
                 "projected_gravity": self.projected_gravity,
                 "time_air": self.air_time,
                 "time_stance": self.stance_time,
-                "foot_pos": self.foot_pos,
+                "foot_pos": self.foot_pos_rel_yaw,
                 "contact": self.foot_contact,
                 "phase": self.phase,
-                "should_contact":self.contact_target,
+                "contact_target":self.contact_target,
                 "rew_buf": self.rew_buf * self.rl_dt_inv,
                 "commands": self.commands,
                 "rew": {key: rew[key] * self.rl_dt_inv for key in rew},
@@ -1185,21 +1359,18 @@ class LeggedTerrain(VecTask):
                 # "foot_quat": self.foot_quat,
                 "base_quat": self.base_quat,
                 "root_state": self.root_state,
+                "base_forward": self.base_forward,
+                "foot_forward": self.foot_forward,
             }
               
             if self.items_to_publish is not None:
                 data = {key: data[key] for key in self.items_to_publish}
-            self.data_publisher.publish({"sim":data})  
-            # self.sim2real_publisher.publish({
-            #     "dof_pos_target": self.dof_pos_target[0],
-            # })
+            self.data_publisher.publish({self.data_root_label:data})  
+            self.sim2real_publisher.publish({
+                "dof_pos_target": self.dof_pos_target[0],
+                "dof_pos": self.dof_pos[0,self.actuated_dof_mask],
+            })
     
-    @property
-    def foot_pos(self):
-        """return foot position relative to the base in the body frame"""
-        foot_pos_rel = self.rb_state[:, self.foot_ids, 0:3] - self.root_state[:, :3].view(self.num_envs, 1, 3)
-        return quat_rotate_inverse(self.base_quat.repeat_interleave(self.num_foot, dim=0), 
-                                   foot_pos_rel.view(-1, 3)).view(self.num_envs, self.num_foot, 3)
 
     def reset_idx(self, env_ids: torch.Tensor):
         """Resets the specified environments."""
@@ -1243,12 +1414,19 @@ class LeggedTerrain(VecTask):
         #     torch.norm(self.commands[env_ids, :2], dim=1) > self.command_zero_threshold
         # ).unsqueeze(1)
 
+        # SET COMMANDS TO ZERO FOR A PAERCENTAGE OF ENVIRONMENTS 
+        if self.command_zero_probability:
+            self.commands[env_ids[temp_vec.uniform_()<self.command_zero_probability], :] = 0 # the first 10% of the envs command will be zero
+
         # set small commands to zero
-        self.is_zero_command[env_ids] = torch.norm(self.commands[env_ids, :3], dim=1) < self.command_zero_threshold
+        self.is_zero_command[env_ids] = square_sum(self.commands[env_ids, :3], dim=1) < self.command_zero_threshold
         self.commands[self.is_zero_command]=0
 
         if self.enable_erfi: 
-            self.erfi_rao[env_ids] = torch.empty(len_ids, self.num_dof,dtype=torch.float, device=self.device).uniform_(*self.erfi_rao_range)
+            self.erfi_rao[env_ids] = torch.empty(len_ids, self.num_actuated_dof,dtype=torch.float, device=self.device).uniform_(*self.erfi_rao_range)
+
+        if self.randomize_dof_strength:
+            self.dof_strength[env_ids] = torch.empty(len_ids, self.num_actuated_dof,dtype=torch.float, device=self.device).uniform_(*self.dof_strength_range)
 
         if self.enable_passive_dynamics:
             self.duration_since_action_switch[env_ids]=0
@@ -1258,7 +1436,7 @@ class LeggedTerrain(VecTask):
 
         self.foot_multi_contact_time[env_ids] = 0
         self.last_actions[env_ids] = 0.0
-        # self.actions_filt[env_ids] = 0.0
+        self.actions_filt[env_ids] = 0.0
         # self.dof_pos_filt[env_ids] = self.dof_pos[env_ids]
         self.last_foot_contact_force[env_ids] = 0.0
         self.last_dof_vel[env_ids] = 0.0
@@ -1267,9 +1445,17 @@ class LeggedTerrain(VecTask):
         self.progress_buf[env_ids] = 0
         self.reset_buf[env_ids] = 1
     
-        # # reset delayed observations
-        # self.delayed_obs_buf.reset_batch(env_ids)
+        # reset delayed observations
+        self.batched_obs_buf.reset_batch(env_ids)
         
+        # #reset action buffer
+        # self.batched_action_buf.reset_batch(env_ids)
+        
+        # if self.enable_udp: 
+        #     # strictly this should be reset, it's ok to ommit it for steady state values
+        #     self.buffer_com_pos.reset_batch(env_ids)
+        #     self.buffer_dof_pow.reset_batch(env_ids)
+
         # fill extras
         self.extras["episode"] = {}
         for key in self.episode_sums.keys():
@@ -1287,16 +1473,25 @@ class LeggedTerrain(VecTask):
             return
         distance = torch.norm(self.root_state[env_ids, :2] - self.env_origins[env_ids, :2], dim=1)
         command_distance = torch.norm(self.commands[env_ids, :2]) * self.max_episode_length_s
-        self.terrain_levels[env_ids] -= 1 * (distance < command_distance * 0.25)
+        # # not timed out
+        # self.terrain_levels[env_ids] -= 1 * ((distance < command_distance * 0.25) & (~self.timeout_buf[env_ids]))
+        self.terrain_levels[env_ids] -= 1 * ((distance < command_distance * 0.5) & (~self.timeout_buf[env_ids]))
+                                             
         # TODO check level up/down condition
         # self.terrain_levels[env_ids] += 1 * (distance > command_distance*0.5)
-        # level up if run over the terrain or move at least 75% of the command distance
         # self.terrain_levels[env_ids] += 1 * torch.logical_or(
-        #     distance > self.terrain.env_length / 2, distance > command_distance * 0.75)
+        #     distance > self.terrain.env_length / 2, distance > command_distance * 0.8)
         self.terrain_levels[env_ids] += 1 * torch.logical_or(
-            distance > self.terrain.env_length / 2, distance > command_distance * 0.8)
-        
-        self.terrain_levels[env_ids] = torch.clip(self.terrain_levels[env_ids], 0) % self.terrain.env_rows
+            distance > self.terrain.env_length / 2, distance > command_distance * 0.9)
+
+        # # if reached max level, go back to level 0
+        # self.terrain_levels[env_ids] = torch.clip(self.terrain_levels[env_ids], 0) % self.terrain.env_rows
+
+        # if reached max level, go to a random level
+        self.terrain_levels[env_ids] = self.terrain_levels[env_ids].clip(0)
+        reached_max_levels = env_ids[self.terrain_levels[env_ids]>=self.terrain.env_rows]
+        self.terrain_levels[reached_max_levels]=torch.randint_like(self.terrain_levels[reached_max_levels],low=0,high=self.terrain.env_rows)
+
         self.env_origins[env_ids] = self.terrain.env_origins[self.terrain_levels[env_ids], self.terrain_types[env_ids]]
         self.terrain_level_mean = self.terrain_levels.float().mean()
 
@@ -1335,6 +1530,7 @@ class LeggedTerrain(VecTask):
                 elif evt.action == "toggle_viewer_follow" and evt.value > 0:
                     self.viewer_follow = not self.viewer_follow
                 elif evt.action == "reset" and evt.value>0:
+                    # self.data_publisher.enable= not self.data_publisher.enable
                     # reset
                     self.progress_buf[:]= self.max_episode_length
                 elif evt.action == "ref_env-" and evt.value > 0:
@@ -1344,32 +1540,49 @@ class LeggedTerrain(VecTask):
             if self.enable_keyboard_operator:
                 for evt in events:
                     if evt.action == "vx+" and evt.value > 0:
-                        self.keyboard_operator_cmd[0] += 0.1
+                        self.keyboard_operator_cmd[0] += 0.05
                         print(f"{self.keyboard_operator_cmd}")
                     elif evt.action == "vx-" and evt.value > 0:
-                        self.keyboard_operator_cmd[0] -= 0.1
+                        self.keyboard_operator_cmd[0] -= 0.05
                         print(f"{self.keyboard_operator_cmd}")
                     elif evt.action == "vy+" and evt.value > 0:
-                        self.keyboard_operator_cmd[1] += 0.1
+                        self.keyboard_operator_cmd[1] += 0.05
                         print(f"{self.keyboard_operator_cmd}")
                     elif evt.action == "vy-" and evt.value > 0:
-                        self.keyboard_operator_cmd[1] -= 0.1
+                        self.keyboard_operator_cmd[1] -= 0.05
                         print(f"{self.keyboard_operator_cmd}")
                     elif evt.action == "heading+" and evt.value > 0:
-                        self.keyboard_operator_cmd[2] += 0.1
+                        self.keyboard_operator_cmd[2] += 0.05
                         print(f"{self.keyboard_operator_cmd}")
                     elif evt.action == "heading-" and evt.value > 0:
-                        self.keyboard_operator_cmd[2] -= 0.1
+                        self.keyboard_operator_cmd[2] -= 0.05
                         print(f"{self.keyboard_operator_cmd}")
                     elif evt.action == "v=0" and evt.value > 0:
                         self.keyboard_operator_cmd[:] = 0
                         print(f"{self.keyboard_operator_cmd}")
+                    elif evt.action == "push" and evt.value > 0:
+                        self.push_robot_ids(torch.arange(self.num_envs, device=self.device))
+                    # elif evt.action == "m+" and evt.value > 0:
+                        # for i in range(self.num_envs):
+                        #     env_handle = self.envs[i]
+                        #     actor_handle = self.actor_handles[i]
+                            # body_props = self.actor_rigid_body_properties[i]
+                            # body_props[self.base_id].mass += 0.05
+                            # self.gym.set_actor_rigid_body_properties(env_handle, actor_handle, body_props, recomputeInertia=False)
+                        # force = torch.zeros(self.num_envs, 3, device=self.device)
+                        # self.gym.apply_rigid_body_force_tensors(self.sim,, gymapi.ENV_SPACE)
+                        # print("mass increased by 0.05 kg")
                 
                 if self.data_receiver_data_id != self.data_receiver.data_id:
                     self.data_receiver_data_id = self.data_receiver.data_id
                     if "cmd" in self.data_receiver.data:
                         self.keyboard_operator_cmd[:] = torch.tensor(self.data_receiver.data["cmd"],device=self.device)
                     print(f"keybaord cmd:{self.keyboard_operator_cmd}")
+                    if "reset" in self.data_receiver.data and self.data_receiver.data["reset"] == True:
+                        self.progress_buf[:]= self.max_episode_length
+                    if "push" in self.data_receiver.data and self.data_receiver.data["push"] == True:
+                        self.push_robot_ids(torch.arange(self.num_envs, device=self.device))
+                        # self.data_publisher.enable = not self.data_publisher.enable
                 # self.commands[:, [0, 1, 3]] = self.keyboard_operator_cmd
                 self.commands[:, :3] = self.keyboard_operator_cmd
 
@@ -1486,16 +1699,37 @@ class LeggedTerrain(VecTask):
         #     actions = self.dr_randomizations['actions']['noise_lambda'](actions)
 
         self.actions = torch.clamp(actions.clone().to(self.device), -self.clip_actions, self.clip_actions)
+        # self.batched_action_buf.add_and_fill_batch(self.actions)
 
         if self.enable_passive_dynamics:
-            self.dof_pos_target = self.action_scale * self.actions[:,:self.num_dof] + self.default_dof_pos
-            self.action_is_on = self.actions[:,self.num_dof:]  > 0 
-        else:
-            self.dof_pos_target = self.action_scale * self.actions + self.default_dof_pos
-            self.action_is_on = 1
-        # self.actions_filt[:] = self.actions_filt * 0.03 + self.actions * 0.97
-        # self.dof_pos_target = self.action_scale * self.actions_filt + self.default_dof_pos
+            
 
+            self.actions_filt[:] = self.actions_filt * 0.1 + self.actions * 0.9
+            self.actions_to_use = self.actions_filt
+
+            self.dof_pos_target = self.action_scale * self.actions_to_use[:,:self.num_actuated_dof] + self.default_dof_pos[:,self.actuated_dof_mask]
+
+            self.action_is_on = sigmoid_k(self.actions_to_use[:,self.num_actuated_dof:], 10)
+
+            if self.passive_curriculum:  # TODO change the hardcoded values to a variable
+                # self.passive_action_min_value = 1.0 - float(min(self.common_step_counter/5e4,1.0))
+                # self.passive_action_min_value = 0.8 - float(min(self.common_step_counter/5e4,0.8))
+                self.passive_action_min_value = 0.5 - float(min(self.common_step_counter/5e4,0.5))
+                self.action_is_on = torch.clamp_min(self.action_is_on,min=self.passive_action_min_value)
+                if self.common_step_counter % 1000 == 0:
+                    print(f"self.passive_action_min_value={self.passive_action_min_value}")
+
+            # self.action_is_on = self.actions_to_use[:,self.num_actuated_dof:]  > -0.5
+
+            # self.actions[:, self.num_actuated_dof:] = torch.where(self.action_is_on, 1, -1)
+        else:
+
+            self.actions_filt[:] = self.actions_filt * 0.1 + self.actions * 0.9
+            self.actions_to_use = self.actions_filt
+
+            self.dof_pos_target = self.action_scale * self.actions_to_use + self.default_dof_pos[:,self.actuated_dof_mask]
+            self.action_is_on = 1
+        
         # apply actions
         self.pre_physics_step()
         # to fix!
@@ -1521,37 +1755,79 @@ class LeggedTerrain(VecTask):
         #     self.obs_buf = self.dr_randomizations['observations']['noise_lambda'](self.obs_buf)
 
         self.extras["time_outs"] = self.timeout_buf.to(self.rl_device)
-
         self.obs_dict["obs"] = torch.clamp(self.obs_buf, -self.clip_obs, self.clip_obs).to(self.rl_device)
-
         # asymmetric actor-critic
         if self.num_states > 0:
             self.obs_dict["states"] = self.get_state()
 
         return self.obs_dict, self.rew_buf.to(self.rl_device), self.reset_buf.to(self.rl_device), self.extras
 
+
     def pre_physics_step(self):
         """PD position control"""
         if self.enable_erfi: # extended random force injection
             self.erfi_rfi.uniform_(*self.erfi_rfi_range).add_(self.erfi_rao)
         for i in range(self.decimation):
-            torque = self.kp * (self.dof_pos_target - self.dof_pos) - self.kd * self.dof_vel
+            torque_computed = self.kp * (self.dof_pos_target - self.dof_pos) - self.kd * self.dof_vel
+            torque_computed.clamp_(self.actuated_dof_force_min, self.actuated_dof_force_max)
             if self.enable_passive_dynamics:
-                torque*=self.action_is_on
-            torque = torch.clip(torque + self.erfi_rfi, -self.dof_force_target_limit, self.dof_force_target_limit) 
-            # TODO maybe check if action exceeds limit and make it a reward
-            self.gym.set_dof_actuation_force_tensor(self.sim, gymtorch.unwrap_tensor(torque))
+                torque_computed*=self.action_is_on
+            toque_actual = torque_computed*self.dof_strength+self.erfi_rfi  # randomized dof strength # TODO: make it better
+            self.dof_actuation_force[:] = toque_actual # need to [:] to use the in-place version
+            self.gym.set_dof_actuation_force_tensor(self.sim, self.dof_actuation_force_tensor)
             self.gym.simulate(self.sim)
             self.gym.refresh_dof_state_tensor(self.sim)
-        self.dof_force_target = torque.view(self.dof_force_target.shape)
+        
+        self.actuated_dof_force_target[:] = torque_computed # this is the idealized computed torque without motor strength/randomization
+        self.actuated_dof_force_target_actual[:] = toque_actual
 
-    def post_physics_step(self):
+
+        # self.gym.refresh_force_sensor_tensor(self.sim)
         # self.gym.refresh_dof_state_tensor(self.sim) # done in step
+        self.gym.refresh_rigid_body_state_tensor(self.sim) # done in step
         self.gym.refresh_actor_root_state_tensor(self.sim)
         self.gym.refresh_net_contact_force_tensor(self.sim)
-        self.gym.refresh_rigid_body_state_tensor(self.sim)
         self.gym.refresh_dof_force_tensor(self.sim)
+
+
+    def pre_physics_step_with_passive_dof(self):
+    # def pre_physics_step(self):
+        """PD position control"""
+        if self.enable_erfi: # extended random force injection
+            self.erfi_rfi.uniform_(*self.erfi_rfi_range).add_(self.erfi_rao)
+        for i in range(self.decimation):
+            torque = self.kp * (self.dof_pos_target - self.dof_pos[:,self.actuated_dof_mask]) - self.kd * self.dof_vel[:,self.actuated_dof_mask]
+            if self.enable_passive_dynamics:
+                torque*=self.action_is_on
+            torque.add_(self.erfi_rfi).clamp_(self.actuated_dof_force_min, self.actuated_dof_force_max)
+            # TODO maybe check if action exceeds limit and make it a reward
+            self.dof_actuation_force[:,self.actuated_dof_mask] = torque
+            self.gym.set_dof_actuation_force_tensor(self.sim, self.dof_actuation_force_tensor)
+        
+            if self.num_marker_pairs > 0:
+                marker_pos_error = self.rb_state[:,self.marker_pair_ids[:,1],:3] -  self.rb_state[:,self.marker_pair_ids[:,0],:3] # [num_envs, num_marker_pairs, 3]
+                marker_pos_error_norm = torch.linalg.vector_norm(marker_pos_error, ord=2, dim=-1, keepdim=True) # [num_envs, num_marker_pairs, 1]
+                
+                marker_force = 100000 * (marker_pos_error_norm-self.marker_pair_l0.view(1,self.num_marker_pairs,1))*marker_pos_error/marker_pos_error_norm
+                forces = torch.zeros((self.num_envs, self.num_bodies, 3), device=self.device, dtype=torch.float)
+                forces[:,self.marker_pair_ids[:,0]] = marker_force
+                forces[:,self.marker_pair_ids[:,1]] = -marker_force
+                self.gym.apply_rigid_body_force_tensors(self.sim, gymtorch.unwrap_tensor(forces), None, gymapi.ENV_SPACE)
+      
+            self.gym.simulate(self.sim)
+            self.gym.refresh_dof_state_tensor(self.sim)
+            self.gym.refresh_rigid_body_state_tensor(self.sim)
+        self.actuated_dof_force_target[:] = torque
+
         # self.gym.refresh_force_sensor_tensor(self.sim)
+        # self.gym.refresh_dof_state_tensor(self.sim) # done in step
+        # self.gym.refresh_rigid_body_state_tensor(self.sim) # done in step
+        self.gym.refresh_actor_root_state_tensor(self.sim)
+        self.gym.refresh_net_contact_force_tensor(self.sim)
+        self.gym.refresh_dof_force_tensor(self.sim)
+
+
+    def post_physics_step(self):
 
         self.progress_buf += 1
         self.randomize_buf += 1
@@ -1568,12 +1844,31 @@ class LeggedTerrain(VecTask):
         # self.base_quat = self.root_state[:, 3:7]
         self.base_lin_vel = quat_rotate_inverse(self.base_quat, self.root_state[:, 7:10])
         self.base_ang_vel = quat_rotate_inverse(self.base_quat, self.root_state[:, 10:13])
-        self.projected_gravity = quat_rotate_inverse(self.base_quat, self.gravity_vec)
-        forward = quat_apply(self.base_quat, self.forward_vec)
-        heading = torch.atan2(forward[:, 1], forward[:, 0])
+        self.projected_gravity = quat_rotate_inverse(self.base_quat, self.base_gravity_vec)
+        self.base_forward = quat_apply(self.base_quat, self.base_forward_vec_local)
+        heading = torch.atan2(self.base_forward[:, 1], self.base_forward[:, 0])
+
+        self.dof_acc = (self.dof_vel - self.last_dof_vel) * self.rl_dt_inv  # TODO check if [:] is needed # TODO
 
         self.foot_quat = self.rb_state[:, self.foot_ids, 3:7] # foot quaternion [num_envs, num_foot, 4] # this is a copy!!
         self.foot_projected_gravity=quat_rotate_inverse(self.foot_quat.view(-1, 4), self.foot_gravity_vec).view(self.num_envs, self.num_foot, 3)
+
+        self.foot_forward = quat_apply(self.foot_quat.view(-1, 4), self.foot_forward_vec_local).view(self.num_envs, self.num_foot, 3)
+
+        self.foot_pos = self.rb_state[:, self.foot_ids, 0:3]
+        # relative foot position in yaw frame
+        foot_pos_rel =  self.foot_pos - self.root_state[:, :3].view(self.num_envs, 1, 3)
+        base_quat_yaw = get_quat_yaw(self.base_quat)
+        self.foot_pos_rel_yaw =  quat_rotate_inverse(base_quat_yaw.repeat_interleave(self.num_foot, dim=0), 
+                                   foot_pos_rel.view(-1, 3)).view(self.num_envs, self.num_foot, 3)
+        
+        self.foot_lin_vel = self.rb_state[:, self.foot_ids, 7:10]
+
+        # foot contact
+        # self.contact = torch.norm(contact_forces[:, foot_indices, :], dim=2) > 1.
+        self.foot_contact_force = self.contact_force[:, self.foot_ids, :]
+        self.foot_contact = self.foot_contact_force[:, :, 2] > 1.0  # todo check with norm
+        # self.foot_contact = self.sensor_forces[:, :, 2] > 1.0
 
         if self.viewer and self.enable_keyboard_operator:
             self.commands[:, 3] = wrap_to_pi(2 * self.commands[:, 2] + heading)
@@ -1581,15 +1876,8 @@ class LeggedTerrain(VecTask):
             self.commands[:, 2] = torch.clip(0.5 * wrap_to_pi(self.commands[:, 3] - heading), -1.0, 1.0)
         
         # set zero command if the magnitude is too small
-        self.is_zero_command[:] = torch.norm(self.commands[:, :3], dim=1) < self.command_zero_threshold
+        self.is_zero_command[:] = square_sum(self.commands[:, :3], dim=1) < self.command_zero_threshold
         self.commands[self.is_zero_command]=0
-
-        # foot contact
-        # self.contact = torch.norm(contact_forces[:, foot_indices, :], dim=2) > 1.
-        self.foot_contact_force = self.contact_force[:, self.foot_ids, :]
-        self.foot_contact = self.foot_contact_force[:, :, 2] > 1.0  # todo check with norm
-        # self.foot_contact = self.sensor_forces[:, :, 2] > 1.0
-        self.foot_lin_vel = self.rb_state[:, self.foot_ids, 7:10]
 
         if self.guided_contact: # update phase for the contact sequence
             self.update_phase()
@@ -1655,12 +1943,43 @@ class LeggedTerrain(VecTask):
         self.base_height: torch.Tensor = self.heights_relative[:, self.num_height_points+self.base_id]
         self.foot_height: torch.Tensor = self.heights_relative[:, self.num_height_points+self.foot_ids]
 
+def get_matching_str(source, destination, case_sensitive=False, comment=""):
+    """Finds case-insensitive partial matches between source and destination lists."""
+    def find_matches(src_item):
+        if case_sensitive:
+            matches = [item for item in destination if src_item in item]
+        else:
+            matches = [item for item in destination if src_item.lower() in item.lower()]
+        if not matches:
+            raise KeyError(f"cannot locate {src_item}. [{comment}]")
+        elif len(matches) > 1:
+            raise KeyError(f"find multiple instances for {src_item}. [{comment}]")
+        return matches[0]  # Return just the first match
+    if isinstance(source, str):  # one to many
+        if case_sensitive:
+            matches = [item for item in destination if source in item]
+        else:
+            matches = [item for item in destination if source.lower() in item.lower()]  
+        if not matches:
+            raise KeyError(f"cannot locate {source} [{comment}\navailables are {destination}")
+        return matches
+    else:  # one to one     
+        return [find_matches(item) for item in source]
+
 @torch.jit.script
 def quat_apply_yaw(quat, vec):
     quat_yaw = quat.clone().view(-1, 4)
     quat_yaw[:, :2] = 0.0
     quat_yaw = normalize(quat_yaw)
     return quat_apply(quat_yaw, vec)
+
+
+@torch.jit.script
+def get_quat_yaw(quat):
+    quat_yaw = quat.clone().view(-1, 4)
+    quat_yaw[:, :2] = 0.0
+    quat_yaw = normalize(quat_yaw)
+    return quat_yaw
 
 
 @torch.jit.script
@@ -1679,20 +1998,35 @@ def torch_rand_tensor(lower: torch.Tensor, upper: torch.Tensor, shape: Tuple[int
 def square_sum(input: torch.Tensor,dim: int=-1) -> torch.Tensor:
     return torch.square(input).sum(dim=dim)
 
+@torch.jit.script
+def exp_square_sum(input: torch.Tensor,exp_scale: float, dim: int=-1) -> torch.Tensor:
+    return torch.exp(torch.square(input).sum(dim=dim)*exp_scale)
 
 @torch.jit.script
-def out_of_bound_norm(input: torch.Tensor, lower: torch.Tensor, upper: torch.Tensor) -> torch.Tensor:
-    return torch.norm(input - torch.clamp(input, lower, upper), dim=-1)
+def exp_square(input: torch.Tensor,exp_scale: float) -> torch.Tensor:
+    return torch.exp(torch.square(input)*exp_scale)
+
+@torch.jit.script
+def exp_weighted_square_sum(x: torch.Tensor, exp_scale: torch.Tensor,dim: int=-1):
+    return torch.exp(torch.sum(exp_scale*x.square(), dim=dim))
+
+@torch.jit.script
+def out_of_bound_norm(input: torch.Tensor, lower: torch.Tensor, upper: torch.Tensor, dim: int=-1) -> torch.Tensor:
+    return torch.norm(input - torch.clamp(input, lower, upper), dim=dim)
+
+@torch.jit.script
+def out_of_bound_square_sum(input: torch.Tensor, lower: torch.Tensor, upper: torch.Tensor, dim: int=-1) -> torch.Tensor:
+    return torch.square(input - torch.clamp(input, lower, upper)).sum(dim=dim)
 
 
 @torch.jit.script
-def out_of_bound_abs_sum(input: torch.Tensor, lower: torch.Tensor, upper: torch.Tensor) -> torch.Tensor:
-    return (input - torch.clamp(input, lower, upper)).abs().sum(dim=-1)
+def out_of_bound_abs_sum(input: torch.Tensor, lower: torch.Tensor, upper: torch.Tensor, dim: int=-1) -> torch.Tensor:
+    return (input - torch.clamp(input, lower, upper)).abs().sum(dim=dim)
 
 
 @torch.jit.script
-def out_of_float_bound_squared_sum(input: torch.Tensor, lower: float, upper: float) -> torch.Tensor:
-    return torch.square(input - torch.clamp(input, lower, upper)).sum(dim=-1)
+def out_of_float_bound_squared_sum(input: torch.Tensor, lower: float, upper: float, dim: int=-1) -> torch.Tensor:
+    return torch.square(input - torch.clamp(input, lower, upper)).sum(dim=dim)
 
 
 # jit is slower here so do not use jit
@@ -1713,6 +2047,9 @@ def bell(x: torch.Tensor, a: float, b: float, c: float) -> torch.Tensor:
 def reverse_bell(x: torch.Tensor, a: float, b: float, c: float) -> torch.Tensor:
     return 1 - 1 / (1 + torch.pow(torch.abs(x / a - c), b))
 
+@torch.jit.script
+def sigmoid_k(x: torch.Tensor, k: float) -> torch.Tensor:
+    return 1 / (1 + torch.exp(-k*x))
 
 ## this script is derived from anymal_terrain.py in IsaacGymEnvs
 # https://github.com/isaac-sim/IsaacGymEnvs/blob/main/isaacgymenvs/tasks/anymal_terrain.py

@@ -1,6 +1,8 @@
 # used to create the object
 name: A1Terrain
 
+test: ${..test}
+
 physics_engine: 'physx'
 
 env:
@@ -13,6 +15,7 @@ env:
   dataPublisher:
     enable: false
     target_url: 'udp://localhost:9870'
+  data_root_label: 'sim'
     # optionally can add:
     # keys:[name_of_item_to_publish]
 
@@ -69,6 +72,7 @@ env:
     linear_x: [-1., 1.] # min max [m/s]
     linear_y: [-1., 1.]   # min max [m/s]
     yaw: [-3.14, 3.14]    # min max [rad] yaw angle dirvergence
+  commandZeroProbability: 0.1 # additional probability to set a zero command
   commandZeroThreshold: 0.05 # [m/s] treat commends below this threshold as zero
 
   control:
@@ -107,6 +111,18 @@ env:
       default_dof_drive_mode: 3 # see DofDriveMode (0: DOF_MODE_NONE, 1: DOF_MODE_POS, 2: DOF_MODE_VEL, 3: DOF_MODE_EFFORT)
       flip_visual_attachments: false
       replace_cylinder_with_capsule: true
+      override_inertia: false
+      vhacd_enabled: false
+      vhacd_params:
+        max_convex_hulls: 1
+        max_num_vertices_per_ch: 128
+        # resolution: 6400000
+        # convex_hull_approximation: true
+        # convex_hull_downsampling: 1
+        # plane_downsampling: 1
+        # alpha: 0
+        # beta: 0
+        # mode: 0 # 0: tetrahedron, 1: voxel
     # root: "" # override defualt asset_root
     file: "urdf/a1/a1_minimum.urdf"
     # Body
@@ -149,6 +165,9 @@ env:
       enable: false
       rfi_range: [-3.0, 3.0] # random force injection
       rao_range: [-2.0, 2.0] # random actuation offset
+    dof_strength:
+      enable: true
+      range: [0.98, 1.02]
 
   learn:
     allowKneeContacts: True
@@ -156,12 +175,12 @@ env:
     reward:
       lin_vel:
         scale: 1.0
-        fcn: exp_square_sum
+        fcn: exp_weighted_square_sum
         exp_scale: -4.0
         normalize_by: [1, 1, 0.2]
       ang_vel:
         scale: 0.5
-        fcn: exp_square_sum
+        fcn: exp_weighted_square_sum
         exp_scale: -4.0
         normalize_by: [0.1, 0.1, 1] # [0.2, 0.2, 1]
       # lin_vel_xy:
@@ -184,12 +203,12 @@ env:
         exp_scale: -10.0
         fcn: exp_square_sum #square_sum
       dof_force_target:
-        scale: 0.1 # -0.000025
+        scale: 0.1
         exp_scale: -1.0
-        normalize_by: 60 # [N]
         fcn: exp_square_sum
       dof_acc:
-        scale: -5.0e-7 # -0.0025
+        scale: +0
+        exp_scale: -1.0
         fcn: square_sum
       dof_vel:
         scale: -0.0
@@ -202,11 +221,12 @@ env:
         fcn: abs_sum
       dof_limit: # TODO
         scale: -0
-        fcn: out_of_bound_abs_sum
+        fcn: out_of_bound_square_sum
         margin: 0
       base_height:
-        scale: -0.0
-        fcn: reverse_bell
+        scale: 0 #0.05
+        exp_scale: -20.0
+        fcn: # reverse_bell
       air_time:
         scale:  0.1
         fcn: duration_since_condition_reward
@@ -234,12 +254,22 @@ env:
         scale: 0.0
         clamp_max: 0.1
         fcn: foot_height_reward
+      foot_pos:
+        scale: 0
+        exp_scale: -5
+        normalize_by: [0, 1, 0]
+        # fcn: exp_square_sum
       foot_orientation:
         scale: 0
-        exp_scale: -5.0
+        exp_scale: -5
         fcn: exp_square_sum_mean
+      foot_forward:
+        scale: 0
+        exp_scale: -5
+        fcn: foot_forward_fcn
       impact:
         scale: -0.0
+        exp_scale: -0.00001
         fcn: abs_sum
       stumble:
         scale: -0. #-2.0
@@ -254,7 +284,8 @@ env:
         scale: -0.0
         fcn: abs
       action_rate:
-        scale: -5.0e-5
+        scale: 0.01
+        exp_scale: -10.0
         fcn: square_sum
       # # cosmetics
       # hip:

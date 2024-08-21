@@ -1,6 +1,7 @@
 from rl_games.torch_runner import Runner as _Runner
 import torch
 from rl_games.algos_torch import torch_ext
+import os
 
 # bug fix to load multi-gpu checkpoint
 def safe_load(filename):
@@ -45,7 +46,7 @@ class Runner(_Runner):
             print(flattened_outputs)
 
         import onnx
-        onnx_model_path = "policy.onnx"
+        onnx_model_path = os.path.join(args['experiment_dir'], 'policy.onnx')
         torch.onnx.export(traced, *adapter.flattened_inputs, onnx_model_path, verbose=True, input_names=['obs'], output_names=['mu','log_std', 'value'])
         onnx_model = onnx.load(onnx_model_path)
 

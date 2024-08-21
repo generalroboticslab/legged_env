@@ -48,6 +48,9 @@ isaacgym_task_map["AnymalTerrain"] = LeggedTerrain
 isaacgym_task_map["RobotDog"] = LeggedTerrain
 isaacgym_task_map["Biped"] = LeggedTerrain
 
+from envs.common.utils import fix_yaml_sequence
+import yaml
+
 # using np.arange [star,end), step, round to 15 decimals
 OmegaConf.register_new_resolver(
     "arange", lambda start, stop, step: list(np.round(np.arange(start, stop, step), 15)), replace=True
@@ -240,14 +243,16 @@ def launch_rlg_hydra(cfg: DictConfig):
     runner.reset()
 
     # dump config dict
-    if not cfg.test:
-        experiment_dir = os.path.join(
-            'runs', cfg.train.params.config.name + '_{date:%d-%H-%M-%S}'.format(date=datetime.now())
-        )
-
-        os.makedirs(experiment_dir, exist_ok=True)
-        with open(os.path.join(experiment_dir, 'config.yaml'), 'w') as f:
-            f.write(OmegaConf.to_yaml(cfg))
+    # if not cfg.test:
+    experiment_dir = os.path.join(
+        'runs', cfg.train.params.config.name + '_{date:%d-%H-%M-%S}'.format(date=datetime.now())
+    )
+    os.makedirs(experiment_dir, exist_ok=True)
+    with open(os.path.join(experiment_dir, 'config.yaml'), 'w') as f:
+        # f.write(OmegaConf.to_yaml(cfg))
+        cfg_as_dict = OmegaConf.to_container(cfg)
+        with fix_yaml_sequence():
+            yaml.dump(cfg_as_dict, f)
 
     runner.run(
         {   
@@ -256,6 +261,7 @@ def launch_rlg_hydra(cfg: DictConfig):
             'play': cfg.test in (True,"play"),
             'checkpoint': cfg.checkpoint,
             'sigma': cfg.sigma if cfg.sigma != '' else None,
+            'experiment_dir': experiment_dir,
         }
     )
 

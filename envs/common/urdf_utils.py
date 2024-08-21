@@ -259,20 +259,70 @@ def get_leaf_nodes(urdf: yourdfpy.URDF, collapse_fixed_joints: bool = False) -> 
     else:
         return get_leaf_nodes_helper(graph)
 
+# def trace_edges(graph: nx.DiGraph, start_node):
+#     """trace the edges from a start node back to the root"""
+#     edge_names = []
+#     current_node = start_node
+#     while True:
+#         predecessors = tuple(graph.predecessors(current_node))
+#         if not predecessors:  # No more parents, we've reached the root
+#             break
+#         parent_node = predecessors[0]
+#         edge_data = graph.get_edge_data(parent_node, current_node)
+#         if edge_data['type'] != 'fixed':
+#             edge_names.append(edge_data['name'])
+#         current_node = parent_node
+#     return list(reversed(edge_names))
+
 def trace_edges(graph: nx.DiGraph, start_node):
-    """trace the edges from a start node back to the root"""
-    edge_names = []
+    """trace up the edges from a start node back to the root, then trace down from the same chain
+    of the parent node to all leafs, return the edge names in a list
+    """
+    
     current_node = start_node
+    candidate_node_chain = list()
     while True:
         predecessors = tuple(graph.predecessors(current_node))
         if not predecessors:  # No more parents, we've reached the root
             break
-        parent_node = predecessors[0]
-        edge_data = graph.get_edge_data(parent_node, current_node)
+        candidate_node_chain.append(current_node)
+        current_node = predecessors[0]
+    if len(candidate_node_chain)==0:
+        raise ValueError(f"trace_edges: start_node {start_node} does not have a parent!")
+    if len(candidate_node_chain)==1: # only 1 node in the chain
+        edge_data = graph.get_edge_data(current_node, candidate_node_chain[0])
         if edge_data['type'] != 'fixed':
-            edge_names.append(edge_data['name'])
-        current_node = parent_node
+            return [edge_data['name']]
+        else:
+            raise ValueError(f"trace_edges: start_node {start_node} dos not have a moving joint!")
+    # reverse the list to get parent -> child
+    candidate_node_chain = list(reversed(candidate_node_chain))
+
+    # find the first node that is not fixed
+    for i in range(len(candidate_node_chain)-1):
+        edge_data = graph.get_edge_data(candidate_node_chain[i], candidate_node_chain[i+1])
+        if edge_data['type'] != 'fixed':
+            start_node = candidate_node_chain[i+1]
+            edge_names = [edge_data['name']]
+            # all_edges = [(candidate_node_chain[i], candidate_node_chain[i+1])]
+            break
+
+    
+    # start_node = candidate_node_chain[0]
+    # get all the edges starging from the node
+    # all_edges = []
+    # edge_names = []
+    nodes_to_visit = [start_node]
+    while len(nodes_to_visit)>0:
+        current_node = nodes_to_visit.pop()
+        for successor in graph.successors(current_node):
+            # all_edges.append((current_node, successor))
+            edge_data = graph.get_edge_data(current_node, successor)
+            if edge_data['type'] != 'fixed':
+                edge_names.append(edge_data['name'])
+            nodes_to_visit.append(successor)
     return list(reversed(edge_names))
+
 
 def get_urdf_bounding_box(urdf: yourdfpy.URDF):
     """return urdf bounding box

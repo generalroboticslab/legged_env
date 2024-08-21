@@ -6,7 +6,7 @@ import torch
 import numpy as np
 import select
 import threading
-
+import queue
 
 class DataPublisher:
     """
@@ -26,6 +26,7 @@ class DataPublisher:
         encoding: str = 'msgpack',
         broadcast: bool = False,
         enable: bool = True,
+        thread: bool = True,
         **socket_kwargs,
     ):
         """
@@ -41,6 +42,8 @@ class DataPublisher:
             If True, data is broadcasted; defaults to True.
         enable : bool
             If False, publishing is inactive; defaults to False.
+        thread : bool
+            If True, publishing is done in a separate thread; defaults to True.
         socket_kwargs : 
             Additional keyword arguments for the socket.
         """
@@ -63,6 +66,17 @@ class DataPublisher:
 
         # Set encoding function
         self._setup_encoding(encoding)
+    
+        if thread:
+            # Create a queue for data and start the publishing thread
+            self.data_queue = queue.Queue()
+            self.stop_event = threading.Event()
+            self.publisher_thread = threading.Thread(target=self._publisher_thread_func, daemon=True)
+            self.publisher_thread.start()
+            self.publish=self._publish_continuously
+            self.__del__=self._stop
+        else:
+            self.publish=self._send_data
 
     def _get_socket_family(self):
         """Determine and return the appropriate socket family based on the URL."""
@@ -82,19 +96,31 @@ class DataPublisher:
             raise ValueError(f'Invalid encoding: {encoding_type}')
         self.encode = encodings[encoding_type]
 
-    def publish(self, data: dict):
-        """
-        Publishes the provided data to the target URL.
-
-        Parameters
-        ----------
-        data : dict
-            Data to be published.
-        """
+    def _send_data(self, data: dict):
         if self.enable:
             converted_data = convert_to_python_builtin_types(data)
             encoded_data = self.encode(converted_data)
-            self.socket.sendto(encoded_data, (self.hostname, self.url.port))
+            try:
+                self.socket.sendto(encoded_data, (self.hostname, self.url.port))
+            except Exception as e:
+                print(f"Failed to send data: {e}")
+
+    def _publish_continuously(self,data: dict):
+        self.data_queue.put(data, block=False)
+
+    def _publisher_thread_func(self):
+        """Function run by the publisher thread to send data from the queue."""
+        while not self.stop_event.is_set():
+            try:
+                data = self.data_queue.get(timeout=0.1)  # Wait for data with timeout
+                self._send_data(data)
+            except queue.Empty:
+                continue
+
+    def _stop(self):
+        """Stops the publishing thread."""
+        self.stop_event.set()
+        self.publisher_thread.join()
 
 
 class DataReceiver:
@@ -207,7 +233,7 @@ if __name__ == "__main__":
 
     # Create a publisher instance
     publisher = DataPublisher(
-        target_url="udp://localhost:9871", encoding="msgpack",broadcast=True)
+        target_url="udp://localhost:9871", encoding="msgpack",broadcast=True,thread=True)
 
     # Create a receiver instance
     num_receivers = 2

@@ -2,7 +2,10 @@
 
 # conda activate py38
 export LD_LIBRARY_PATH=${CONDA_PREFIX}/lib
-experiment_file=exp.sh
+experiment_files=(
+    exp.sh
+    exp2.sh
+)
 task=A1Terrain
 
 
@@ -10,8 +13,10 @@ function parse_arguments() {
     while [ $# -gt 0 ]; do
         unset OPTIND
         unset OPTARG
-        while getopts adpukr options; do
+        while getopts adpukrs options; do
             case $options in
+            s)  # use server to train
+                use_server=true ;;
             a)  # profile with austin
                 AUSTIN_ARGS="austin --timeout=4s --interval=10us -o ./profile.austin -C"
                 ;;
@@ -66,18 +71,44 @@ function array_to_string {
 
 
 function source_run_commands() {
-    # reset ARGS
+    # Reset ARGS for each new experiment
     BASE_ARGS=()
     TRAIN_ARGS=()
     PLAY_ARGS=()
     KEYBOARD_ARGS=()
     ENTRY_POINT=""
 
-    # check name clashing
-    duplicates=$(awk -F'[ (]' '/^function/ {print $2} /^[a-zA-Z_][a-zA-Z0-9_]*\(\)/ {print $1}' $experiment_file | sort | uniq -d)
-    [[ -n "$duplicates" ]] && echo -e "${RED}Warning: $experiment_file contains Redefined functions:\n $duplicates${NC}" && exit 1
+    function_names=()
+    # Source each experiment file in the array
+    for experiment_file in "${experiment_files[@]}"; do
+        # Check if the file exists
+        if [[ ! -f "$experiment_file" ]]; then
+            echo -e "${RED}Error: Experiment file not found: $experiment_file${NC}"
+            exit 1 
+        fi 
+        # Check for duplicate function definitions
+        duplicates=$(awk -F'[ (]' '/^function/ {print $2} /^[a-zA-Z_][a-zA-Z0-9_]*\(\)/ {print $1}' "$experiment_file" | sort | uniq -d)
+        if [[ -n "$duplicates" ]]; then
+            echo -e "${RED}Warning: $experiment_file contains redefined functions:\n $duplicates${NC}"
+            exit 1  # Or choose to continue with a warning if desired
+        fi
 
-    source $experiment_file
+        # Extract function names and store them in an array
+        # mapfile -t new_function_names < <(grep -oP '^\s*\K\w+(?=\s*\(\s*\)\s*\{)' "$experiment_file")
+        new_function_names=$(grep -oP '^\s*\K\w+(?=\s*\(\s*\)\s*\{)' "$experiment_file")
+        function_names+=("${new_function_names[@]}")
+        # # echo -e "${GREEN}Defined functions: ${defined_functions[*]}${NC}"
+        # exit 1
+
+        # Source the experiment file
+        source "$experiment_file"
+    done
+
+    # # Print the function names
+    # for fn in "${function_names[@]}"; do
+    # echo "$fn"
+    # done
+    # exit 1
 }
 
 function get_additional_args() {
@@ -103,7 +134,13 @@ function run_tasks() {
         echo -e "\033[0;32mRunning: [$ARG]\033[0m"
         source_run_commands    
         get_additional_args
-        cmd="$AUSTIN_ARGS python -u $DEBUG $ENTRY_POINT $ALL_ARGS"
+
+        # Determine the command to run based on conditions
+        if [[ "$use_server" == "true" ]]; then
+            cmd="torchrun --standalone --nnodes=1 --nproc_per_node=2 train.py graphics_device_id=-1 headless=true multi_gpu=True $ALL_ARGS"
+        else
+            cmd="$AUSTIN_ARGS python -u $DEBUG $ENTRY_POINT $ALL_ARGS"
+        fi
         # cmd="$AUSTIN_ARGS python -u $DEBUG $ALL_ARGS"
         echo "$cmd"; [[ "$DRY_RUN" != "true" ]] && eval "$cmd"
     done
