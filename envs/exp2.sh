@@ -27,11 +27,22 @@
 #     )
 # }
 
+match_dyn_passive(){
+    match_dyn
+    BASE_ARGS+=(
+        ++task.env.enablePassiveDynamics=true
+        ++task.env.learn.reward.passive_action.scale=0.01 # 0.002
+    )
+}
+
+
 match_dyn(){
     ENTRY_POINT=dyanmics_matching.py
     change_hydra_dir
     BASE_ARGS+=(
         task=Biped
+
+        # task.env.urdfAsset.AssetOptions.override_inertia=true # HACK
 
         task.env.terrain.terrainType=plane
         ++task.env.baseHeightOffset=1
@@ -41,7 +52,7 @@ match_dyn(){
 
         task.env.learn.episodeLength_s=555
 
-        task.env.urdfAsset.file=urdf/v6_vis_URDF_thin/v6_vis_URDF.urdf
+        task.env.urdfAsset.file=urdf/v6_vis_URDF_new_body/v6_URDF_aug10_copy.urdf
 
         task.env.dataPublisher.enable=true
 
@@ -55,23 +66,40 @@ match_dyn(){
 
 
         task.env.control.actionScale=1
+        
         task.env.control.decimation=4
         ++task.env.renderFPS=50
+
+        # task.env.control.decimation=4
+        # task.sim.dt=0.0025
+        # ++task.env.renderFPS=100
+
+
         num_envs=1
 
         ++task.env.assetDofProperties.velocity=20
         ++task.env.assetDofProperties.stiffness=0
         # ++tast.env.assetDofProperties.effort=200
 
- #----------------------------------------------------------------------------------------------
-        # Aug 6. dynamics rematched
 
-        # Note: only for motor 1 and 6
-        task.env.control.stiffness=70
-        task.env.control.damping=7
+ # ---------------------------------------------------------------------------------------------
+        # Aug 8. dynamics rematched
+        task.env.control.stiffness=60
+        task.env.control.damping=5
         ++task.env.assetDofProperties.damping=0
-        ++task.env.assetDofProperties.armature=[0.3600,0.4500,0.3600,0.3600,0.1200,0.3600,0.4500,0.3600,0.3600,0.1200]
-        ++task.env.assetDofProperties.friction=[0.0150,0.0400,0.0150,0.0300,0.1500,0.0150,0.0400,0.0150,0.0300,0.1500]
+        #                                       #0      1      2      3      4      5      6      7      8      9
+        ++task.env.assetDofProperties.armature=[0.2100,0.4200,0.3800,0.2100,0.0750,0.2100,0.4200,0.3800,0.2100,0.0750]
+        ++task.env.assetDofProperties.friction=[0.0040,0.0100,0.0040,0.0400,0.0200,0.0040,0.0100,0.0040,0.0400,0.0200]
+
+ #----------------------------------------------------------------------------------------------
+        ## Aug 6. dynamics rematched
+
+        # # Note: only for motor 1 and 6
+        # task.env.control.stiffness=60
+        # task.env.control.damping=5
+        # ++task.env.assetDofProperties.damping=0
+        # ++task.env.assetDofProperties.armature=[0.3600,0.4500,0.3600,0.3600,0.1200,0.3600,0.4500,0.3600,0.3600,0.1200]
+        # ++task.env.assetDofProperties.friction=[0.0150,0.0400,0.0150,0.0300,0.1500,0.0150,0.0400,0.0150,0.0300,0.1500]
 
 
         # task.env.control.stiffness=60

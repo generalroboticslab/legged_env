@@ -152,13 +152,14 @@ class LeggedTerrain(VecTask):
         lower_bound_z = self.asset_urdf.collision_scene.bounding_box.bounds[0,2]
         
         # target base height [m]
-        self.target_base_height = self.cfg["env"].get("baseHeightTarget",None)
+        self.base_height_target = self.cfg["env"].get("baseHeightTarget",None)
 
-        if self.target_base_height is None:
+        if self.base_height_target is None:
             base_height_offset= self.cfg["env"].get("baseHeightOffset",0.1)
-            self.target_base_height = -lower_bound_z
-            self.cfg["env"]["baseInitState"]["pos"][2] = float(self.target_base_height+base_height_offset)
-            print(f"{bc.WARNING}[infer from URDF] target_base_height = {self.target_base_height:.4f} {bc.ENDC}")
+            base_height_tareget_offset = self.cfg["env"].get("baseHeightTargetOffset",0)
+            self.base_height_target = -lower_bound_z + base_height_tareget_offset
+            self.cfg["env"]["baseInitState"]["pos"][2] = float(self.base_height_target+base_height_offset)
+            print(f"{bc.WARNING}[infer from URDF] target_base_height = {self.base_height_target:.4f} {bc.ENDC}")
             print(f"{bc.WARNING}[infer from URDF] self.cfg['env']['baseInitState']['pos'][2] = {self.cfg['env']['baseInitState']['pos'][2]:.4f} {bc.ENDC}")
 
 
@@ -677,10 +678,17 @@ class LeggedTerrain(VecTask):
 
         self.viewer_follow = self.cfg["env"]["viewer"]["follow"]
         if self.viewer_follow:
-            self.viewer_follow_offset = torch.tensor(self.cfg["env"]["viewer"].get("follower_offset", [0.6, 1.2, 0.4]))
-            self.cam_target_pos = self.root_state[self.ref_env, :3].clone().cpu() 
-            self.cam_pos = self.viewer_follow_offset.cpu() + self.cam_target_pos
-        
+            self.viewer_follow_offset = torch.tensor(self.cfg["env"]["viewer"].get("follower_offset", [0.6, 1.2, 0.4]), dtype=torch.float, device=self.device)
+            self.cam_target_pos = self.root_state[self.ref_env, :3].clone()
+            self.cam_pos = self.viewer_follow_offset + self.cam_target_pos
+            fs = self.rl_dt_inv
+            filter_order=4
+            from common.buffer import RingTensorFilterBuffer
+            self.cam_pos_filter_buffer = RingTensorFilterBuffer(fs=fs, cut_off_frequency=1,filter_order=filter_order,shape=3,device=self.device)
+            self.cam_pos_filter_buffer.fill(self.cam_pos)
+            self.cam_target_pos_filter_buffer = RingTensorFilterBuffer(fs=fs, cut_off_frequency=1,filter_order=filter_order,shape=3,device=self.device)
+            self.cam_target_pos_filter_buffer.fill(self.cam_target_pos)
+
         self.gym.viewer_camera_look_at(self.viewer, self.envs[self.ref_env], gymapi.Vec3(*self.cam_pos), gymapi.Vec3(*self.cam_target_pos))
         
         self.debug_viz = self.cfg["env"]["enableDebugVis"]
@@ -1023,7 +1031,7 @@ class LeggedTerrain(VecTask):
     def compute_observations(self):
         """Computes observations for the current state."""
         self.get_heights()
-        heights = torch.clip(self.heights_relative - self.target_base_height, -1.0, 1.0) * self.heightmap_scale
+        heights = torch.clip(self.heights_relative - self.base_height_target, -1.0, 1.0) * self.heightmap_scale
 
         obs_dict = {
             "linearVelocity": self.base_lin_vel * self.lin_vel_scale,
@@ -1092,7 +1100,8 @@ class LeggedTerrain(VecTask):
         # rew["base_height"] = torch.square(self.heights_relative[:, self.num_height_points] - self.target_base_height)
 
         # exponential reward
-        base_height_error = torch.clamp_max(self.base_height - self.target_base_height,0)
+        # base_height_error = torch.clamp_max(self.base_height - self.base_height_target,0)
+        base_height_error = self.base_height - self.base_height_target
 
         rew["base_height"] =torch.exp(torch.square(base_height_error)*self.rew_base_height_exp_scale)
         
@@ -1245,13 +1254,14 @@ class LeggedTerrain(VecTask):
 
             rew["should_contact"] = torch.eq(self.foot_contact,self.contact_target).mean(dim=1,dtype=torch.float)
 
+            threash = 0.3 #0.5
             if self.is_train:
-                self.rew_should_contact_clamp_min = float(min(self.common_step_counter/5e4,0.5))
+                self.rew_should_contact_clamp_min = float(min(self.common_step_counter/5e4,threash))
                 rew["should_contact"] = (1 - self.rew_should_contact_clamp_min)*rew["should_contact"] + self.rew_should_contact_clamp_min
                 if self.common_step_counter % 1000 == 0:
                     print(f"self.rew_should_contact_clamp_min={self.rew_should_contact_clamp_min}")
             else: # fixed at 0.5
-                rew["should_contact"] = 0.5+0.5*rew["should_contact"] # original 0.9
+                rew["should_contact"] = threash+(1-threash)*rew["should_contact"] # original 0.9
 
             # rew["should_contact"][zero_command] = 1 # set contstant for zero command
             # rew["should_contact"][self.is_zero_command] = 0 # bad! do not use
@@ -1343,7 +1353,7 @@ class LeggedTerrain(VecTask):
                 "base_lin_vel": self.base_lin_vel,
                 "base_ang_vel": self.base_ang_vel,
                 "base_height": self.base_height,
-                "foot_height": self.foot_height + self.foot_height_offset,
+                "foot_height": step_height,
                 "projected_gravity": self.projected_gravity,
                 "time_air": self.air_time,
                 "time_stance": self.stance_time,
@@ -1631,10 +1641,14 @@ class LeggedTerrain(VecTask):
         
             # do modify camera position if viewer_follow
             if self.viewer_follow:
-                self.cam_target_pos = self.root_state[self.ref_env, :3].clone().cpu() 
-                self.cam_pos = self.viewer_follow_offset.cpu()+self.cam_target_pos
+                self.cam_target_pos = self.root_state[self.ref_env, :3].clone()
+                self.cam_pos = self.viewer_follow_offset+self.cam_target_pos
+                # self.gym.viewer_camera_look_at(
+                #     self.viewer, self.envs[self.ref_env], gymapi.Vec3(*self.cam_pos.cpu()), gymapi.Vec3(*self.cam_target_pos.cpu())) 
+                cam_target_pos_filtered = self.cam_target_pos_filter_buffer.add(self.cam_target_pos)
+                cam_pos_filtered = self.cam_pos_filter_buffer.add(self.cam_pos)
                 self.gym.viewer_camera_look_at(
-                    self.viewer, self.envs[self.ref_env], gymapi.Vec3(*self.cam_pos), gymapi.Vec3(*self.cam_target_pos))   
+                    self.viewer, self.envs[self.ref_env], gymapi.Vec3(*cam_pos_filtered.cpu()), gymapi.Vec3(*cam_target_pos_filtered.cpu())) 
 
         return
 

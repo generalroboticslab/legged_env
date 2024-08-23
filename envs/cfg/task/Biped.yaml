@@ -69,7 +69,8 @@ env:
     vLinear: [0.0, 0.0, 0.0]  # x,y,z [m/s]
     vAngular: [0.0, 0.0, 0.0]  # x,y,z [rad/s]
   baseHeightOffset: 0.05 # [m] offset added to the base pos z
-  baseHeightTarget: # 0.3 # target base height [m]
+  baseHeightTarget: # 0.3 # target base height [m], set empty to infer
+  baseHeightTargetOffset: 0.0 # target base height offset [m] for the base height reward
 
   randomCommandVelocityRanges:
     # train

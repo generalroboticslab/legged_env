@@ -1,6 +1,7 @@
 import torch
 from collections.abc import Iterable
 from typing import Union
+from scipy import signal
 
 class _BaseRingBuffer:
     def __init__(self, buffer_len: int, shape: Union[Iterable,int], dtype=torch.float32, device='cpu'):
@@ -113,6 +114,45 @@ class RingTensorBuffer(_BaseRingBuffer):
         """Resets the buffer current step to -1"""
         self.step = -1
         self.storage.zero_()
+
+
+class RingTensorFilterBuffer:
+    def __init__(self,shape,fs:float=200,filter_order:int=4,cut_off_frequency:float=20,dtype=torch.float,device='cpu'):
+
+        
+        self.filter_order = filter_order
+        self.buf_raw = RingTensorBuffer(buffer_len=filter_order+1, shape=shape,dtype=dtype,device=device) # x, input
+        self.buf_filt = RingTensorBuffer(buffer_len=filter_order+1, shape=shape,dtype=dtype,device=device) # y, filtered
+        
+        self.b, self.a = signal.butter(N=filter_order, Wn=cut_off_frequency, btype='low', analog=False,fs=fs)
+        self.a = torch.tensor(self.a,dtype=dtype,device=device)
+        self.b = torch.tensor(self.b,dtype=dtype,device=device)
+        self.b = self.b.reshape(-1, *([1] * len(self.buf_raw.storage.shape[1:])))
+        self.a = self.a.reshape(-1, *([1] * len(self.buf_raw.storage.shape[1:])))[1:filter_order+1]
+        # self.b = self.b[:,np.newaxis]
+        # self.a = self.a[1:filter_order+1,np.newaxis]
+        
+    def add(self,sample:torch.Tensor):
+        self.buf_raw.add(sample) 
+        filtered_sample = (self.b*self.buf_raw[:]).sum(axis=0) - \
+            (self.a*self.buf_filt[0:self.filter_order]).sum(axis=0)
+        self.buf_filt.add(filtered_sample)
+        return filtered_sample
+
+    def fill(self,sample:torch.Tensor):
+        self.buf_raw.storage[:] = sample
+        self.buf_filt.storage[:] = sample
+
+    def get_latest_filtered(self):
+        return self.buf_filt[0].clone()
+    
+    def get_latest_raw(self):
+        return self.buf_raw[0].clone()
+    
+    def reset(self):
+        self.buf_raw.reset()
+        self.buf_filt.reset()
+
 
 class BatchedRingTensorBuffer(_BaseRingBuffer):
     def __init__(self, buffer_len: int, batch_size: int, shape: Union[Iterable,int], dtype=torch.float32, device='cpu'):
