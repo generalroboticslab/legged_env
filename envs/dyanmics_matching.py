@@ -64,13 +64,13 @@ def launch_rlg_hydra(cfg: DictConfig):
         # print(f"{prop_name}:{app_data:{format}}")  # Print the new slider value to the console
 
     dpg.create_context()
-    dpg.set_global_font_scale(2)
-    dpg.create_viewport(title='Custom Title', width=1600, height=450)
+    dpg.set_global_font_scale(1)
+    dpg.create_viewport(title='motor dynamics parameters', width=700, height=450)
     dpg.setup_dearpygui()
     # Disable VSync (Vertical Synchronization)
     dpg.set_viewport_vsync(False)
 
-    def add_slider(id, prop_name, label, min_value=0.0, max_value=1.0, format='.3f', env=env):
+    def add_slider(id, prop_name, label, min_value=-1, max_value=1.0, format='.3f', env=env):
         dpg.add_drag_float(
             speed=0.001,
             label=label,
@@ -79,12 +79,12 @@ def launch_rlg_hydra(cfg: DictConfig):
             max_value=max_value,
             format=f"%{format}",
             callback=slider_callback,
-            width=500,
+            width=200,
             # Pass both prop_name and env as a tuple
             user_data=(id, prop_name, env, format)
         )
 
-    with dpg.window(label="Example Window", width=1600, height=450):
+    with dpg.window(label="", width=700, height=450):
 
         with dpg.table(header_row=True):
             # Create columns for the grid
@@ -96,17 +96,17 @@ def launch_rlg_hydra(cfg: DictConfig):
                 with dpg.table_row():
                     dpg.add_text(f"{k}")
                     add_slider(id=k, prop_name="damping", label="",
-                               min_value=0.0, max_value=1.0)
+                               min_value=-5.0, max_value=1.0)
                     add_slider(id=k, prop_name="friction", label="",
-                               min_value=0.0, max_value=0.2, format='.4f')
+                               min_value=-1.0, max_value=1, format='.5f')
                     add_slider(id=k, prop_name="armature", label="",
-                               min_value=0.0, max_value=0.5)
+                               min_value=-1.0, max_value=1)
 
     dpg.show_viewport()
 
     # cfg.task.env.
     # Create a receiver instance
-    receiver = DataReceiver(port=9872, decoding="msgpack")
+    receiver = DataReceiver(port=9871, decoding="msgpack",broadcast=True)
     # Start continuous receiving in a thread
     receiver.receive_continuously()
     received_id = 0
@@ -114,22 +114,31 @@ def launch_rlg_hydra(cfg: DictConfig):
     env.reset()
 
     default_dof_pos = env.default_dof_pos
-    actions = torch.zeros_like(default_dof_pos)
+    actions = torch.zeros(env.num_envs,env.num_actions, device=env.device)
     action_scale = env.action_scale
     # for k in range(1000000):
 
     while (not env.gym.query_viewer_has_closed(env.viewer)) and dpg.is_dearpygui_running():
         if receiver.data is not None:
-            if receiver.data['id'] != received_id:
-                received_id = receiver.data['id']
+            if receiver.data_id != received_id:
+                received_id = receiver.data_id
                 # print(f"Received from {receiver.address}: {receiver.data}")
                 if "reset" in receiver.data and receiver.data['reset']:
                     env.reset_idx(torch.arange(
                         env.num_envs, device=env.device))
-                elif "dof_pos_target" in receiver.data:
+                if "dof_pos_target" in receiver.data:
                     dof_pos_target = torch.tensor(
                         receiver.data["dof_pos_target"], dtype=torch.float, device=env.device).repeat(env.num_envs, 1)
                     actions = (dof_pos_target - default_dof_pos)/action_scale
+                if "action_is_on" in receiver.data:
+                    action_is_on = torch.tensor(receiver.data["action_is_on"], dtype=torch.float, device=env.device)
+                    converted_action_is_on = torch.where(action_is_on>0, 1, -1).repeat(env.num_envs, 1)
+                    actions = torch.column_stack((actions, converted_action_is_on))
+                if "kp" in receiver.data:
+                    env.kp[:] = torch.tensor(receiver.data["kp"], dtype=torch.float, device=env.device)
+                if "kd" in receiver.data:
+                    env.kd[:] = torch.tensor(receiver.data["kd"], dtype=torch.float, device=env.device)
+                
         env.step(actions)
         dpg.render_dearpygui_frame()
 

@@ -1,23 +1,18 @@
 import numpy as np
 from publisher import DataPublisher
-
 import pygame
 
 
-
-lin_vel_x_max = 0.2
-lin_vel_y_max = 0.2
+lin_vel_x_max = 0.3
+lin_vel_y_max = 0.25
 ang_vel_z_max = 0.2
+
+
 keyboard_operator_cmd = np.zeros(3) # vel_x, vel_y, yaw_orientation
-
 reset = False
-push = False
-
 
 data_publisher = DataPublisher(
     'udp://localhost:9871', encoding="msgpack", broadcast=True)
-
-
 
 pygame.init()
 pygame.joystick.init()
@@ -34,6 +29,7 @@ while running:
 
 
     for event in pygame.event.get():
+        # print(event)
         if event.type == pygame.QUIT:
             running = False
         elif event.type == pygame.JOYBUTTONDOWN:
@@ -60,12 +56,10 @@ while running:
         data = {
             "cmd": keyboard_operator_cmd,
             "reset": reset,
-            # "push": push,
         }
         print(data)
 
         data_publisher.publish(data)
         reset=False
-        push=False
 
 pygame.quit()

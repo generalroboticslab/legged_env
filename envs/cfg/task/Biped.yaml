@@ -55,7 +55,11 @@ env:
       height: 0.15
       step: 0.005
       downsampled_scale: 0.2
-    platformSize: 2.0 # [m]
+    discrete: # discrete obstable terrain
+      height: 0.15
+      size: [0.4, 2.0]
+      num_rects: 40
+    platformSize: 2.4 # [m]
     horizontalScale: 0.1
     verticalScale: 0.001
     borderSize: 25
@@ -68,7 +72,7 @@ env:
     rot: [0.0, 0.0, 0.0, 1.0] # x,y,z,w [quat]
     vLinear: [0.0, 0.0, 0.0]  # x,y,z [m/s]
     vAngular: [0.0, 0.0, 0.0]  # x,y,z [rad/s]
-  baseHeightOffset: 0.05 # [m] offset added to the base pos z
+  baseHeightOffset: 0.08 # [m] offset added to the base pos z
   baseHeightTarget: # 0.3 # target base height [m], set empty to infer
   baseHeightTargetOffset: 0.0 # target base height offset [m] for the base height reward
 
@@ -79,6 +83,7 @@ env:
     yaw: [-3.14, 3.14]    # min max [rad] yaw angle dirvergence
   commandZeroProbability: 0.1 # additional probability to set a zero command
   commandZeroThreshold: 0.05 # [m/s] treat commends below this threshold as zero
+  keep_still_at_zero_command: true
 
   control:
     # PD Drive parameters:
@@ -92,21 +97,6 @@ env:
   # controlFrequencyInv: 1 # Number of control action updates @ sim DT per policy DT
 
   # defaultJointPositions:  # = target angles when action = 0.0 (in rad)
-  #   FL_hip_joint:  0.1     # [rad]
-  #   RL_hip_joint:  0.1     # [rad]
-  #   FR_hip_joint: -0.1     # [rad]
-  #   RR_hip_joint: -0.1     # [rad]
-
-  #   FL_thigh_joint: 0.8    # [rad]
-  #   RL_thigh_joint: 1.0    # [rad]
-  #   FR_thigh_joint: 0.8    # [rad]
-  #   RR_thigh_joint: 1.0    # [rad]
-
-  #   FL_calf_joint: -1.5    # [rad]
-  #   RL_calf_joint: -1.5    # [rad]
-  #   FR_calf_joint: -1.5    # [rad]
-  #   RR_calf_joint: -1.5    # [rad]
-
 
   urdfAsset:
     collision_filter: 0
@@ -119,9 +109,9 @@ env:
       override_inertia: false
       vhacd_enabled: true
       vhacd_params:
-        max_convex_hulls: 1
+        max_convex_hulls: 3
         max_num_vertices_per_ch: 128
-        # resolution: 6400000
+        # resolution: 1000000
         # convex_hull_approximation: true
         # convex_hull_downsampling: 1
         # plane_downsampling: 1
@@ -129,7 +119,7 @@ env:
         # beta: 0
         # mode: 0 # 0: tetrahedron, 1: voxel
     # root: "" # override defualt asset_root
-    file: urdf/v6_vis_URDF_new_body/v6_URDF_aug10.urdf # urdf/v6_vis_URDF_new_body/v6_vis_URDF.urdf #"urdf/v6_vis_URDF_thin/v6_vis_URDF.urdf" # "urdf/biped/biped_v6.urdf"
+    file: urdf/v6biped_urdf_v4_aug29/v6biped_urdf_v4_squarefoot_aug29.urdf
     # Body
     # baseName: base
     # hipName: hip
@@ -155,6 +145,9 @@ env:
     baseMass:
       enable: false
       range: [-0.5, 0.5]
+    baseInertiaOrigin:
+      enable: false
+      range: [[-0.05, 0.05], [-0.05, 0.05], [-0.05, 0.05]]
     push:
       enable: true
       interval_s: 8
@@ -173,9 +166,33 @@ env:
     dof_strength:
       enable: true
       range: [0.98, 1.02]
+    default_dof_pos:
+      enable: false
+      range: [-0.02, 0.02]
+    link_mass:
+      enable: true
+      range: [0.95, 1.05]
+    link_inertia:
+      enable: true
+      range: [0.95, 1.05]
+    body_force:
+      enable: true
+      scale: 0.05
+      prob_range: [0.001, 0.1]
+      decay_time_constant: 0.2 # [s]
+    action_delay:
+      enable: true
+      range: [0.1,0.5]
+    projected_gravity_delay:
+      enable: true
+      range: [0.05,0.5]
+    base_init_pos_xy:
+      enable: true
+      range: [-0.5, 0.5]
 
   learn:
     enablePassiveDynamics: false
+    action_is_on_sigmoid_k: 10
     passiveCurriculum: true
 
     guided_contact:
@@ -183,7 +200,9 @@ env:
       phase_offset: [0,0.5] # normalized phase [0,1]
       phase_freq: 1.25 # [Hz]
       phase_stance_ratio: 0.6
+      phase_start_with_swing: true # NOTE! BREAKING CHANGE 09/07 : phase start with swing first instead
 
+    foot_contact_threshold: 5
     allowKneeContacts: false
     terminalReward: 0.0
     # reward_group: [[orientation]]
@@ -199,9 +218,8 @@ env:
         exp_scale: -4.0
         normalize_by: [0.1, 0.1, 1] # [0.2, 0.2, 1]
       orientation:
-        scale: 0.5 #-1.
-        exp_scale: -10.0
-        fcn: exp_square_sum #square_sum
+        scale: -1.
+        fcn: square_sum
       dof_force_target:
         scale: 0.1
         exp_scale: -1.0
@@ -210,10 +228,14 @@ env:
         scale: 0 # 0.1
         exp_scale: -1.0
         fcn: exp_square_sum
+      # dof_jerk:
+      #   scale: +0
+      #   exp_scale: -1.0
+      #   fcn: exp_square_sum
       dof_acc:
         scale: +0
         exp_scale: -1.0
-        fcn: square_sum
+        fcn: exp_square_sum
       dof_vel:
         scale: -0.0
         fcn: square_sum
@@ -273,7 +295,7 @@ env:
         fcn: foot_forward_fcn
       impact:
         scale: -0.0
-        exp_scale: -0.00001
+        # exp_scale: -0.00001
         fcn: abs_sum
       stumble:
         scale: -0. #-2.0
@@ -342,12 +364,12 @@ sim:
     num_threads: ${....num_threads}
     solver_type: ${....solver_type}
     use_gpu: ${contains:"cuda",${....sim_device}} # set to False to run on CPU
-    num_position_iterations: 2 #4
+    num_position_iterations: 4
     num_velocity_iterations: 1
-    contact_offset: 0.02
+    contact_offset: 0.01 #0.02
     rest_offset: 0.0
-    bounce_threshold_velocity: 0.2
-    max_depenetration_velocity: 100.0
+    bounce_threshold_velocity: 0.2 # Two colliding objects with a relative velocity below this will not bounce
+    max_depenetration_velocity: 100.0 # maximum default velocity needed to move a Rigidbody's collider out of another collider's surface penetration
     default_buffer_size_multiplier: 5.0 # scales PhysX temp buffer size for GPU dynamics. Increase it to have enough memory if you have lots of agents
     max_gpu_contact_pairs: 8388608 # 8*1024*1024
     num_subscenes: ${....num_subscenes}

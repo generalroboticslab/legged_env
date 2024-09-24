@@ -1,0 +1,558 @@
+<?xml version="1.0" ?>
+<robot name="v6biped_urdf_v4_shortfoot">
+
+<material name="silver">
+  <color rgba="0.700 0.700 0.700 1.000"/>
+</material>
+
+<link name="base_link">
+  <inertial>
+    <origin xyz="0.0 -1.1079155761136642e-17 0.12388403789312377" rpy="0 0 0"/>
+    <mass value="9.619993857102388"/>
+    <inertia ixx="0.16800197225609406" iyy="0.11452773293356491" izz="0.08167906458042659" ixy="-7.567101647509845e-18" iyz="3.5823713287208697e-17" ixz="1.0574368047855385e-19"/>
+  </inertial>
+  <visual>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="meshes/base_link.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+    <material/>
+  </visual>
+  <collision>
+    <origin xyz="0 0 0.1749" rpy="0 0 0"/>
+    <geometry>
+       <box size="0.160 0.300 0.365"/>
+    </geometry>
+  </collision>
+</link>
+
+<link name="01_L_hip_z_1">
+  <inertial>
+    <origin xyz="-1.1308239814118704e-17 0.07453971578674487 -0.07348511429496346" rpy="0 0 0"/>
+    <mass value="2.908965938735465"/>
+    <inertia ixx="0.014281037235361088" iyy="0.006972829556692619" izz="0.012359988335792702" ixy="2.792240021015808e-20" iyz="0.003102675102721171" ixz="-9.212449889174042e-19"/>
+  </inertial>
+  <visual>
+    <origin xyz="0.0 -0.09 -0.0003" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="meshes/01_L_hip_z_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+</link>
+
+<link name="02_L_hip_y_1">
+  <inertial>
+    <origin xyz="0.0009043176082057605 -0.07583170485891583 -1.3877787807814457e-17" rpy="0 0 0"/>
+    <mass value="2.0377990564836805"/>
+    <inertia ixx="0.004244592152071132" iyy="0.002598711164799511" izz="0.003650015737189906" ixy="2.1529548114893157e-06" iyz="0.0" ixz="-4.607859233063394e-19"/>
+  </inertial>
+  <visual>
+    <origin xyz="0.0 -0.168 0.087" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="meshes/02_L_hip_y_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+</link>
+
+<link name="03_L_hip_x_COLLISION_1">
+  <inertial>
+    <origin xyz="-0.023908482594606855 -0.02426485983445889 -0.18585601361777113" rpy="0 0 0"/>
+    <mass value="3.5805439636700287"/>
+    <inertia ixx="0.027780896864440463" iyy="0.029615218880743976" izz="0.005221574111910782" ixy="-0.00037958734093934785" iyz="-0.0017591880380498914" ixz="-0.0027718637898816035"/>
+  </inertial>
+  <visual>
+    <origin xyz="-0.0272 -0.091 0.087" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="meshes/03_L_hip_x_COLLISION_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+    <material/>
+  </visual>
+  <collision>
+    <origin xyz="-0.0272 -0.02 -0.205" rpy="0 0 0"/>
+    <geometry>
+      <box size="0.12 0.08 0.27"/>
+    </geometry>
+  </collision>
+</link>
+
+<link name="04_L_knee_rocker_1">
+  <inertial>
+    <origin xyz="-0.01761954319685695 0.0025763920301442172 -0.028197163363816474" rpy="0 0 0"/>
+    <mass value="0.15488700659123303"/>
+    <inertia ixx="0.00015024114816780502" iyy="0.0002236908852147109" izz="8.077275595596428e-05" ixy="-7.510072938964019e-06" iyz="-1.2018629039793269e-05" ixz="-7.121565568717503e-05"/>
+  </inertial>
+  <visual>
+    <origin xyz="0.003 -0.095774 0.228" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="meshes/04_L_knee_rocker_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+</link>
+
+<link name="05_L_knee_link_1">
+  <inertial>
+    <origin xyz="-0.01531283689309905 0.0 -0.0700003286540784" rpy="0 0 0"/>
+    <mass value="0.21980714584506778"/>
+    <inertia ixx="0.000441907788744339" iyy="0.00045427482803899605" izz="3.542795472807154e-05" ixy="0.0" iyz="8.673617379884035e-19" ixz="-8.673617379884035e-19"/>
+  </inertial>
+  <visual>
+    <origin xyz="0.050693 -0.091074 0.304324" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="meshes/05_L_knee_link_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+</link>
+
+<link name="06_L_ankle_rocker_1">
+  <inertial>
+    <origin xyz="0.024092446226604218 0.005993892267881898 -0.004248148300943111" rpy="0 0 0"/>
+    <mass value="0.1199950147888805"/>
+    <inertia ixx="2.8507068069210523e-05" iyy="0.0001482193650997471" izz="0.00012238696786957197" ixy="-6.666896206283617e-06" iyz="1.1755536787711948e-06" ixz="1.7084744592853088e-05"/>
+  </inertial>
+  <visual>
+    <origin xyz="0.003 -0.082774 0.368" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="meshes/06_L_ankle_rocker_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+</link>
+
+<link name="07_L_shank_link_main_1">
+  <inertial>
+    <origin xyz="-0.0017014067304576396 -0.005734080520731988 -0.11013075690935742" rpy="0 0 0"/>
+    <mass value="0.45787218753949377"/>
+    <inertia ixx="0.002498857755266398" iyy="0.002547825121452449" izz="8.860874449439669e-05" ixy="-5.966718175119462e-07" iyz="-3.2662126914509426e-05" ixz="2.6336370383188163e-05"/>
+  </inertial>
+  <visual>
+    <origin xyz="0.003 -0.097574 0.368" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="meshes/07_L_shank_link_main_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+</link>
+
+<link name="08_L_shank_ankle_link_1">
+  <inertial>
+    <origin xyz="0.03527776433437844 8.326672684688674e-17 -0.01750000000000007" rpy="0 0 0"/>
+    <mass value="0.2800894766748255"/>
+    <inertia ixx="0.0014663255129204467" iyy="0.001460272166081078" izz="2.2626448490447454e-05" ixy="-3.187554387107383e-17" iyz="1.734723475976807e-18" ixz="1.734723475976807e-18"/>
+  </inertial>
+  <visual>
+    <origin xyz="-0.038681 -0.091074 0.481024" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="meshes/08_L_shank_ankle_link_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+</link>
+
+<link name="09_L_foot_short_COLLISION_1">
+  <inertial>
+    <origin xyz="0.036260429903504456 8.326672684688674e-17 -0.025750661403168285" rpy="0 0 0"/>
+    <mass value="0.25"/>
+    <!-- <mass value="0.18500497869847327"/> -->
+    <inertia ixx="3.4168841028289765e-05" iyy="0.00034625245806910177" izz="0.000346092188522662" ixy="2.5804011705155006e-17" iyz="1.734723475976807e-18" ixz="8.876314501719482e-06"/>
+  </inertial>
+  <visual>
+    <origin xyz="0.003 -0.091074 0.603" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="meshes/09_L_foot_short_COLLISION_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+    <material/>
+  </visual>
+  <collision>
+    <origin xyz="0.003 -0.091074 0.603" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="meshes/09_L_foot_short_COLLISION_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+  </collision>
+</link>
+
+<link name="10_R_hip_z_1">
+  <inertial>
+    <origin xyz="-8.552025948177327e-18 -0.07453971578674481 -0.07348511429497799" rpy="0 0 0"/>
+    <mass value="2.9089659387354665"/>
+    <inertia ixx="0.014281037235443772" iyy="0.0069728295565254315" izz="0.012359988335542804" ixy="-2.1926362563069666e-18" iyz="-0.0031026751027150856" ixz="-1.3848870923820681e-18"/>
+  </inertial>
+  <visual>
+    <origin xyz="0.0 0.09 -0.0003" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="meshes/10_R_hip_z_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+</link>
+
+<link name="11_R_hip_y_1">
+  <inertial>
+    <origin xyz="0.0009043176082057572 0.07583170485891579 -2.7755575615628914e-17" rpy="0 0 0"/>
+    <mass value="2.0377990564836805"/>
+    <inertia ixx="0.004244592152071132" iyy="0.002598711164799509" izz="0.0036500157371899024" ixy="-2.1529548114918636e-06" iyz="0.0" ixz="-4.607859233063394e-19"/>
+  </inertial>
+  <visual>
+    <origin xyz="0.0 0.168 0.087" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="meshes/11_R_hip_y_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+</link>
+
+<link name="12_R_hip_x_COLLISION_1">
+  <inertial>
+    <origin xyz="-0.02390848259462098 0.024264859834458904 -0.18585601361777102" rpy="0 0 0"/>
+    <mass value="3.5805439636700305"/>
+    <inertia ixx="0.02778089686473184" iyy="0.029615218880938154" izz="0.005221574111813728" ixy="0.0003795873409377429" iyz="0.0017591880380499053" ixz="-0.002771863789880305"/>
+  </inertial>
+  <visual>
+    <origin xyz="-0.0272 0.091 0.087" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="meshes/12_R_hip_x_COLLISION_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+    <material/>
+  </visual>
+  <collision>
+    <origin xyz="-0.0272 0.02 -0.205" rpy="0 0 0"/>
+    <geometry>
+      <box size="0.12 0.08 0.27"/>
+    </geometry>
+  </collision>
+</link>
+
+<link name="13_R_knee_rocker_1">
+  <inertial>
+    <origin xyz="-0.017619543196855627 -0.0025763920301442172 -0.028197163363816863" rpy="0 0 0"/>
+    <mass value="0.15488700659123308"/>
+    <inertia ixx="0.00015024114816484732" iyy="0.00022369088521269342" izz="8.077275595690494e-05" ixy="7.510072938963586e-06" iyz="1.2018629039793702e-05" ixz="-7.121565568897037e-05"/>
+  </inertial>
+  <visual>
+    <origin xyz="0.003 0.095774 0.228" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="meshes/13_R_knee_rocker_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+</link>
+
+<link name="14_R_knee_link_1">
+  <inertial>
+    <origin xyz="-0.01531283689309905 0.0 -0.0700003286540784" rpy="0 0 0"/>
+    <mass value="0.21980714584506778"/>
+    <inertia ixx="0.000441907788744339" iyy="0.00045427482803899605" izz="3.542795472807154e-05" ixy="0.0" iyz="-8.673617379884035e-19" ixz="-8.673617379884035e-19"/>
+  </inertial>
+  <visual>
+    <origin xyz="0.050693 0.091074 0.304324" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="meshes/14_R_knee_link_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+</link>
+
+<link name="15_R_ankle_rocker_1">
+  <inertial>
+    <origin xyz="0.024092446226739176 -0.005993892267881884 -0.004248148301098875" rpy="0 0 0"/>
+    <mass value="0.11999501478888035"/>
+    <inertia ixx="2.8507068314108375e-05" iyy="0.00014821936526217966" izz="0.00012238696778710603" ixy="6.666896206294242e-06" iyz="-1.1755536787824705e-06" ixz="1.7084744489519405e-05"/>
+  </inertial>
+  <visual>
+    <origin xyz="0.003 0.082774 0.368" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="meshes/15_R_ankle_rocker_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+</link>
+
+<link name="16_R_shank_link_main_1">
+  <inertial>
+    <origin xyz="-0.0017014067304932257 0.005734080520732071 -0.11013075690935742" rpy="0 0 0"/>
+    <mass value="0.45787218753949305"/>
+    <inertia ixx="0.002498857755360809" iyy="0.0025478251215153153" izz="8.860874446289455e-05" ixy="5.966718174119556e-07" iyz="3.2662126914509426e-05" ixz="2.6336370384982518e-05"/>
+  </inertial>
+  <visual>
+    <origin xyz="0.003 0.097574 0.368" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="meshes/16_R_shank_link_main_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+</link>
+
+<link name="17_R_shank_ankle_link_1">
+  <inertial>
+    <origin xyz="0.03527776433437844 0.0 -0.01750000000000007" rpy="0 0 0"/>
+    <mass value="0.2800894766748255"/>
+    <inertia ixx="0.0014663255129204467" iyy="0.001460272166081078" izz="2.2626448490448755e-05" ixy="-3.165870343657673e-17" iyz="0.0" ixz="1.734723475976807e-18"/>
+  </inertial>
+  <visual>
+    <origin xyz="-0.038681 0.091074 0.481024" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="meshes/17_R_shank_ankle_link_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+</link>
+
+<link name="18_R_foot_short_COLLISION_1">
+  <inertial>
+    <origin xyz="0.03626042990350446 -1.3877787807814457e-17 -0.025750661403168174" rpy="0 0 0"/>
+    <mass value="0.25"/>
+    <!-- <mass value="0.18500497869847327"/> -->
+    <inertia ixx="3.416884102826201e-05" iyy="0.000346252458069074" izz="0.00034609218852266264" ixy="2.6020852139652106e-17" iyz="0.0" ixz="8.876314501719048e-06"/>
+  </inertial>
+  <visual>
+    <origin xyz="0.003 0.091074 0.603" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="meshes/18_R_foot_short_COLLISION_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+    <material/>
+  </visual>
+  <collision>
+    <origin xyz="0.003 0.091074 0.603" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="meshes/18_R_foot_short_COLLISION_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+  </collision>
+</link>
+
+<joint name="01_L_hip_z" type="revolute">
+  <origin xyz="0.0 0.09 0.0003" rpy="0 0 0"/>
+  <parent link="base_link"/>
+  <child link="01_L_hip_z_1"/>
+  <axis xyz="0.0 0.0 -1.0"/>
+  <limit upper="1.570796" lower="-1.570796" effort="81" velocity="13.333"/>
+</joint>
+<transmission name="01_L_hip_z_tran">
+  <type>transmission_interface/SimpleTransmission</type>
+  <joint name="01_L_hip_z">
+    <hardwareInterface>PositionJointInterface</hardwareInterface>
+  </joint>
+  <actuator name="01_L_hip_z_actr">
+    <hardwareInterface>PositionJointInterface</hardwareInterface>
+    <mechanicalReduction>1</mechanicalReduction>
+  </actuator>
+</transmission>
+
+<joint name="02_L_hip_y" type="revolute">
+  <origin xyz="0.0 0.078 -0.0873" rpy="0 0 0"/>
+  <parent link="01_L_hip_z_1"/>
+  <child link="02_L_hip_y_1"/>
+  <axis xyz="0.0 -1.0 0.0"/>
+  <limit upper="1.570796" lower="-1.570796" effort="90" velocity="12"/>
+</joint>
+<transmission name="02_L_hip_y_tran">
+  <type>transmission_interface/SimpleTransmission</type>
+  <joint name="02_L_hip_y">
+    <hardwareInterface>PositionJointInterface</hardwareInterface>
+  </joint>
+  <actuator name="02_L_hip_y_actr">
+    <hardwareInterface>PositionJointInterface</hardwareInterface>
+    <mechanicalReduction>1</mechanicalReduction>
+  </actuator>
+</transmission>
+
+<joint name="03_L_hip_x" type="revolute">
+  <origin xyz="0.0272 -0.077 0.0" rpy="0 0 0"/>
+  <parent link="02_L_hip_y_1"/>
+  <child link="03_L_hip_x_COLLISION_1"/>
+  <axis xyz="1.0 0.0 0.0"/>
+  <limit upper="0.628319" lower="-0.628319" effort="81" velocity="13.333"/>
+</joint>
+<transmission name="03_L_hip_x_tran">
+  <type>transmission_interface/SimpleTransmission</type>
+  <joint name="03_L_hip_x">
+    <hardwareInterface>PositionJointInterface</hardwareInterface>
+  </joint>
+  <actuator name="03_L_hip_x_actr">
+    <hardwareInterface>PositionJointInterface</hardwareInterface>
+    <mechanicalReduction>1</mechanicalReduction>
+  </actuator>
+</transmission>
+
+<joint name="04_L_knee_rocker_RIGID" type="fixed">
+  <origin xyz="-0.0302 0.004774 -0.141" rpy="0 0 0"/>
+  <parent link="03_L_hip_x_COLLISION_1"/>
+  <child link="04_L_knee_rocker_1"/>
+</joint>
+
+<joint name="05_L_knee_link_RIGID" type="fixed">
+  <origin xyz="-0.047693 -0.0047 -0.076324" rpy="0 0 0"/>
+  <parent link="04_L_knee_rocker_1"/>
+  <child link="05_L_knee_link_1"/>
+</joint>
+
+<joint name="06_L_ankle_rocker_RIGID" type="fixed">
+  <origin xyz="-0.0302 -0.008226 -0.281" rpy="0 0 0"/>
+  <parent link="03_L_hip_x_COLLISION_1"/>
+  <child link="06_L_ankle_rocker_1"/>
+</joint>
+
+<joint name="07_L_shank_link_main" type="revolute">
+  <origin xyz="-0.0302 0.006574 -0.281" rpy="0 0 0"/>
+  <parent link="03_L_hip_x_COLLISION_1"/>
+  <child link="07_L_shank_link_main_1"/>
+  <axis xyz="0.0 1.0 0.0"/>
+  <limit upper="1.745329" lower="-0.087266" effort="81" velocity="13.333"/>
+</joint>
+<transmission name="07_L_shank_link_main_tran">
+  <type>transmission_interface/SimpleTransmission</type>
+  <joint name="07_L_shank_link_main">
+    <hardwareInterface>PositionJointInterface</hardwareInterface>
+  </joint>
+  <actuator name="07_L_shank_link_main_actr">
+    <hardwareInterface>PositionJointInterface</hardwareInterface>
+    <mechanicalReduction>1</mechanicalReduction>
+  </actuator>
+</transmission>
+
+<joint name="08_L_shank_ankle_link_RIGID" type="fixed">
+  <origin xyz="0.041681 -0.0065 -0.113024" rpy="0 0 0"/>
+  <parent link="07_L_shank_link_main_1"/>
+  <child link="08_L_shank_ankle_link_1"/>
+</joint>
+
+<joint name="09_L_foot" type="revolute">
+  <origin xyz="0.0 -0.0065 -0.235" rpy="0 0 0"/>
+  <parent link="07_L_shank_link_main_1"/>
+  <child link="09_L_foot_short_COLLISION_1"/>
+  <axis xyz="0.0 1.0 0.0"/>
+  <limit upper="0.872665" lower="-0.872665" effort="45" velocity="10.667"/>
+</joint>
+<transmission name="09_L_foot_tran">
+  <type>transmission_interface/SimpleTransmission</type>
+  <joint name="09_L_foot">
+    <hardwareInterface>PositionJointInterface</hardwareInterface>
+  </joint>
+  <actuator name="09_L_foot_actr">
+    <hardwareInterface>PositionJointInterface</hardwareInterface>
+    <mechanicalReduction>1</mechanicalReduction>
+  </actuator>
+</transmission>
+
+<joint name="10_R_hip_z" type="revolute">
+  <origin xyz="0.0 -0.09 0.0003" rpy="0 0 0"/>
+  <parent link="base_link"/>
+  <child link="10_R_hip_z_1"/>
+  <axis xyz="0.0 0.0 -1.0"/>
+  <limit upper="1.570796" lower="-1.570796" effort="81" velocity="13.333"/>
+</joint>
+<transmission name="10_R_hip_z_tran">
+  <type>transmission_interface/SimpleTransmission</type>
+  <joint name="10_R_hip_z">
+    <hardwareInterface>PositionJointInterface</hardwareInterface>
+  </joint>
+  <actuator name="10_R_hip_z_actr">
+    <hardwareInterface>PositionJointInterface</hardwareInterface>
+    <mechanicalReduction>1</mechanicalReduction>
+  </actuator>
+</transmission>
+
+<joint name="11_R_hip_y" type="revolute">
+  <origin xyz="0.0 -0.078 -0.0873" rpy="0 0 0"/>
+  <parent link="10_R_hip_z_1"/>
+  <child link="11_R_hip_y_1"/>
+  <axis xyz="0.0 1.0 0.0"/>
+  <limit upper="1.570796" lower="-1.570796" effort="90" velocity="12"/>
+</joint>
+<transmission name="11_R_hip_y_tran">
+  <type>transmission_interface/SimpleTransmission</type>
+  <joint name="11_R_hip_y">
+    <hardwareInterface>PositionJointInterface</hardwareInterface>
+  </joint>
+  <actuator name="11_R_hip_y_actr">
+    <hardwareInterface>PositionJointInterface</hardwareInterface>
+    <mechanicalReduction>1</mechanicalReduction>
+  </actuator>
+</transmission>
+
+<joint name="12_R_hip_x" type="revolute">
+  <origin xyz="0.0272 0.077 0.0" rpy="0 0 0"/>
+  <parent link="11_R_hip_y_1"/>
+  <child link="12_R_hip_x_COLLISION_1"/>
+  <axis xyz="1.0 0.0 0.0"/>
+  <limit upper="0.628319" lower="-0.628319" effort="81" velocity="13.333"/>
+</joint>
+<transmission name="12_R_hip_x_tran">
+  <type>transmission_interface/SimpleTransmission</type>
+  <joint name="12_R_hip_x">
+    <hardwareInterface>PositionJointInterface</hardwareInterface>
+  </joint>
+  <actuator name="12_R_hip_x_actr">
+    <hardwareInterface>PositionJointInterface</hardwareInterface>
+    <mechanicalReduction>1</mechanicalReduction>
+  </actuator>
+</transmission>
+
+<joint name="13_R_knee_rocker_RIGID" type="fixed">
+  <origin xyz="-0.0302 -0.004774 -0.141" rpy="0 0 0"/>
+  <parent link="12_R_hip_x_COLLISION_1"/>
+  <child link="13_R_knee_rocker_1"/>
+</joint>
+
+<joint name="14_R_knee_link_PASSIVE" type="fixed">
+  <origin xyz="-0.047693 0.0047 -0.076324" rpy="0 0 0"/>
+  <parent link="13_R_knee_rocker_1"/>
+  <child link="14_R_knee_link_1"/>
+</joint>
+
+<joint name="15_R_ankle_rocker_RIGID" type="fixed">
+  <origin xyz="-0.0302 0.008226 -0.281" rpy="0 0 0"/>
+  <parent link="12_R_hip_x_COLLISION_1"/>
+  <child link="15_R_ankle_rocker_1"/>
+</joint>
+
+<joint name="16_R_shank_link_main" type="revolute">
+  <origin xyz="-0.0302 -0.006574 -0.281" rpy="0 0 0"/>
+  <parent link="12_R_hip_x_COLLISION_1"/>
+  <child link="16_R_shank_link_main_1"/>
+  <axis xyz="0.0 -1.0 0.0"/>
+  <limit upper="0.087266" lower="-1.745329" effort="81" velocity="13.333"/>
+</joint>
+<transmission name="16_R_shank_link_main_tran">
+  <type>transmission_interface/SimpleTransmission</type>
+  <joint name="16_R_shank_link_main">
+    <hardwareInterface>PositionJointInterface</hardwareInterface>
+  </joint>
+  <actuator name="16_R_shank_link_main_actr">
+    <hardwareInterface>PositionJointInterface</hardwareInterface>
+    <mechanicalReduction>1</mechanicalReduction>
+  </actuator>
+</transmission>
+
+<joint name="17_R_shank_ankle_link_RIGID" type="fixed">
+  <origin xyz="0.041681 0.0065 -0.113024" rpy="0 0 0"/>
+  <parent link="16_R_shank_link_main_1"/>
+  <child link="17_R_shank_ankle_link_1"/>
+</joint>
+
+<joint name="18_R_foot" type="revolute">
+  <origin xyz="0.0 0.0065 -0.235" rpy="0 0 0"/>
+  <parent link="16_R_shank_link_main_1"/>
+  <child link="18_R_foot_short_COLLISION_1"/>
+  <axis xyz="0.0 -1.0 0.0"/>
+  <limit upper="0.872665" lower="-0.872665" effort="45" velocity="10.667"/>
+</joint>
+<transmission name="18_R_foot_tran">
+  <type>transmission_interface/SimpleTransmission</type>
+  <joint name="18_R_foot">
+    <hardwareInterface>PositionJointInterface</hardwareInterface>
+  </joint>
+  <actuator name="18_R_foot_actr">
+    <hardwareInterface>PositionJointInterface</hardwareInterface>
+    <mechanicalReduction>1</mechanicalReduction>
+  </actuator>
+</transmission>
+
+</robot>

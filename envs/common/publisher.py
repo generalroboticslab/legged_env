@@ -95,10 +95,12 @@ class DataPublisher:
         if encoding_type not in encodings:
             raise ValueError(f'Invalid encoding: {encoding_type}')
         self.encode = encodings[encoding_type]
+        self.should_encode = encoding_type != 'raw'
 
     def _send_data(self, data: dict):
         if self.enable:
-            converted_data = convert_to_python_builtin_types(data)
+            if self.should_encode:
+                converted_data = convert_to_python_builtin_types(data)
             encoded_data = self.encode(converted_data)
             try:
                 self.socket.sendto(encoded_data, (self.hostname, self.url.port))
@@ -245,7 +247,7 @@ if __name__ == "__main__":
         receivers.append(receiver)
 
     # Send data multiple times with a delay
-    for i in range(10):
+    for i in range(10000000000):
         publisher.publish(test_data(i))
         time.sleep(1e-3)  # add a small delay
         for k,receiver in enumerate(receivers):

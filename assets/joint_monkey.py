@@ -34,23 +34,13 @@ class AssetDesc:
         self.flip_visual_attachments = flip_visual_attachments
 
 asset_descriptors = [
-    AssetDesc("urdf/v6_vis_URDF_thin/v6_vis_URDF.urdf"),
-    AssetDesc("urdf/v6_vis_URDF_20mmfillet_foot/v6_vis_URDF.urdf"),
-    AssetDesc("urdf/v6_vis_URDF_wide_feet/v6_vis_URDF.urdf"),
-    # AssetDesc("urdf/v6_vis_URDF_IMU_top/v6_vis_URDF.urdf"),
-    AssetDesc("urdf/v6_vis_URDF/v6_vis_URDF.urdf"),
-    AssetDesc("urdf/biped_long_foot_6_2/biped_v6_terrain.urdf"),
-    AssetDesc("urdf/biped_visual/v6_2.urdf"),
-    AssetDesc("urdf/biped_long_foot/biped_v6_terrain.urdf"),
-    AssetDesc("urdf/biped_long_foot/biped_v6_long.urdf"),
-    AssetDesc("urdf/biped_visual/biped_v6.urdf"),
-    AssetDesc("urdf/biped/biped_v6.urdf"),
-    AssetDesc("urdf/RobotDog/RobotDog3kg.urdf"),
-    AssetDesc("urdf/a1/a1_minimum.urdf"),
-    AssetDesc("urdf/a1/a1_minimum_anymal_like.urdf"),
-    AssetDesc("urdf/anymal_c/urdf/anymal.urdf", True),
-    AssetDesc("urdf/anymal_c/urdf/anymal_minimal.urdf", True),
-    AssetDesc("urdf/anymal_c/urdf/anymal_minimal_a1_like.urdf", True),
+    AssetDesc("urdf/v6biped_urdf_v4_aug29/v6biped_urdf_v4_squarefoot_aug29.urdf"),
+    # AssetDesc("urdf/RobotDog/RobotDog3kg.urdf"),
+    # AssetDesc("urdf/a1/a1_minimum.urdf"),
+    # AssetDesc("urdf/a1/a1_minimum_anymal_like.urdf"),
+    # AssetDesc("urdf/anymal_c/urdf/anymal.urdf", True),
+    # AssetDesc("urdf/anymal_c/urdf/anymal_minimal.urdf", True),
+    # AssetDesc("urdf/anymal_c/urdf/anymal_minimal_a1_like.urdf", True),
 
 ]
 
@@ -142,7 +132,7 @@ for k in range(50):
     asset_options.fix_base_link = True
     asset_options.flip_visual_attachments = asset_descriptors[args.asset_id].flip_visual_attachments
     asset_options.use_mesh_materials = True
-    asset_options.collapse_fixed_joints = True
+    asset_options.collapse_fixed_joints = True # False
     asset_options.replace_cylinder_with_capsule = True
     asset_options.override_inertia = False
     asset_options.vhacd_enabled = True
@@ -260,13 +250,22 @@ for k in range(50):
     rigid_body_masses = [p.mass for p in rigid_body_properties]
     rigid_body_inertias = [p.inertia for p in rigid_body_properties]
 
+    # coms = [p.com for p in rigid_body_properties]
     total_mass = np.sum(rigid_body_masses)
     for name,mass in zip(rigid_body_names,rigid_body_masses):
         print(f"{name:20s},{mass:.5f}")
     print(f"total mass: {total_mass} kg")
 
+    
+    print("\nInertias:")
     for name,i in zip(rigid_body_names,rigid_body_inertias):
         print(f"{name:20s},{i.x.x:<+8.4e},{i.x.y:<+8.4e},{i.x.z:<+8.4e},{i.y.y:<+8.4e},{i.y.z:<+8.4e},{i.z.z:<+8.4e}")
+
+    print("\nCOMs:")
+    for name,i in zip(rigid_body_names,rigid_body_properties):
+        print(f"{name:20s},{i.com.x:<+8.4e},{i.com.y:<+8.4e},{i.com.z:<+8.4e}")
+    
+
     # #-------------------
     # gym.destroy_viewer(viewer)
     # gym.destroy_sim(sim)

@@ -55,6 +55,10 @@ env:
       height: 0.15
       step: 0.005
       downsampled_scale: 0.2
+    discrete: # discrete obstable terrain
+      height: 0.15
+      size: [0.4, 2.0]
+      num_rects: 40
     platformSize: 2.0 # [m]
     horizontalScale: 0.1
     verticalScale: 0.001
@@ -77,7 +81,8 @@ env:
     linear_y: [-0.5, 0.5]   # min max [m/s]
     yaw: [-1, 1]    # min max [rad] yaw angle dirvergence
   commandZeroProbability: 0.1 # additional probability to set a zero command
-  commandZeroThreshold: 0.05 # [m/
+  commandZeroThreshold: 0.05 # [m/s] treat commends below this threshold as zero
+  keep_still_at_zero_command: true
 
   control:
     # PD Drive parameters:
@@ -147,6 +152,9 @@ env:
     baseMass:
       enable: false
       range: [-0.5, 0.5]
+    baseInertiaOrigin:
+      enable: false
+      range: [[-0.05, 0.05], [-0.05, 0.05], [-0.05, 0.05]]
     push:
       enable: false
       interval_s: 15
@@ -165,8 +173,32 @@ env:
     dof_strength:
       enable: true
       range: [0.98, 1.02]
+    default_dof_pos:
+      enable: false
+      range: [-0.02, 0.02]
+    link_mass:
+      enable: true
+      range: [0.95, 1.05]
+    link_inertia:
+      enable: true
+      range: [0.95, 1.05]
+    body_force:
+      enable: true
+      scale: 0.05
+      prob_range: [0.001, 0.1]
+      decay_time_constant: 0.2 # [s]
+    action_delay:
+      enable: false
+      range: [0.1,0.5]
+    projected_gravity_delay:
+      enable: true
+      range: [0.05,0.5]
+    base_init_pos_xy:
+      enable: true
+      range: [-0.5, 0.5]
 
   learn:
+    foot_contact_threshold: 5
     allowKneeContacts: True
     terminalReward: 0.0
     reward:
@@ -180,25 +212,9 @@ env:
         fcn: exp_weighted_square_sum
         exp_scale: -4.0
         normalize_by: [0.1, 0.1, 1] # [0.2, 0.2, 1]
-      # lin_vel_xy:
-      #   scale: 1.0
-      #   fcn: exp_square_sum
-      #   exp_scale: -4.0
-      # lin_vel_z:
-      #   scale: -4.0
-      #   fcn: exp_square
-      #   exp_scale: -4.0
-      # ang_vel_xy:
-      #   scale: -0.05
-      #   fcn: square_sum
-      # ang_vel_z:
-      #   scale: 0.5
-      #   exp_scale: -4.0
-      #   fcn: square
       orientation:
-        scale: 0.5 #-1.
-        exp_scale: -10.0
-        fcn: exp_square_sum #square_sum
+        scale: -1.
+        fcn: square_sum
       dof_force_target:
         scale: 0.1
         exp_scale: -1.0
@@ -206,7 +222,7 @@ env:
       dof_acc:
         scale: +0
         exp_scale: -1.0
-        fcn: square_sum
+        fcn: exp_square_sum
       dof_vel:
         scale: -0.0
         fcn: square_sum
@@ -266,7 +282,7 @@ env:
         fcn: foot_forward_fcn
       impact:
         scale: -0.0
-        exp_scale: -0.00001
+        # exp_scale: -0.00001
         fcn: abs_sum
       stumble:
         scale: -0. #-2.0
@@ -335,12 +351,12 @@ sim:
     num_threads: ${....num_threads}
     solver_type: ${....solver_type}
     use_gpu: ${contains:"cuda",${....sim_device}} # set to False to run on CPU
-    num_position_iterations: 2 #4
+    num_position_iterations: 4
     num_velocity_iterations: 1
-    contact_offset: 0.02
+    contact_offset: 0.01 #0.02
     rest_offset: 0.0
-    bounce_threshold_velocity: 0.2
-    max_depenetration_velocity: 100.0
+    bounce_threshold_velocity: 0.2 # Two colliding objects with a relative velocity below this will not bounce
+    max_depenetration_velocity: 100.0 # maximum default velocity needed to move a Rigidbody's collider out of another collider's surface penetration
     default_buffer_size_multiplier: 5.0 # scales PhysX temp buffer size for GPU dynamics. Increase it to have enough memory if you have lots of agents
     max_gpu_contact_pairs: 8388608 # 8*1024*1024
     num_subscenes: ${....num_subscenes}

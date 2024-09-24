@@ -4,7 +4,6 @@
 export LD_LIBRARY_PATH=${CONDA_PREFIX}/lib
 experiment_files=(
     exp.sh
-    exp2.sh
 )
 task=A1Terrain
 
@@ -13,7 +12,7 @@ function parse_arguments() {
     while [ $# -gt 0 ]; do
         unset OPTIND
         unset OPTARG
-        while getopts adpukrs options; do
+        while getopts adpukrse options; do
             case $options in
             s)  # use server to train
                 use_server=true ;;
@@ -26,6 +25,9 @@ function parse_arguments() {
                 ;;
             p)  # play mode
                 PLAY=true
+                ;;
+            e)  # export mode
+                SHOULD_EXPORT=true
                 ;;
             u)  export PUBLISH_TO_UDP=true ;;
             k)  KEYBOARD=true ;;
@@ -75,6 +77,7 @@ function source_run_commands() {
     BASE_ARGS=()
     TRAIN_ARGS=()
     PLAY_ARGS=()
+    EXPORT_ARGS=()
     KEYBOARD_ARGS=()
     ENTRY_POINT=""
 
@@ -122,6 +125,9 @@ function get_additional_args() {
         ALL_ARGS+=(${PLAY_ARGS[@]})
         # update checkpoint
         # [ -e "$checkpoint" ] && ALL_ARGS+=("checkpoint=$checkpoint")
+        if [ "$SHOULD_EXPORT" == "true" ]; then
+            ALL_ARGS+=(${EXPORT_ARGS[@]})
+        fi
     else # train
         ALL_ARGS+=(${TRAIN_ARGS[@]})
     fi
@@ -139,7 +145,9 @@ function run_tasks() {
         if [[ "$use_server" == "true" ]]; then
             cmd="torchrun --standalone --nnodes=1 --nproc_per_node=2 train.py graphics_device_id=-1 headless=true multi_gpu=True $ALL_ARGS"
         else
-            cmd="$AUSTIN_ARGS python -u $DEBUG $ENTRY_POINT $ALL_ARGS"
+            # cmd="$AUSTIN_ARGS python -u $DEBUG $ENTRY_POINT $ALL_ARGS"
+            cmd="$AUSTIN_ARGS $(which python) $DEBUG $ENTRY_POINT $ALL_ARGS"
+
         fi
         # cmd="$AUSTIN_ARGS python -u $DEBUG $ALL_ARGS"
         echo "$cmd"; [[ "$DRY_RUN" != "true" ]] && eval "$cmd"

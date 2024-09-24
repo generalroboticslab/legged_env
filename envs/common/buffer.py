@@ -74,14 +74,14 @@ class _BaseRingBuffer:
         """
         return self.storage[self.step%self.buffer_len]
     
-    def get_latest_n(self, n:int) -> torch.Tensor:
+    def get_latest_n(self, n:int, offset:int=0) -> torch.Tensor:
         """
         Returns the last n tensors in the buffer, newest to oldest
         NOTE: the tensor is a reference, and could change in the buffer, use torch.clone() to get a copy.
         """
         assert n <= self.buffer_len and n>0
         # return self.storage[torch.arange(self.step,self.step-n,-1,device=self.storage.device)%self.buffer_len]
-        return self.storage[self.index_mapping[self.step%self.buffer_len,:n]]
+        return self.storage[self.index_mapping[(self.step-offset)%self.buffer_len,:n]]
     
     def get_all(self) -> torch.Tensor:
         """

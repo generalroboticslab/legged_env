@@ -53,6 +53,7 @@ dependencies:
   - black
   - pip:
     - sshkeyboard
+    - pygame
     - ray
     - open3d
     - hydra-core

@@ -1,4 +1,8 @@
-from ..envs.common.buffer import RingTensorBuffer, BatchedRingTensorBuffer, RingBufferCounter, BatchedRingBufferWithSharedCounter
+import sys
+import os
+sys.path.append(os.path.abspath(__file__ + "/../.."))  # fix envs imports
+
+from envs.common.buffer import RingTensorBuffer, BatchedRingTensorBuffer, RingBufferCounter, BatchedRingBufferWithSharedCounter
 import torch
 
 
@@ -11,13 +15,13 @@ def test_tensor_buffer():
     b.add(torch.tensor([1, 2]))
     assert b.full() == False
     assert len(b) == 1
-    assert torch.equal(b.get_last(),torch.tensor([1, 2]))
+    assert torch.equal(b.get_latest(),torch.tensor([1, 2]))
 
     b.add(torch.tensor([3, 4]))
     assert b.full() == False
     assert len(b) == 2
-    assert torch.equal(b.get_last(),torch.tensor([3, 4]))
-    assert torch.equal(b.get_last_n(2),torch.tensor([[3, 4.],[1, 2.]]))
+    assert torch.equal(b.get_latest(),torch.tensor([3, 4]))
+    assert torch.equal(b.get_latest_n(2),torch.tensor([[3, 4.],[1, 2.]]))
 
     b.add(torch.tensor([5, 6]))
     b.add(torch.tensor([7, 8]))
@@ -30,9 +34,9 @@ def test_tensor_buffer():
     assert torch.equal(b.storage, expected_storage)
     assert b.full() == True
     assert len(b) == 4
-    assert torch.equal(b.get_last(),torch.tensor([9, 10]))
-    assert torch.equal(b.get_last_n(1),torch.tensor([[9, 10.]]))
-    assert torch.equal(b.get_last_n(3),torch.tensor([[9, 10.],[7, 8.],[5, 6.]]))
+    assert torch.equal(b.get_latest(),torch.tensor([9, 10]))
+    assert torch.equal(b.get_latest_n(1),torch.tensor([[9, 10.]]))
+    assert torch.equal(b.get_latest_n(3),torch.tensor([[9, 10.],[7, 8.],[5, 6.]]))
     assert b.step == 4
     assert torch.equal(b[0],torch.tensor([9, 10]))
     assert torch.equal(b[1],torch.tensor([7, 8]))
@@ -144,3 +148,7 @@ def test_shared_buffer():
     assert torch.equal(b2.storage,m2)
     assert torch.equal(b2[:],m2[[2,1,0],:,:])
 
+
+if __name__ == "__main__":
+    test_tensor_buffer()
+    test_shared_buffer()
