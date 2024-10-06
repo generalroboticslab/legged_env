@@ -102,7 +102,7 @@ To configure the project using vscode:
 
 
 ### to start conda env
-first make sure you are in the python virtural environment
+Ensure you're operating within the Python virtual environment.  For convenience, **we'll assume all commands in this guide are executed within this activated environment**:
 ```
 conda activate py38 && export LD_LIBRARY_PATH=${CONDA_PREFIX}/lib
 ```
@@ -148,5 +148,17 @@ bash run.sh a1Terrain -p
 # anymal
 bash run.sh anymalTerrain -p
 
+# dry run (print the command only)
+bash run.sh anymalTerrain -d
 ```
 
+### Debugging
+
+Use `bash run.sh [THE_TASK_TO_RUN] -d` to start a remote attache python debuging using debugpy with vscode, for example
+
+```bash 
+bash run.sh dukehumanoid_baseline -d # train mode + debug
+bash run.sh dukehumanoid_baseline -pd # play mode + debug
+bash run.sh a1Terrain -pkd # play mode + keyboard + debug
+```
+Then go to the vscode debug panel (keyboard shortcut: `ctrl+shift+D`), in the `RUN AND DEBUG`, select option `Python Debugger: Remote Attach` to start debugging.
