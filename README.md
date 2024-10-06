@@ -1,7 +1,9 @@
 # Isaac Gym RL template environment for legged robots
 This repository contains an Isaac Gym template environment that can be used to train any legged robot using [rl_games](https://github.com/Denys88/rl_games). This repository is deployed with zero-shot sim-to-real transfer in the following projects:
-- [Text2Robot](https://github.com/generalroboticslab/Text2Robot): a framework that converts user text specifications and performance preferences into physical quadrupedal robots
-- [DukeHumanoidv1](https://github.com/generalroboticslab/DukeHumanoidv1): an open-source 10-degrees-of-freedom humanoid for locomotion research.
+- [Text2Robot](https://github.com/generalroboticslab/Text2Robot): a framework that converts user text specifications and performance preferences into physical quadrupedal robots.
+  <img src="https://github.com/generalroboticslab/Text2Robot/blob/master/figures/teaser.gif" alt="teaser" style="width:20%;">
+- [DukeHumanoidv1](https://github.com/generalroboticslab/DukeHumanoidv1): an open-source 10-degrees-of-freedom child size humanoid for locomotion research.
+  <img src="https://github.com/generalroboticslab/dukeHumanoidHardwareControl/blob/master/doc/image/dukehumanoidv1-thumbnails_1.gif" alt="teaser" style="width:20%; margin: 0;">
 
 
 <!-- TOC start (generated with https://github.com/derlin/bitdowntoc) -->
@@ -12,7 +14,7 @@ This repository contains an Isaac Gym template environment that can be used to t
    * [Setup python virtual environment](#setup-python-virtual-environment)
    * [Setup vscode](#setup-vscode)
    * [to start conda env](#to-start-conda-env)
-   * [to train a policy:](#to-train-a-policy)
+   * [to train a policy](#to-train-a-policy)
    * [to run example checkpoint:](#to-run-example-checkpoint)
 
 <!-- TOC end -->
@@ -103,7 +105,7 @@ first make sure you are in the python virtural environment
 conda activate py38 && export LD_LIBRARY_PATH=${CONDA_PREFIX}/lib
 ```
 
-### to train a policy:
+### to train a policy
 
 ```bash
 cd envs
