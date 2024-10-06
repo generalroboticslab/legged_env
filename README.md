@@ -1,7 +1,7 @@
 # Isaac Gym RL template environment for legged robots
 This repository contains an Isaac Gym template environment that can be used to train any legged robot using [rl_games](https://github.com/Denys88/rl_games). This repository is deployed with zero-shot sim-to-real transfer in the following projects:
 - [Text2Robot](https://github.com/generalroboticslab/Text2Robot): a framework that converts user text specifications and performance preferences into physical quadrupedal robots.
-  <img src="https://github.com/generalroboticslab/Text2Robot/blob/master/figures/teaser.gif" alt="teaser" style="width:20%;">
+  <img src="https://github.com/generalroboticslab/Text2Robot/blob/master/figures/teaser.gif" alt="teaser" style="width:20%; margin: 0;">
 - [DukeHumanoidv1](https://github.com/generalroboticslab/DukeHumanoidv1): an open-source 10-degrees-of-freedom child size humanoid for locomotion research.
   <img src="https://github.com/generalroboticslab/dukeHumanoidHardwareControl/blob/master/doc/image/dukehumanoidv1-thumbnails_1.gif" alt="teaser" style="width:20%; margin: 0;">
 
