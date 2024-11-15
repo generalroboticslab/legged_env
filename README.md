@@ -88,6 +88,38 @@ conda activate py38
 # Export library path
 export LD_LIBRARY_PATH=${CONDA_PREFIX}/lib
 ```
+Install addional dependencies:
+```bash
+conda activate py38 && export LD_LIBRARY_PATH=${CONDA_PREFIX}/lib
+
+# install Isaacgym
+cd ~/repo
+git clone https://github.com/boxiXia/isaacgym.git
+cd ~/repo/isaacgym/python
+python -m pip install -e .
+
+## verify
+cd ~/repo/isaacgym/python/examples
+python interop_torch.py
+# if error: crypt.h: No such file or directory, do this:
+# cp /usr/include/crypt.h /home/grl/repo/micromamba/envs/py38/include/python3.8/
+
+# install rl_games
+cd ~/repo
+git clone https://github.com/Denys88/rl_games.git
+cd ~/repo/rl_games/
+# Optionally modify setup.py to remove the version control parts
+python -m pip install -e .
+
+# install IsaacGymEnvs
+# https://github.com/NVIDIA-Omniverse/IsaacGymEnvs/tree/main
+cd ~/repo
+git clone https://github.com/NVIDIA-Omniverse/IsaacGymEnvs.git
+cd ~/repo/IsaacGymEnvs
+# recommended to modify setup.py to remove the version control parts
+python -m pip install -e .
+
+```
 
 ### Setup vscode
 Install VSCode: [Download and install](https://code.visualstudio.com/download) vscode if you have not done so
