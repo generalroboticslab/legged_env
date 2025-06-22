@@ -18,7 +18,6 @@
       <mesh filename="meshes/base_link.stl" scale="0.001 0.001 0.001"/>
     </geometry>
     <material name="silver"/>
-    <material/>
   </visual>
   <collision>
     <origin xyz="0 0 0.1749" rpy="0 0 0"/>
@@ -28,7 +27,7 @@
   </collision>
 </link>
 
-<link name="01_L_hip_z_1">
+<link name="link_01_L_hip_z_1">
   <inertial>
     <origin xyz="-1.1308239814118704e-17 0.07453971578674487 -0.07348511429496346" rpy="0 0 0"/>
     <mass value="2.908965938735465"/>
@@ -37,13 +36,13 @@
   <visual>
     <origin xyz="0.0 -0.09 -0.0003" rpy="0 0 0"/>
     <geometry>
-      <mesh filename="meshes/01_L_hip_z_1.stl" scale="0.001 0.001 0.001"/>
+      <mesh filename="meshes/link_01_L_hip_z_1.stl" scale="0.001 0.001 0.001"/>
     </geometry>
     <material name="silver"/>
   </visual>
 </link>
 
-<link name="02_L_hip_y_1">
+<link name="link_02_L_hip_y_1">
   <inertial>
     <origin xyz="0.0009043176082057605 -0.07583170485891583 -1.3877787807814457e-17" rpy="0 0 0"/>
     <mass value="2.0377990564836805"/>
@@ -52,13 +51,13 @@
   <visual>
     <origin xyz="0.0 -0.168 0.087" rpy="0 0 0"/>
     <geometry>
-      <mesh filename="meshes/02_L_hip_y_1.stl" scale="0.001 0.001 0.001"/>
+      <mesh filename="meshes/link_02_L_hip_y_1.stl" scale="0.001 0.001 0.001"/>
     </geometry>
     <material name="silver"/>
   </visual>
 </link>
 
-<link name="03_L_hip_x_COLLISION_1">
+<link name="link_03_L_hip_x_COLLISION_1">
   <inertial>
     <origin xyz="-0.023908482594606855 -0.02426485983445889 -0.18585601361777113" rpy="0 0 0"/>
     <mass value="3.5805439636700287"/>
@@ -67,10 +66,9 @@
   <visual>
     <origin xyz="-0.0272 -0.091 0.087" rpy="0 0 0"/>
     <geometry>
-      <mesh filename="meshes/03_L_hip_x_COLLISION_1.stl" scale="0.001 0.001 0.001"/>
+      <mesh filename="meshes/link_03_L_hip_x_COLLISION_1.stl" scale="0.001 0.001 0.001"/>
     </geometry>
     <material name="silver"/>
-    <material/>
   </visual>
   <collision>
     <origin xyz="-0.0272 -0.02 -0.205" rpy="0 0 0"/>
@@ -80,7 +78,7 @@
   </collision>
 </link>
 
-<link name="04_L_knee_rocker_1">
+<link name="link_04_L_knee_rocker_1">
   <inertial>
     <origin xyz="-0.01761954319685695 0.0025763920301442172 -0.028197163363816474" rpy="0 0 0"/>
     <mass value="0.15488700659123303"/>
@@ -89,13 +87,13 @@
   <visual>
     <origin xyz="0.003 -0.095774 0.228" rpy="0 0 0"/>
     <geometry>
-      <mesh filename="meshes/04_L_knee_rocker_1.stl" scale="0.001 0.001 0.001"/>
+      <mesh filename="meshes/link_04_L_knee_rocker_1.stl" scale="0.001 0.001 0.001"/>
     </geometry>
     <material name="silver"/>
   </visual>
 </link>
 
-<link name="05_L_knee_link_1">
+<link name="link_05_L_knee_link_1">
   <inertial>
     <origin xyz="-0.01531283689309905 0.0 -0.0700003286540784" rpy="0 0 0"/>
     <mass value="0.21980714584506778"/>
@@ -104,13 +102,13 @@
   <visual>
     <origin xyz="0.050693 -0.091074 0.304324" rpy="0 0 0"/>
     <geometry>
-      <mesh filename="meshes/05_L_knee_link_1.stl" scale="0.001 0.001 0.001"/>
+      <mesh filename="meshes/link_05_L_knee_link_1.stl" scale="0.001 0.001 0.001"/>
     </geometry>
     <material name="silver"/>
   </visual>
 </link>
 
-<link name="06_L_ankle_rocker_1">
+<link name="link_06_L_ankle_rocker_1">
   <inertial>
     <origin xyz="0.024092446226604218 0.005993892267881898 -0.004248148300943111" rpy="0 0 0"/>
     <mass value="0.1199950147888805"/>
@@ -119,13 +117,13 @@
   <visual>
     <origin xyz="0.003 -0.082774 0.368" rpy="0 0 0"/>
     <geometry>
-      <mesh filename="meshes/06_L_ankle_rocker_1.stl" scale="0.001 0.001 0.001"/>
+      <mesh filename="meshes/link_06_L_ankle_rocker_1.stl" scale="0.001 0.001 0.001"/>
     </geometry>
     <material name="silver"/>
   </visual>
 </link>
 
-<link name="07_L_shank_link_main_1">
+<link name="link_07_L_shank_link_main_1">
   <inertial>
     <origin xyz="-0.0017014067304576396 -0.005734080520731988 -0.11013075690935742" rpy="0 0 0"/>
     <mass value="0.45787218753949377"/>
@@ -134,13 +132,13 @@
   <visual>
     <origin xyz="0.003 -0.097574 0.368" rpy="0 0 0"/>
     <geometry>
-      <mesh filename="meshes/07_L_shank_link_main_1.stl" scale="0.001 0.001 0.001"/>
+      <mesh filename="meshes/link_07_L_shank_link_main_1.stl" scale="0.001 0.001 0.001"/>
     </geometry>
     <material name="silver"/>
   </visual>
 </link>
 
-<link name="08_L_shank_ankle_link_1">
+<link name="link_08_L_shank_ankle_link_1">
   <inertial>
     <origin xyz="0.03527776433437844 8.326672684688674e-17 -0.01750000000000007" rpy="0 0 0"/>
     <mass value="0.2800894766748255"/>
@@ -149,13 +147,13 @@
   <visual>
     <origin xyz="-0.038681 -0.091074 0.481024" rpy="0 0 0"/>
     <geometry>
-      <mesh filename="meshes/08_L_shank_ankle_link_1.stl" scale="0.001 0.001 0.001"/>
+      <mesh filename="meshes/link_08_L_shank_ankle_link_1.stl" scale="0.001 0.001 0.001"/>
     </geometry>
     <material name="silver"/>
   </visual>
 </link>
 
-<link name="09_L_foot_square_COLLISION_1">
+<link name="link_09_L_foot_square_COLLISION_1">
   <inertial>
     <origin xyz="0.036260429903504456 8.326672684688674e-17 -0.025750661403168285" rpy="0 0 0"/>
     <mass value="0.25"/>
@@ -165,20 +163,19 @@
   <visual>
     <origin xyz="0.003 -0.091074 0.603" rpy="0 0 0"/>
     <geometry>
-      <mesh filename="meshes/09_L_foot_square_COLLISION_1.stl" scale="0.001 0.001 0.001"/>
+      <mesh filename="meshes/link_09_L_foot_square_COLLISION_1.stl" scale="0.001 0.001 0.001"/>
     </geometry>
     <material name="silver"/>
-    <material/>
   </visual>
   <collision>
     <origin xyz="0.003 -0.091074 0.603" rpy="0 0 0"/>
     <geometry>
-      <mesh filename="meshes/09_L_foot_square_COLLISION_1.stl" scale="0.001 0.001 0.001"/>
+      <mesh filename="meshes/link_09_L_foot_square_COLLISION_1.stl" scale="0.001 0.001 0.001"/>
     </geometry>
   </collision>
 </link>
 
-<link name="10_R_hip_z_1">
+<link name="link_10_R_hip_z_1">
   <inertial>
     <origin xyz="-8.552025948177327e-18 -0.07453971578674481 -0.07348511429497799" rpy="0 0 0"/>
     <mass value="2.9089659387354665"/>
@@ -187,13 +184,13 @@
   <visual>
     <origin xyz="0.0 0.09 -0.0003" rpy="0 0 0"/>
     <geometry>
-      <mesh filename="meshes/10_R_hip_z_1.stl" scale="0.001 0.001 0.001"/>
+      <mesh filename="meshes/link_10_R_hip_z_1.stl" scale="0.001 0.001 0.001"/>
     </geometry>
     <material name="silver"/>
   </visual>
 </link>
 
-<link name="11_R_hip_y_1">
+<link name="link_11_R_hip_y_1">
   <inertial>
     <origin xyz="0.0009043176082057572 0.07583170485891579 -2.7755575615628914e-17" rpy="0 0 0"/>
     <mass value="2.0377990564836805"/>
@@ -202,13 +199,13 @@
   <visual>
     <origin xyz="0.0 0.168 0.087" rpy="0 0 0"/>
     <geometry>
-      <mesh filename="meshes/11_R_hip_y_1.stl" scale="0.001 0.001 0.001"/>
+      <mesh filename="meshes/link_11_R_hip_y_1.stl" scale="0.001 0.001 0.001"/>
     </geometry>
     <material name="silver"/>
   </visual>
 </link>
 
-<link name="12_R_hip_x_COLLISION_1">
+<link name="link_12_R_hip_x_COLLISION_1">
   <inertial>
     <origin xyz="-0.02390848259462098 0.024264859834458904 -0.18585601361777102" rpy="0 0 0"/>
     <mass value="3.5805439636700305"/>
@@ -217,10 +214,9 @@
   <visual>
     <origin xyz="-0.0272 0.091 0.087" rpy="0 0 0"/>
     <geometry>
-      <mesh filename="meshes/12_R_hip_x_COLLISION_1.stl" scale="0.001 0.001 0.001"/>
+      <mesh filename="meshes/link_12_R_hip_x_COLLISION_1.stl" scale="0.001 0.001 0.001"/>
     </geometry>
     <material name="silver"/>
-    <material/>
   </visual>
   <collision>
     <origin xyz="-0.0272 0.02 -0.205" rpy="0 0 0"/>
@@ -230,7 +226,7 @@
   </collision>
 </link>
 
-<link name="13_R_knee_rocker_1">
+<link name="link_13_R_knee_rocker_1">
   <inertial>
     <origin xyz="-0.017619543196855627 -0.0025763920301442172 -0.028197163363816863" rpy="0 0 0"/>
     <mass value="0.15488700659123308"/>
@@ -239,13 +235,13 @@
   <visual>
     <origin xyz="0.003 0.095774 0.228" rpy="0 0 0"/>
     <geometry>
-      <mesh filename="meshes/13_R_knee_rocker_1.stl" scale="0.001 0.001 0.001"/>
+      <mesh filename="meshes/link_13_R_knee_rocker_1.stl" scale="0.001 0.001 0.001"/>
     </geometry>
     <material name="silver"/>
   </visual>
 </link>
 
-<link name="14_R_knee_link_1">
+<link name="link_14_R_knee_link_1">
   <inertial>
     <origin xyz="-0.01531283689309905 0.0 -0.0700003286540784" rpy="0 0 0"/>
     <mass value="0.21980714584506778"/>
@@ -254,13 +250,13 @@
   <visual>
     <origin xyz="0.050693 0.091074 0.304324" rpy="0 0 0"/>
     <geometry>
-      <mesh filename="meshes/14_R_knee_link_1.stl" scale="0.001 0.001 0.001"/>
+      <mesh filename="meshes/link_14_R_knee_link_1.stl" scale="0.001 0.001 0.001"/>
     </geometry>
     <material name="silver"/>
   </visual>
 </link>
 
-<link name="15_R_ankle_rocker_1">
+<link name="link_15_R_ankle_rocker_1">
   <inertial>
     <origin xyz="0.024092446226739176 -0.005993892267881884 -0.004248148301098875" rpy="0 0 0"/>
     <mass value="0.11999501478888035"/>
@@ -269,13 +265,13 @@
   <visual>
     <origin xyz="0.003 0.082774 0.368" rpy="0 0 0"/>
     <geometry>
-      <mesh filename="meshes/15_R_ankle_rocker_1.stl" scale="0.001 0.001 0.001"/>
+      <mesh filename="meshes/link_15_R_ankle_rocker_1.stl" scale="0.001 0.001 0.001"/>
     </geometry>
     <material name="silver"/>
   </visual>
 </link>
 
-<link name="16_R_shank_link_main_1">
+<link name="link_16_R_shank_link_main_1">
   <inertial>
     <origin xyz="-0.0017014067304932257 0.005734080520732071 -0.11013075690935742" rpy="0 0 0"/>
     <mass value="0.45787218753949305"/>
@@ -284,13 +280,13 @@
   <visual>
     <origin xyz="0.003 0.097574 0.368" rpy="0 0 0"/>
     <geometry>
-      <mesh filename="meshes/16_R_shank_link_main_1.stl" scale="0.001 0.001 0.001"/>
+      <mesh filename="meshes/link_16_R_shank_link_main_1.stl" scale="0.001 0.001 0.001"/>
     </geometry>
     <material name="silver"/>
   </visual>
 </link>
 
-<link name="17_R_shank_ankle_link_1">
+<link name="link_17_R_shank_ankle_link_1">
   <inertial>
     <origin xyz="0.03527776433437844 0.0 -0.01750000000000007" rpy="0 0 0"/>
     <mass value="0.2800894766748255"/>
@@ -299,13 +295,13 @@
   <visual>
     <origin xyz="-0.038681 0.091074 0.481024" rpy="0 0 0"/>
     <geometry>
-      <mesh filename="meshes/17_R_shank_ankle_link_1.stl" scale="0.001 0.001 0.001"/>
+      <mesh filename="meshes/link_17_R_shank_ankle_link_1.stl" scale="0.001 0.001 0.001"/>
     </geometry>
     <material name="silver"/>
   </visual>
 </link>
 
-<link name="18_R_foot_square_COLLISION_1">
+<link name="link_18_R_foot_square_COLLISION_1">
   <inertial>
     <origin xyz="0.03626042990350446 -1.3877787807814457e-17 -0.025750661403168174" rpy="0 0 0"/>
     <mass value="0.25"/>
@@ -315,245 +311,144 @@
   <visual>
     <origin xyz="0.003 0.091074 0.603" rpy="0 0 0"/>
     <geometry>
-      <mesh filename="meshes/18_R_foot_square_COLLISION_1.stl" scale="0.001 0.001 0.001"/>
+      <mesh filename="meshes/link_18_R_foot_square_COLLISION_1.stl" scale="0.001 0.001 0.001"/>
     </geometry>
     <material name="silver"/>
-    <material/>
   </visual>
   <collision>
     <origin xyz="0.003 0.091074 0.603" rpy="0 0 0"/>
     <geometry>
-      <mesh filename="meshes/18_R_foot_square_COLLISION_1.stl" scale="0.001 0.001 0.001"/>
+      <mesh filename="meshes/link_18_R_foot_square_COLLISION_1.stl" scale="0.001 0.001 0.001"/>
     </geometry>
   </collision>
 </link>
 
-<joint name="01_L_hip_z" type="revolute">
+<joint name="joint_01_L_hip_z" type="revolute">
   <origin xyz="0.0 0.09 0.0003" rpy="0 0 0"/>
   <parent link="base_link"/>
-  <child link="01_L_hip_z_1"/>
+  <child link="link_01_L_hip_z_1"/>
   <axis xyz="0.0 0.0 -1.0"/>
   <limit upper="1.570796" lower="-1.570796" effort="81" velocity="13.333"/>
 </joint>
-<transmission name="01_L_hip_z_tran">
-  <type>transmission_interface/SimpleTransmission</type>
-  <joint name="01_L_hip_z">
-    <hardwareInterface>PositionJointInterface</hardwareInterface>
-  </joint>
-  <actuator name="01_L_hip_z_actr">
-    <hardwareInterface>PositionJointInterface</hardwareInterface>
-    <mechanicalReduction>1</mechanicalReduction>
-  </actuator>
-</transmission>
 
-<joint name="02_L_hip_y" type="revolute">
+<joint name="joint_02_L_hip_y" type="revolute">
   <origin xyz="0.0 0.078 -0.0873" rpy="0 0 0"/>
-  <parent link="01_L_hip_z_1"/>
-  <child link="02_L_hip_y_1"/>
+  <parent link="link_01_L_hip_z_1"/>
+  <child link="link_02_L_hip_y_1"/>
   <axis xyz="0.0 -1.0 0.0"/>
   <limit upper="1.570796" lower="-1.570796" effort="90" velocity="12"/>
 </joint>
-<transmission name="02_L_hip_y_tran">
-  <type>transmission_interface/SimpleTransmission</type>
-  <joint name="02_L_hip_y">
-    <hardwareInterface>PositionJointInterface</hardwareInterface>
-  </joint>
-  <actuator name="02_L_hip_y_actr">
-    <hardwareInterface>PositionJointInterface</hardwareInterface>
-    <mechanicalReduction>1</mechanicalReduction>
-  </actuator>
-</transmission>
 
-<joint name="03_L_hip_x" type="revolute">
+<joint name="joint_03_L_hip_x" type="revolute">
   <origin xyz="0.0272 -0.077 0.0" rpy="0 0 0"/>
-  <parent link="02_L_hip_y_1"/>
-  <child link="03_L_hip_x_COLLISION_1"/>
+  <parent link="link_02_L_hip_y_1"/>
+  <child link="link_03_L_hip_x_COLLISION_1"/>
   <axis xyz="1.0 0.0 0.0"/>
   <limit upper="0.628319" lower="-0.628319" effort="81" velocity="13.333"/>
 </joint>
-<transmission name="03_L_hip_x_tran">
-  <type>transmission_interface/SimpleTransmission</type>
-  <joint name="03_L_hip_x">
-    <hardwareInterface>PositionJointInterface</hardwareInterface>
-  </joint>
-  <actuator name="03_L_hip_x_actr">
-    <hardwareInterface>PositionJointInterface</hardwareInterface>
-    <mechanicalReduction>1</mechanicalReduction>
-  </actuator>
-</transmission>
 
-<joint name="04_L_knee_rocker_RIGID" type="fixed">
+<joint name="joint_04_L_knee_rocker_RIGID" type="fixed">
   <origin xyz="-0.0302 0.004774 -0.141" rpy="0 0 0"/>
-  <parent link="03_L_hip_x_COLLISION_1"/>
-  <child link="04_L_knee_rocker_1"/>
+  <parent link="link_03_L_hip_x_COLLISION_1"/>
+  <child link="link_04_L_knee_rocker_1"/>
 </joint>
 
-<joint name="05_L_knee_link_RIGID" type="fixed">
+<joint name="joint_05_L_knee_link_RIGID" type="fixed">
   <origin xyz="-0.047693 -0.0047 -0.076324" rpy="0 0 0"/>
-  <parent link="04_L_knee_rocker_1"/>
-  <child link="05_L_knee_link_1"/>
+  <parent link="link_04_L_knee_rocker_1"/>
+  <child link="link_05_L_knee_link_1"/>
 </joint>
 
-<joint name="06_L_ankle_rocker_RIGID" type="fixed">
+<joint name="joint_06_L_ankle_rocker_RIGID" type="fixed">
   <origin xyz="-0.0302 -0.008226 -0.281" rpy="0 0 0"/>
-  <parent link="03_L_hip_x_COLLISION_1"/>
-  <child link="06_L_ankle_rocker_1"/>
+  <parent link="link_03_L_hip_x_COLLISION_1"/>
+  <child link="link_06_L_ankle_rocker_1"/>
 </joint>
 
-<joint name="07_L_shank_link_main" type="revolute">
+<joint name="joint_07_L_shank_link_main" type="revolute">
   <origin xyz="-0.0302 0.006574 -0.281" rpy="0 0 0"/>
-  <parent link="03_L_hip_x_COLLISION_1"/>
-  <child link="07_L_shank_link_main_1"/>
+  <parent link="link_03_L_hip_x_COLLISION_1"/>
+  <child link="link_07_L_shank_link_main_1"/>
   <axis xyz="0.0 1.0 0.0"/>
   <limit upper="1.745329" lower="-0.087266" effort="81" velocity="13.333"/>
 </joint>
-<transmission name="07_L_shank_link_main_tran">
-  <type>transmission_interface/SimpleTransmission</type>
-  <joint name="07_L_shank_link_main">
-    <hardwareInterface>PositionJointInterface</hardwareInterface>
-  </joint>
-  <actuator name="07_L_shank_link_main_actr">
-    <hardwareInterface>PositionJointInterface</hardwareInterface>
-    <mechanicalReduction>1</mechanicalReduction>
-  </actuator>
-</transmission>
 
-<joint name="08_L_shank_ankle_link_RIGID" type="fixed">
+<joint name="joint_08_L_shank_ankle_link_RIGID" type="fixed">
   <origin xyz="0.041681 -0.0065 -0.113024" rpy="0 0 0"/>
-  <parent link="07_L_shank_link_main_1"/>
-  <child link="08_L_shank_ankle_link_1"/>
+  <parent link="link_07_L_shank_link_main_1"/>
+  <child link="link_08_L_shank_ankle_link_1"/>
 </joint>
 
-<joint name="09_L_foot" type="revolute">
+<joint name="joint_09_L_foot" type="revolute">
   <origin xyz="0.0 -0.0065 -0.235" rpy="0 0 0"/>
-  <parent link="07_L_shank_link_main_1"/>
-  <child link="09_L_foot_square_COLLISION_1"/>
+  <parent link="link_07_L_shank_link_main_1"/>
+  <child link="link_09_L_foot_square_COLLISION_1"/>
   <axis xyz="0.0 1.0 0.0"/>
   <limit upper="0.872665" lower="-0.872665" effort="45" velocity="10.667"/>
 </joint>
-<transmission name="09_L_foot_tran">
-  <type>transmission_interface/SimpleTransmission</type>
-  <joint name="09_L_foot">
-    <hardwareInterface>PositionJointInterface</hardwareInterface>
-  </joint>
-  <actuator name="09_L_foot_actr">
-    <hardwareInterface>PositionJointInterface</hardwareInterface>
-    <mechanicalReduction>1</mechanicalReduction>
-  </actuator>
-</transmission>
 
-<joint name="10_R_hip_z" type="revolute">
+<joint name="joint_10_R_hip_z" type="revolute">
   <origin xyz="0.0 -0.09 0.0003" rpy="0 0 0"/>
   <parent link="base_link"/>
-  <child link="10_R_hip_z_1"/>
+  <child link="link_10_R_hip_z_1"/>
   <axis xyz="0.0 0.0 -1.0"/>
   <limit upper="1.570796" lower="-1.570796" effort="81" velocity="13.333"/>
 </joint>
-<transmission name="10_R_hip_z_tran">
-  <type>transmission_interface/SimpleTransmission</type>
-  <joint name="10_R_hip_z">
-    <hardwareInterface>PositionJointInterface</hardwareInterface>
-  </joint>
-  <actuator name="10_R_hip_z_actr">
-    <hardwareInterface>PositionJointInterface</hardwareInterface>
-    <mechanicalReduction>1</mechanicalReduction>
-  </actuator>
-</transmission>
 
-<joint name="11_R_hip_y" type="revolute">
+<joint name="joint_11_R_hip_y" type="revolute">
   <origin xyz="0.0 -0.078 -0.0873" rpy="0 0 0"/>
-  <parent link="10_R_hip_z_1"/>
-  <child link="11_R_hip_y_1"/>
+  <parent link="link_10_R_hip_z_1"/>
+  <child link="link_11_R_hip_y_1"/>
   <axis xyz="0.0 1.0 0.0"/>
   <limit upper="1.570796" lower="-1.570796" effort="90" velocity="12"/>
 </joint>
-<transmission name="11_R_hip_y_tran">
-  <type>transmission_interface/SimpleTransmission</type>
-  <joint name="11_R_hip_y">
-    <hardwareInterface>PositionJointInterface</hardwareInterface>
-  </joint>
-  <actuator name="11_R_hip_y_actr">
-    <hardwareInterface>PositionJointInterface</hardwareInterface>
-    <mechanicalReduction>1</mechanicalReduction>
-  </actuator>
-</transmission>
 
-<joint name="12_R_hip_x" type="revolute">
+<joint name="joint_12_R_hip_x" type="revolute">
   <origin xyz="0.0272 0.077 0.0" rpy="0 0 0"/>
-  <parent link="11_R_hip_y_1"/>
-  <child link="12_R_hip_x_COLLISION_1"/>
+  <parent link="link_11_R_hip_y_1"/>
+  <child link="link_12_R_hip_x_COLLISION_1"/>
   <axis xyz="1.0 0.0 0.0"/>
   <limit upper="0.628319" lower="-0.628319" effort="81" velocity="13.333"/>
 </joint>
-<transmission name="12_R_hip_x_tran">
-  <type>transmission_interface/SimpleTransmission</type>
-  <joint name="12_R_hip_x">
-    <hardwareInterface>PositionJointInterface</hardwareInterface>
-  </joint>
-  <actuator name="12_R_hip_x_actr">
-    <hardwareInterface>PositionJointInterface</hardwareInterface>
-    <mechanicalReduction>1</mechanicalReduction>
-  </actuator>
-</transmission>
 
-<joint name="13_R_knee_rocker_RIGID" type="fixed">
+<joint name="joint_13_R_knee_rocker_RIGID" type="fixed">
   <origin xyz="-0.0302 -0.004774 -0.141" rpy="0 0 0"/>
-  <parent link="12_R_hip_x_COLLISION_1"/>
-  <child link="13_R_knee_rocker_1"/>
+  <parent link="link_12_R_hip_x_COLLISION_1"/>
+  <child link="link_13_R_knee_rocker_1"/>
 </joint>
 
-<joint name="14_R_knee_link_PASSIVE" type="fixed">
+<joint name="joint_14_R_knee_link_PASSIVE" type="fixed">
   <origin xyz="-0.047693 0.0047 -0.076324" rpy="0 0 0"/>
-  <parent link="13_R_knee_rocker_1"/>
-  <child link="14_R_knee_link_1"/>
+  <parent link="link_13_R_knee_rocker_1"/>
+  <child link="link_14_R_knee_link_1"/>
 </joint>
 
-<joint name="15_R_ankle_rocker_RIGID" type="fixed">
+<joint name="joint_15_R_ankle_rocker_RIGID" type="fixed">
   <origin xyz="-0.0302 0.008226 -0.281" rpy="0 0 0"/>
-  <parent link="12_R_hip_x_COLLISION_1"/>
-  <child link="15_R_ankle_rocker_1"/>
+  <parent link="link_12_R_hip_x_COLLISION_1"/>
+  <child link="link_15_R_ankle_rocker_1"/>
 </joint>
 
-<joint name="16_R_shank_link_main" type="revolute">
+<joint name="joint_16_R_shank_link_main" type="revolute">
   <origin xyz="-0.0302 -0.006574 -0.281" rpy="0 0 0"/>
-  <parent link="12_R_hip_x_COLLISION_1"/>
-  <child link="16_R_shank_link_main_1"/>
+  <parent link="link_12_R_hip_x_COLLISION_1"/>
+  <child link="link_16_R_shank_link_main_1"/>
   <axis xyz="0.0 -1.0 0.0"/>
   <limit upper="0.087266" lower="-1.745329" effort="81" velocity="13.333"/>
 </joint>
-<transmission name="16_R_shank_link_main_tran">
-  <type>transmission_interface/SimpleTransmission</type>
-  <joint name="16_R_shank_link_main">
-    <hardwareInterface>PositionJointInterface</hardwareInterface>
-  </joint>
-  <actuator name="16_R_shank_link_main_actr">
-    <hardwareInterface>PositionJointInterface</hardwareInterface>
-    <mechanicalReduction>1</mechanicalReduction>
-  </actuator>
-</transmission>
 
-<joint name="17_R_shank_ankle_link_RIGID" type="fixed">
+<joint name="joint_17_R_shank_ankle_link_RIGID" type="fixed">
   <origin xyz="0.041681 0.0065 -0.113024" rpy="0 0 0"/>
-  <parent link="16_R_shank_link_main_1"/>
-  <child link="17_R_shank_ankle_link_1"/>
+  <parent link="link_16_R_shank_link_main_1"/>
+  <child link="link_17_R_shank_ankle_link_1"/>
 </joint>
 
-<joint name="18_R_foot" type="revolute">
+<joint name="joint_18_R_foot" type="revolute">
   <origin xyz="0.0 0.0065 -0.235" rpy="0 0 0"/>
-  <parent link="16_R_shank_link_main_1"/>
-  <child link="18_R_foot_square_COLLISION_1"/>
+  <parent link="link_16_R_shank_link_main_1"/>
+  <child link="link_18_R_foot_square_COLLISION_1"/>
   <axis xyz="0.0 -1.0 0.0"/>
   <limit upper="0.872665" lower="-0.872665" effort="45" velocity="10.667"/>
 </joint>
-<transmission name="18_R_foot_tran">
-  <type>transmission_interface/SimpleTransmission</type>
-  <joint name="18_R_foot">
-    <hardwareInterface>PositionJointInterface</hardwareInterface>
-  </joint>
-  <actuator name="18_R_foot_actr">
-    <hardwareInterface>PositionJointInterface</hardwareInterface>
-    <mechanicalReduction>1</mechanicalReduction>
-  </actuator>
-</transmission>
 
 </robot>
