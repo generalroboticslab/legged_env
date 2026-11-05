@@ -74,13 +74,13 @@ This repository contains an Isaac Gym template environment that can be used to t
 "${SHELL}" <(curl -L micro.mamba.pm/install.sh)
 ```
 
-Setup a python virtual envirnpoment named  `py38` with conda yaml file `setup/conda_env.yaml` 
+Setup a python virtual envirnpoment named  `py38` with conda yaml file `envs/setup/conda_env.yaml` 
 
 ```bash
 alias conda="micromamba"
 
 # Create environment
-conda env create --file setup/conda_env_py38.yaml -y
+conda env create --file envs/setup/conda_env.yaml -y
 
 # Activate the environment
 conda activate py38
